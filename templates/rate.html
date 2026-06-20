@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% block title %}Rate · {{ campaign.name }}{% endblock %}
+
+{% block content %}
+
+<!-- ============== RATING SCREEN ============== -->
+<section id="screen-rate" class="screen active">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <a href="{{ url_for('annotator_dashboard') }}"
+         class="link-btn">← {{ campaign.name }}</a>
+    </div>
+    <div class="topbar-right">
+      <span class="progress-label">
+        Page <strong id="page-current">1</strong> of <strong id="page-total">1</strong>
+        <span class="progress-sub">· <strong id="rated-count">0</strong>/<strong id="seg-total">{{ segments|length }}</strong> segments rated</span>
+      </span>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="instructions-panel" id="instructions-panel">
+    <div class="instructions-header">
+      <h3>
+        <span class="info-bullet" aria-hidden="true">i</span>
+        Rating instructions
+      </h3>
+      <button type="button" class="link-btn" id="toggle-instructions" aria-expanded="true">Hide</button>
+    </div>
+    <div class="instructions-body" id="instructions-body">
+      {% if instructions %}
+      <div class="admin-instructions">{{ instructions }}</div>
+      {% else %}
+      <p>
+        Read the <strong>{{ input_label|lower }}</strong> carefully, then read the
+        <strong>{{ output_label|lower }}</strong>. Rate on each criterion shown on the right.
+        {% if is_bilingual %}The reference is hidden by default to avoid biasing your judgment.{% endif %}
+      </p>
+      {% endif %}
+
+      {% if eval_mode in ['likert', 'span_only'] %}
+      <p class="instructions-subhead">{{ 'What each error type means' if eval_mode == 'span_only' else 'What each criterion means' }}</p>
+      <div class="crit-defs">
+        {% for c in criteria %}
+        <div class="crit-def">
+          <span class="crit-def-swatch" style="background: {{ c.color }}" aria-hidden="true"></span>
+          <span class="crit-def-text">
+            <strong>{{ c.name }}</strong>{% if c.guide %}: {{ c.guide }}{% elif c.desc %}: {{ c.desc }}{% else %}: <em class="crit-def-missing">no definition provided by the campaign admin</em>{% endif %}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if eval_mode == 'likert' %}
+      <p class="instructions-subhead">
+        {% if scale.type == 'continuous' %}
+        What the scale means ({{ scale.min }}–{{ scale.max }} slider)
+        {% else %}
+        What each rating means ({{ scale.points }}-point scale)
+        {% endif %}
+      </p>
+      <div class="scale-legend">
+        {% for item in scale_legend %}
+        <span class="legend-item"><span class="legend-num">{{ item.value }}</span>{% if item.label %} {{ item.label }}{% endif %}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- One block is rendered per visible segment by rate.js -->
+  <div id="segment-stack"></div>
+
+  <div class="action-bar">
+    <div class="action-bar-left">
+      <button type="button" class="btn btn-ghost" id="btn-jump" title="Jump to a specific segment">
+        Jump to…
+      </button>
+    </div>
+    <div class="action-bar-right">
+      <button type="button" class="btn btn-ghost" id="btn-prev">← Previous page</button>
+      <button type="button" class="btn btn-primary" id="btn-next">Save &amp; next page →</button>
+    </div>
+  </div>
+
+  <div class="save-status" id="save-status" aria-live="polite"></div>
+
+  {% if ai_available %}
+  <!-- Floating guideline assistant: always available, helps with instructions,
+       criteria, the interface, and the current segment. Never assigns labels. -->
+  <button type="button" id="assist-launcher" class="assist-launcher" aria-label="Open the guideline assistant" hidden>
+    <span class="assist-launcher-icon">💬</span>
+    <span class="assist-launcher-text">Ask the assistant</span>
+  </button>
+
+  <div id="assist-panel" class="assist-panel">
+    <div class="assist-panel-head">
+      <div>
+        <strong>Guideline assistant</strong>
+        <span class="assist-badge">advisory · never assigns labels</span>
+      </div>
+      <button type="button" id="assist-close" class="assist-close" aria-label="Close">✕</button>
+    </div>
+    <div class="assist-panel-sub">
+      Ask about the instructions, the criteria and their definitions, how the interface works,
+      or the segment you’re viewing. The assistant explains guidelines; it won’t choose a score
+      or label for you.
+    </div>
+    <div id="assist-presets" class="assist-presets"></div>
+    <div id="assist-transcript" class="assist-transcript"></div>
+    <div class="assist-ask-row">
+      <input type="text" id="assist-input" class="assist-input"
+             placeholder="Ask a question…" maxlength="1000" autocomplete="off">
+      <button type="button" id="assist-send" class="btn btn-small">Ask</button>
+    </div>
+  </div>
+  {% endif %}
+
+</section>
+
+<!-- ============== TEMPLATE for one segment (cloned by JS) ============== -->
+<template id="segment-template">
+  <article class="segment-card" data-seg-index="">
+    <div class="segment-card-head">
+      <span class="segment-number"></span>
+      <div class="seg-meta">
+        <span class="meta-chip meta-pair"></span>
+        <span class="meta-chip meta-domain"></span>
+        <span class="meta-chip meta-chip-muted meta-system"></span>
+      </div>
+      <span class="segment-saved-badge" aria-live="polite"></span>
+    </div>
+
+    <div class="segment-grid">
+      <!-- LEFT: input / output / reference -->
+      <div class="segment-left">
+        <div class="text-panel">
+          <div class="text-panel-label">
+            <span class="dot dot-source" aria-hidden="true"></span>
+            {{ input_label }}
+          </div>
+          <div class="text-panel-body text-source-body text-source"></div>
+        </div>
+        <div class="text-panel">
+          <div class="text-panel-label">
+            <span class="dot dot-target" aria-hidden="true"></span>
+            <span class="target-panel-label">{{ output_label }}</span>
+          </div>
+          <div class="text-panel-body text-target"></div>
+        </div>
+        <div class="text-panel text-panel-b" hidden>
+          <div class="text-panel-label">
+            <span class="dot dot-target-b" aria-hidden="true"></span>
+            <span class="target-b-panel-label">{{ output_label }} B</span>
+          </div>
+          <div class="text-panel-body text-target-b"></div>
+        </div>
+        <details class="reference-toggle">
+          <summary>
+            <span class="reveal-icon" aria-hidden="true">▸</span>
+            Show reference
+            <span class="reference-hint">Reveal after forming your own judgment</span>
+          </summary>
+          <div class="reference-body text-reference"></div>
+        </details>
+      </div>
+
+      <!-- RIGHT: likert circles per criterion (likert mode) -->
+      <div class="segment-right">
+        <div class="rating-block-label">Your ratings</div>
+        <div class="criteria-list"></div>
+
+        <!-- Pairwise preference selector (shown in pairwise mode) -->
+        <div class="preference-block" hidden>
+          <div class="rating-block-label">Which {{ output_label|lower }} is better?</div>
+          <div class="preference-options" role="radiogroup" aria-label="Preference"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Span-only: explicit review confirmation -->
+    <div class="reviewed-field" hidden>
+      <label class="toggle-row">
+        <input type="checkbox" class="seg-reviewed">
+        <span class="toggle-label">I have reviewed this segment and marked all errors (or there are none)</span>
+      </label>
+    </div>
+
+    <!-- Post-editing: editable corrected output -->
+    <div class="postedit-block" hidden>
+      <div class="text-panel-label">
+        <span class="dot dot-target" aria-hidden="true"></span>
+        Corrected {{ output_label|lower }}: edit the text to fix any errors
+      </div>
+      <textarea class="seg-postedit" rows="4" spellcheck="false"
+                placeholder="Edit the {{ output_label|lower }} here…"></textarea>
+      <div class="postedit-controls">
+        <button type="button" class="link-btn postedit-reset">Reset to original</button>
+        <span class="postedit-status muted"></span>
+      </div>
+    </div>
+
+    <!-- FULL-WIDTH: span annotation, below both columns -->
+    <div class="span-section" data-enable-spans="">
+      <div class="span-section-header">
+        <h3>Mark error spans in the {{ output_label|lower }}</h3>
+        <button type="button" class="link-btn toggle-span-help" aria-expanded="true">Hide help</button>
+      </div>
+
+      <div class="span-help">
+        <div class="span-help-content"></div>
+      </div>
+
+      <div class="span-controls">
+        <span class="span-controls-label">Marking:</span>
+        <div class="error-type-picker"></div>
+        <button type="button" class="link-btn span-clear-btn span-clear-current">
+          Clear current type
+        </button>
+      </div>
+
+      <div class="span-target-wrap span-source-wrap" hidden>
+        <div class="text-panel-label">
+          <span class="dot dot-source" aria-hidden="true"></span>
+          {{ input_label }}: select text to mark errors
+        </div>
+        <div class="span-target span-target-source span-source"></div>
+      </div>
+
+      <div class="span-target-wrap">
+        <div class="text-panel-label">
+          <span class="dot dot-target" aria-hidden="true"></span>
+          {{ output_label }}: select text to mark errors
+        </div>
+        <div class="span-target span-target-main"></div>
+      </div>
+
+      <div class="span-summary"></div>
+    </div>
+
+    <div class="comments-field">
+      <label>Comments <span class="optional">(optional)</span></label>
+      <p class="hint">Describe specific errors: mistranslations, omissions, hallucinated content, awkward phrasing, etc.</p>
+      <textarea class="seg-comments" rows="2"></textarea>
+    </div>
+  </article>
+</template>
+
+<!-- ============== DONE SCREEN ============== -->
+<section id="screen-done" class="screen">
+  <div class="card hero-card done-card">
+    <div class="done-icon" aria-hidden="true">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" opacity="0.2"/>
+        <path d="M8 12l3 3 5-6"/>
+      </svg>
+    </div>
+    <h1>Thank you for participating</h1>
+    <p class="lede">
+      Your ratings have been saved. You can come back and edit any of them until the campaign is closed.
+    </p>
+    <div class="done-actions">
+      <button type="button" class="btn" id="btn-review">Review my ratings</button>
+      <a href="{{ url_for('annotator_dashboard') }}" class="btn btn-ghost">Done</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============== JUMP MODAL ============== -->
+<div class="modal-backdrop" id="jump-modal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Jump to segment</h3>
+      <button type="button" class="link-btn" id="jump-close">×</button>
+    </div>
+    <div class="modal-body" id="jump-list"></div>
+  </div>
+</div>
+
+<script>
+  window.CAMPAIGN     = {{ {"id": campaign.id, "name": campaign.name, "num_segments": campaign.num_segments, "source_language": campaign.source_language, "target_language": campaign.target_language}|tojson }};
+  window.SEGMENTS     = {{ segments|tojson }};
+  window.CRITERIA     = {{ criteria|tojson }};
+  window.SCALE_CONFIG = {{ scale|tojson }};
+  window.EVAL_MODE    = {{ eval_mode|tojson }};
+  window.IO_LABELS    = {input: {{ input_label|tojson }}, output: {{ output_label|tojson }}};
+  window.PREFERENCES  = {{ preferences|tojson }};
+  window.EXISTING     = {{ existing|tojson }};
+  window.SUBMIT_URL   = {{ url_for('api_submit', campaign_id=campaign.id)|tojson }};
+  window.CONFIG_URL   = {{ url_for('api_config', campaign_id=campaign.id)|tojson }};
+  window.CONFIG_VERSION = {{ campaign.config_fingerprint()|tojson }};
+  window.SPAN_SCOPE   = {{ span_scope|tojson }};
+  window.ENABLE_SPANS = {{ enable_spans|tojson }};
+  window.RATING_POSITION = {{ (campaign.rating_position or 'side')|tojson }};
+  window.SPAN_POSITION   = {{ (campaign.span_position or 'below')|tojson }};
+  window.SPAN_INSTRUCTIONS = {{ span_instructions|tojson }};
+  window.PER_PAGE     = {{ segments_per_page|tojson }};
+  window.AI_AVAILABLE = {{ ai_available|tojson }};
+  window.AI_AB_ENABLED = {{ ai_ab_enabled|tojson }};
+  window.AI_AB_ELIGIBLE = {{ ai_ab_eligible|tojson }};
+  window.ASSIST_URL   = {{ url_for('api_assist', campaign_id=campaign.id)|tojson }};
+  window.ASSIST_FEEDBACK_URL = {{ url_for('api_assist_feedback', campaign_id=campaign.id)|tojson }};
+</script>
+<script src="{{ url_for('static', filename='rate.js') }}"></script>
+
+{% endblock %}

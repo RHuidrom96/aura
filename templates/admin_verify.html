@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Verify your email · Aura{% endblock %}
+
+{% block content %}
+<section class="card hero-card auth-card">
+  <h1>Enter your code</h1>
+  <p class="lede">
+    {% if email %}We sent a 6-digit verification code to <strong>{{ email }}</strong>.{% else %}Enter the 6-digit verification code we emailed you.{% endif %}
+    The code expires in 15 minutes.
+  </p>
+
+  <form method="post" action="{{ url_for('admin_verify_view') }}" class="register-form">
+    {% if not email %}
+    <div class="field">
+      <label for="email">Email <span class="req">*</span></label>
+      <input type="email" id="email" name="email" required autocomplete="email">
+    </div>
+    {% else %}
+    <input type="hidden" name="email" value="{{ email }}">
+    {% endif %}
+    <div class="field">
+      <label for="code">Verification code <span class="req">*</span></label>
+      <input type="text" id="code" name="code" required inputmode="numeric" pattern="[0-9]*"
+             maxlength="6" autocomplete="one-time-code" autofocus
+             style="letter-spacing: 6px; font-size: 22px; text-align: center;" placeholder="••••••">
+    </div>
+    <button type="submit" class="btn btn-primary btn-large">Verify &amp; continue</button>
+  </form>
+
+  <form method="post" action="{{ url_for('admin_verify_resend') }}" style="margin-top: 12px; text-align:center;">
+    {% if email %}<input type="hidden" name="email" value="{{ email }}">{% endif %}
+    <button type="submit" class="link-btn">Resend code</button>
+  </form>
+
+  <p class="hint" style="margin-top: 18px; text-align: center;">
+    <a href="{{ url_for('admin_signup_view') }}">← use a different email</a>
+  </p>
+</section>
+{% endblock %}

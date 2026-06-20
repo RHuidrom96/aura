@@ -1,0 +1,344 @@
+{
+  "annotators": [
+    {
+      "name": "Demo Annotator 1",
+      "email": "demo1@example.org",
+      "password": "demopass123"
+    },
+    {
+      "name": "Demo Annotator 2",
+      "email": "demo2@example.org",
+      "password": "demopass123"
+    },
+    {
+      "name": "Demo Annotator 3",
+      "email": "demo3@example.org",
+      "password": "demopass123"
+    }
+  ],
+  "campaigns": [
+    {
+      "name": "Direct Assessment — English→Assamese",
+      "source_language": "English",
+      "target_language": "Assamese",
+      "eval_mode": "likert",
+      "scale_type": "likert",
+      "scale_points": 5,
+      "scale_design": "circles",
+      "scale_labels": {
+        "1": "Very poor",
+        "2": "Poor",
+        "3": "Acceptable",
+        "4": "Good",
+        "5": "Excellent"
+      },
+      "enable_spans": false,
+      "span_scope": "target",
+      "segments_per_page": 4,
+      "instructions": "Rate each translation for Adequacy and Fluency on a 1–5 scale.",
+      "criteria": [
+        {
+          "name": "Adequacy",
+          "guide": "Does the translation convey the full meaning of the source, without adding or losing information?"
+        },
+        {
+          "name": "Fluency",
+          "guide": "Is the translation grammatical and natural in the target language?"
+        }
+      ],
+      "segments_file": "segments/assamese_likert.csv"
+    },
+    {
+      "name": "System Comparison — English→Manipuri",
+      "source_language": "English",
+      "target_language": "Manipuri (Meitei)",
+      "eval_mode": "pairwise",
+      "segments_per_page": 3,
+      "preferences": [
+        "A is much better",
+        "A is better",
+        "About the same",
+        "B is better",
+        "B is much better"
+      ],
+      "criteria": [],
+      "instructions": "Compare the two candidate translations (A and B) and choose which better conveys the source meaning in natural language.",
+      "segments_file": "segments/manipuri_pairwise.csv"
+    },
+    {
+      "name": "Error Annotation (MQM) — English→Mizo",
+      "source_language": "English",
+      "target_language": "Mizo",
+      "eval_mode": "span_only",
+      "span_scope": "target",
+      "enable_spans": true,
+      "segments_per_page": 3,
+      "criteria": [
+        {
+          "name": "Mistranslation",
+          "guide": "The target says something different from the source."
+        },
+        {
+          "name": "Omission",
+          "guide": "Source content is missing from the target."
+        },
+        {
+          "name": "Addition",
+          "guide": "The target adds content not present in the source."
+        },
+        {
+          "name": "Grammar",
+          "guide": "Grammatical or morphological error in the target."
+        }
+      ],
+      "instructions": "Mark spans of the translation that contain errors, choosing the error type for each. Tick \"reviewed\" for every segment, even those with no errors.",
+      "span_instructions": "Select the smallest span that contains the error, then pick its type. Overlapping spans of different types are allowed.",
+      "segments_file": "segments/mizo_span.csv"
+    },
+    {
+      "name": "Adequacy with error spans — English→Bodo",
+      "source_language": "English",
+      "target_language": "Bodo",
+      "eval_mode": "likert",
+      "scale_type": "likert",
+      "scale_points": 5,
+      "scale_design": "stars",
+      "scale_labels": {
+        "1": "Very poor",
+        "2": "Poor",
+        "3": "Acceptable",
+        "4": "Good",
+        "5": "Excellent"
+      },
+      "enable_spans": true,
+      "span_scope": "target",
+      "segments_per_page": 3,
+      "instructions": "Rate each translation for Adequacy and Fluency on a 1–5 scale. You may also highlight error spans under the matching criterion.",
+      "criteria": [
+        {
+          "name": "Adequacy",
+          "guide": "Does the translation convey the full meaning of the source, without adding or losing information?"
+        },
+        {
+          "name": "Fluency",
+          "guide": "Is the translation grammatical and natural in the target language?"
+        }
+      ],
+      "segments_file": "segments/bodo_likert_spans.csv",
+      "span_instructions": "Highlight the words that are wrong, then choose the criterion they relate to."
+    },
+    {
+      "name": "Direct Assessment — English→Khasi",
+      "source_language": "English",
+      "target_language": "Khasi",
+      "eval_mode": "likert",
+      "scale_type": "likert",
+      "scale_points": 5,
+      "scale_design": "circles",
+      "scale_labels": {
+        "1": "Very poor",
+        "2": "Poor",
+        "3": "Acceptable",
+        "4": "Good",
+        "5": "Excellent"
+      },
+      "enable_spans": false,
+      "span_scope": "target",
+      "segments_per_page": 4,
+      "instructions": "Rate each translation for Adequacy and Fluency on a 1–5 scale.",
+      "criteria": [
+        {
+          "name": "Adequacy",
+          "guide": "Does the translation convey the full meaning of the source, without adding or losing information?"
+        },
+        {
+          "name": "Fluency",
+          "guide": "Is the translation grammatical and natural in the target language?"
+        }
+      ],
+      "segments_file": "segments/khasi_likert.csv"
+    },
+    {
+      "name": "Error Annotation (MQM) — English→Nyishi",
+      "source_language": "English",
+      "target_language": "Nyishi",
+      "eval_mode": "span_only",
+      "span_scope": "target",
+      "enable_spans": true,
+      "segments_per_page": 3,
+      "criteria": [
+        {
+          "name": "Mistranslation",
+          "guide": "The target says something different from the source."
+        },
+        {
+          "name": "Omission",
+          "guide": "Source content is missing from the target."
+        },
+        {
+          "name": "Addition",
+          "guide": "The target adds content not present in the source."
+        },
+        {
+          "name": "Grammar",
+          "guide": "Grammatical or morphological error in the target."
+        }
+      ],
+      "instructions": "Mark spans of the translation that contain errors, choosing the error type for each. Tick \"reviewed\" for every segment, even those with no errors.",
+      "span_instructions": "Select the smallest span that contains the error, then pick its type. Overlapping spans of different types are allowed.",
+      "segments_file": "segments/nyishi_span.csv"
+    },
+    {
+      "name": "System Comparison — English→Kokborok",
+      "source_language": "English",
+      "target_language": "Kokborok",
+      "eval_mode": "pairwise",
+      "segments_per_page": 3,
+      "preferences": [
+        "A is much better",
+        "A is better",
+        "About the same",
+        "B is better",
+        "B is much better"
+      ],
+      "criteria": [],
+      "instructions": "Compare the two candidate translations (A and B) and choose which better conveys the source meaning in natural language.",
+      "segments_file": "segments/kokborok_pairwise.csv"
+    },
+    {
+      "name": "Direct Assessment — English→Nagamese",
+      "source_language": "English",
+      "target_language": "Nagamese",
+      "eval_mode": "likert",
+      "scale_type": "likert",
+      "scale_points": 5,
+      "scale_design": "circles",
+      "scale_labels": {
+        "1": "Very poor",
+        "2": "Poor",
+        "3": "Acceptable",
+        "4": "Good",
+        "5": "Excellent"
+      },
+      "enable_spans": false,
+      "span_scope": "target",
+      "segments_per_page": 4,
+      "instructions": "Rate each translation for Adequacy and Fluency on a 1–5 scale.",
+      "criteria": [
+        {
+          "name": "Adequacy",
+          "guide": "Does the translation convey the full meaning of the source, without adding or losing information?"
+        },
+        {
+          "name": "Fluency",
+          "guide": "Is the translation grammatical and natural in the target language?"
+        }
+      ],
+      "segments_file": "segments/nagamese_likert.csv"
+    },
+    {
+      "name": "Adequacy with error spans — English→Garo",
+      "source_language": "English",
+      "target_language": "Garo",
+      "eval_mode": "likert",
+      "scale_type": "likert",
+      "scale_points": 5,
+      "scale_design": "stars",
+      "scale_labels": {
+        "1": "Very poor",
+        "2": "Poor",
+        "3": "Acceptable",
+        "4": "Good",
+        "5": "Excellent"
+      },
+      "enable_spans": true,
+      "span_scope": "target",
+      "segments_per_page": 3,
+      "instructions": "Rate each translation for Adequacy and Fluency on a 1–5 scale. You may also highlight error spans under the matching criterion.",
+      "criteria": [
+        {
+          "name": "Adequacy",
+          "guide": "Does the translation convey the full meaning of the source, without adding or losing information?"
+        },
+        {
+          "name": "Fluency",
+          "guide": "Is the translation grammatical and natural in the target language?"
+        }
+      ],
+      "segments_file": "segments/garo_likert_spans.csv",
+      "span_instructions": "Highlight the words that are wrong, then choose the criterion they relate to."
+    },
+    {
+      "name": "Summarization quality (English)",
+      "source_language": "English",
+      "target_language": "English",
+      "task_type": "summarization",
+      "input_label": "Document",
+      "output_label": "Summary",
+      "eval_mode": "likert",
+      "scale_type": "likert",
+      "scale_points": 5,
+      "scale_design": "circles",
+      "scale_labels": {
+        "1": "Very poor",
+        "2": "Poor",
+        "3": "Acceptable",
+        "4": "Good",
+        "5": "Excellent"
+      },
+      "enable_spans": false,
+      "segments_per_page": 3,
+      "instructions": "Read the document, then rate its summary on each criterion (1–5).",
+      "criteria": [
+        {
+          "name": "Coherence",
+          "guide": "Is the summary well-structured and logically organized?"
+        },
+        {
+          "name": "Consistency",
+          "guide": "Are all facts in the summary supported by the document (no hallucinations)?"
+        },
+        {
+          "name": "Fluency",
+          "guide": "Is the summary grammatical and well-written?"
+        },
+        {
+          "name": "Relevance",
+          "guide": "Does the summary capture the most important information and omit trivia?"
+        }
+      ],
+      "segments_file": "segments/summarization_likert.csv"
+    },
+    {
+      "name": "LLM response comparison (English)",
+      "source_language": "English",
+      "target_language": "English",
+      "task_type": "dialogue",
+      "input_label": "Question",
+      "output_label": "Response",
+      "eval_mode": "pairwise",
+      "segments_per_page": 3,
+      "preferences": [
+        "A is much better",
+        "A is better",
+        "About the same",
+        "B is better",
+        "B is much better"
+      ],
+      "criteria": [],
+      "instructions": "Read the user's question, then compare the two assistant responses (A and B) and choose which is the better reply.",
+      "segments_file": "segments/llm_response_pairwise.csv"
+    },
+    {
+      "name": "Post-editing — English→Assamese",
+      "source_language": "English",
+      "target_language": "Assamese",
+      "task_type": "translation",
+      "eval_mode": "post_edit",
+      "segments_per_page": 3,
+      "instructions": "Read the source, then edit the translation to correct any errors. If it is already correct, leave it unchanged.",
+      "criteria": [],
+      "segments_file": "segments/assamese_postedit.csv"
+    }
+  ]
+}

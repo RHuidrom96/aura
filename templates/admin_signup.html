@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Create admin account · Aura{% endblock %}
+
+{% block content %}
+<section class="card hero-card auth-card">
+  <h1>Create an admin account</h1>
+
+  {% if signup_disabled %}
+  <p class="lede">Admin self-registration is turned off on this server. Please ask your
+    system administrator to create an account for you, or to enable sign-up.</p>
+  <p class="hint" style="margin-top: 18px; text-align: center;">
+    <a href="{{ url_for('admin_login_view') }}">← back to sign in</a>
+  </p>
+  {% else %}
+  <p class="lede">Set up a new admin account to create and manage evaluation campaigns.
+    We'll email you a 6-digit code to verify your address.</p>
+
+  {% if allowed_domains %}
+  <p class="hint" style="text-align:center; margin-bottom: 14px;">
+    Registration is limited to these email domains:
+    {% for d in allowed_domains %}<strong>@{{ d }}</strong>{% if not loop.last %}, {% endif %}{% endfor %}.
+  </p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('admin_signup_view') }}" class="register-form">
+    <div class="field">
+      <label for="email">Email <span class="req">*</span></label>
+      <input type="email" id="email" name="email" required autocomplete="email" autofocus
+             value="{{ form_email }}">
+    </div>
+    {% if invite_required %}
+    <div class="field">
+      <label for="invite_code">Invite code <span class="req">*</span></label>
+      <input type="text" id="invite_code" name="invite_code" required autocomplete="off"
+             placeholder="Provided by your administrator">
+    </div>
+    {% endif %}
+    <div class="field">
+      <label for="password">Password <span class="req">*</span></label>
+      <input type="password" id="password" name="password" required autocomplete="new-password"
+             minlength="8" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}"
+             title="At least 8 characters, with an uppercase letter, a lowercase letter, a number, and a symbol."
+             placeholder="At least 8 characters">
+      <p class="hint">Use at least 8 characters with an uppercase letter, a lowercase letter, a number, and a symbol.</p>
+    </div>
+    <div class="field">
+      <label for="password_confirm">Confirm password <span class="req">*</span></label>
+      <input type="password" id="password_confirm" name="password_confirm" required autocomplete="new-password">
+    </div>
+    <button type="submit" class="btn btn-primary btn-large">Send verification code</button>
+  </form>
+
+  <p class="hint" style="margin-top: 18px; text-align: center;">
+    Already have an account? <a href="{{ url_for('admin_login_view') }}">Sign in</a>
+    &nbsp;·&nbsp; <a href="{{ url_for('landing') }}">← back to home</a>
+  </p>
+  {% endif %}
+</section>
+{% endblock %}

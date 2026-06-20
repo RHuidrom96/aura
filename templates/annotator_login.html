@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Sign in · {{ campaign.name }}{% endblock %}
+
+{% block content %}
+<section class="card hero-card auth-card">
+  <h1>{{ campaign.name }}</h1>
+  {% set io = campaign.io_labels() %}
+  <p class="lede">
+    {% if campaign.is_bilingual and campaign.source_language and campaign.target_language %}{{ campaign.source_language }} → {{ campaign.target_language }} · {% endif %}{{ campaign.num_segments }} segments
+  </p>
+
+  <div class="instructions-box">
+    <h3>How it works</h3>
+    <ol>
+      <li>Sign in or create an account (the same account works for any campaign you join).</li>
+      {% set n = criteria|length %}
+      {% set names = criteria|map(attribute='name')|list %}
+      {% if campaign.mode == 'likert' %}
+      <li>
+        For each segment, rate the {{ io[1]|lower }} on
+        {% if n == 1 %}1 criterion ({{ names[0] }}){% else %}{{ n }} criteria ({{ names|join(', ') }}){% endif %}
+        using the rating scale shown.
+      </li>
+      {% if campaign.enable_spans %}
+      <li>Optionally mark error spans by selecting words in the
+        {% if campaign.span_scope == 'both' %}{{ io[0]|lower }} or the {{ io[1]|lower }}{% else %}{{ io[1]|lower }}{% endif %}.</li>
+      {% endif %}
+      {% elif campaign.mode == 'pairwise' %}
+      <li>For each segment, compare the two {{ io[1]|lower }} options (A and B) and choose which one is better.</li>
+      {% elif campaign.mode == 'span_only' %}
+      <li>For each segment, mark error spans in the {{ io[1]|lower }} by selecting words with your cursor and choosing the error type
+        {% if names %}({{ names|join(', ') }}){% endif %}, then tick "reviewed".</li>
+      {% elif campaign.mode == 'post_edit' %}
+      <li>For each segment, edit the {{ io[1]|lower }} to correct any errors. If it is already correct, you can leave it unchanged.</li>
+      {% endif %}
+      <li>You can return and edit your work at any time until the admin closes this campaign.</li>
+    </ol>
+  </div>
+
+  <div class="tab-group">
+    <div class="tab-headers">
+      <button type="button" class="tab-btn active" data-tab="signin">Sign in</button>
+      <button type="button" class="tab-btn" data-tab="register">Create account</button>
+    </div>
+
+    <div class="tab-panel active" data-panel="signin">
+      <form method="post" action="{{ url_for('annotator_login_post', campaign_id=campaign.id) }}" class="register-form">
+        <div class="field">
+          <label for="signin-email">Email <span class="req">*</span></label>
+          <input type="email" id="signin-email" name="email" required autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="signin-password">Password <span class="req">*</span></label>
+          <input type="password" id="signin-password" name="password" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-large">Sign in</button>
+      </form>
+    </div>
+
+    <div class="tab-panel" data-panel="register">
+      <form method="post" action="{{ url_for('annotator_register', campaign_id=campaign.id) }}" class="register-form">
+        <div class="field">
+          <label for="reg-name">Full name <span class="req">*</span></label>
+          <input type="text" id="reg-name" name="name" required autocomplete="name">
+        </div>
+        <div class="field">
+          <label for="reg-email">Email <span class="req">*</span></label>
+          <input type="email" id="reg-email" name="email" required autocomplete="email">
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="reg-password">Password <span class="req">*</span></label>
+            <input type="password" id="reg-password" name="password" required minlength="8"
+                   pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}"
+                   title="At least 8 characters, with an uppercase letter, a lowercase letter, a number, and a symbol."
+                   autocomplete="new-password">
+            <p class="hint">At least 8 characters, with an uppercase letter, a lowercase letter, a number, and a symbol.</p>
+          </div>
+          <div class="field">
+            <label for="reg-confirm">Confirm password <span class="req">*</span></label>
+            <input type="password" id="reg-confirm" name="password_confirm" required minlength="6" autocomplete="new-password">
+          </div>
+        </div>
+        <div class="field">
+          <label for="reg-lang">Native language</label>
+          <input type="text" id="reg-lang" name="native_language" placeholder="e.g. Manipuri">
+          <p class="hint">Optional but helpful.</p>
+        </div>
+
+        {% if campaign.difficulty_method != 'none' %}
+        <div class="field">
+          <label for="reg-expertise">Your expertise level <span class="req">*</span></label>
+          <select id="reg-expertise" name="expertise" required>
+            <option value="" disabled selected>Select your level…</option>
+            <option value="easy">Beginner</option>
+            <option value="medium">Intermediate</option>
+            <option value="hard">Advanced</option>
+          </select>
+          <p class="hint">{% if campaign.expertise_matching %}You'll be shown segments matched to your level.{% else %}Recorded with your account for analysis.{% endif %}</p>
+        </div>
+        {% endif %}
+
+        <div class="consent">
+          <label class="checkbox-row">
+            <input type="checkbox" name="consent" required>
+            <span>I understand my ratings will be stored for research purposes and that I can edit my responses until the campaign is closed.</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-large">Create account & start</button>
+      </form>
+    </div>
+  </div>
+
+</section>
+
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.tab-panel').forEach(p =>
+      p.classList.toggle('active', p.dataset.panel === tab));
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Admin sign in · Aura{% endblock %}
+
+{% block content %}
+<section class="card hero-card auth-card">
+  <h1>Admin sign in</h1>
+  <p class="lede">Enter the admin credentials configured by your system administrator.</p>
+
+  <form method="post" action="{{ url_for('admin_login_view') }}" class="register-form">
+    <div class="field">
+      <label for="email">Email <span class="req">*</span></label>
+      <input type="email" id="email" name="email" required autocomplete="email" autofocus>
+    </div>
+    <div class="field">
+      <label for="password">Password <span class="req">*</span></label>
+      <input type="password" id="password" name="password" required autocomplete="current-password">
+    </div>
+    <button type="submit" class="btn btn-primary btn-large">Sign in</button>
+  </form>
+
+  <p class="hint" style="margin-top: 18px; text-align: center;">
+    {% if signup_enabled %}New here? <a href="{{ url_for('admin_signup_view') }}">Create an admin account</a>
+    &nbsp;·&nbsp; {% endif %}<a href="{{ url_for('landing') }}">← back to home</a>
+  </p>
+</section>
+{% endblock %}

@@ -1,0 +1,388 @@
+{# Renders the mode-aware results: summary, charts (with per-figure download),
+   and tables (with copy-as Markdown/LaTeX/Word + CSV). Expects `results`, `charts`. #}
+{% set s = results.summary %}
+{% macro num(v) %}{% if v is none %}—{% else %}{{ v }}{% endif %}{% endmacro %}
+{% macro figure(uri, alt, name, chartkey="") %}
+<figure class="result-figure"{% if chartkey %} data-chart="{{ chartkey }}" data-chart-name="{{ name }}"{% endif %}>
+  <img class="result-chart" src="{{ uri }}" alt="{{ alt }}">
+  <figcaption><span class="fig-cap">{{ alt }}</span>
+    <a class="fig-dl" href="{{ uri }}" download="{{ name }}.png">⬇&nbsp;PNG</a></figcaption>
+</figure>
+{% endmacro %}
+
+<div class="result-summary-row">
+  <div class="result-stat"><span class="result-stat-num">{{ s.n_annotators }}</span><span class="result-stat-label">Annotators</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ s.n_segments }}</span><span class="result-stat-label">Segments</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ s.n_complete_ratings }}</span><span class="result-stat-label">Complete ratings</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ s.n_overlap_segments }}</span><span class="result-stat-label">Overlapping segments</span></div>
+</div>
+
+{% if s.warnings %}
+<div class="result-warn">
+  {% for w in s.warnings %}<p>⚠ {{ w }}</p>{% endfor %}
+</div>
+{% endif %}
+
+{% if s.annotators %}
+<h3 class="result-h3">Annotators</h3>
+<table class="result-table" data-table-name="annotators">
+  <thead><tr><th>Name</th><th>Email</th><th>Expertise</th><th class="num">Complete ratings</th></tr></thead>
+  <tbody>
+    {% set _exp_label = {'easy':'Beginner','medium':'Intermediate','hard':'Advanced'} %}
+    {% for a in s.annotators %}
+    <tr><td>{{ a.name }}</td><td>{{ a.email }}</td><td>{{ _exp_label.get(a.expertise, '—') }}</td><td class="num">{{ a.n_complete }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{# ===================== ANNOTATOR PERFORMANCE & AI ===================== #}
+{% if results.performance and results.performance.annotators %}
+{% set P = results.performance %}
+<h3 class="result-h3">Annotator performance</h3>
+<p class="result-note">
+  Quality signals to help you monitor annotators. <strong>Mean deviation</strong> is how far each
+  person's scores sit from the average of their peers on shared segments (lower = more agreement);
+  <strong>flags</strong> highlight people worth a closer look. These are indicators, not verdicts.
+</p>
+<table class="result-table" data-table-name="annotator_performance">
+  <thead><tr>
+    <th>Name</th>
+    <th class="num">Complete</th>
+    <th class="num">Mean time (s)</th>
+    {% if results.mode == 'pairwise' %}<th class="num">Agreement w/ majority</th>
+    {% else %}<th class="num">Mean deviation</th>{% endif %}
+    <th class="num">AI used</th>
+    <th class="num">AI marked helpful</th>
+    <th>Flags</th>
+  </tr></thead>
+  <tbody>
+    {% for r in P.annotators %}
+    <tr>
+      <td>{{ r.name }}</td>
+      <td class="num">{{ r.n_complete }}</td>
+      <td class="num">{{ r.mean_time_sec if r.mean_time_sec is not none else '—' }}</td>
+      {% if results.mode == 'pairwise' %}
+        <td class="num">{{ (r.pref_agreement_pct ~ '%') if r.pref_agreement_pct is not none else '—' }}</td>
+      {% else %}
+        <td class="num">{{ r.mean_deviation if r.mean_deviation is not none else '—' }}</td>
+      {% endif %}
+      <td class="num">{{ r.ai_used }}</td>
+      <td class="num">{{ r.ai_helpful }}</td>
+      <td>{% for f in r.flags %}<span class="perf-flag perf-flag-{{ f.split(' ')|join('-') }}">{{ f }}</span> {% else %}<span class="muted">—</span>{% endfor %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% set AI = P.ai %}
+<h3 class="result-h3">AI assistance</h3>
+<table class="result-table" data-table-name="ai_assistance">
+  <thead><tr><th>Metric</th><th class="num">Value</th></tr></thead>
+  <tbody>
+    <tr><td>AI interactions</td><td class="num">{{ AI.total_assists }}</td></tr>
+    <tr><td>Annotators who used AI</td><td class="num">{{ AI.n_users }}</td></tr>
+    <tr><td>AI-assisted ratings</td><td class="num">{{ AI.assisted_ratings }}</td></tr>
+    {% if AI.mean_time_assisted is not none and AI.mean_time_unassisted is not none %}
+    <tr><td>Mean time, assisted vs not (s)</td><td class="num">{{ AI.mean_time_assisted }} vs {{ AI.mean_time_unassisted }}</td></tr>
+    {% endif %}
+    {% if AI.mean_dev_assisted is not none and AI.mean_dev_unassisted is not none %}
+    <tr><td>Mean deviation, assisted vs not</td><td class="num">{{ AI.mean_dev_assisted }} vs {{ AI.mean_dev_unassisted }}</td></tr>
+    {% endif %}
+  </tbody>
+</table>
+<p class="result-note">{{ AI.verdict }}</p>
+{% if AI.ab_enabled %}
+<h4 class="result-h4">Randomised AI experiment (causal)</h4>
+<p class="result-note">
+  The assistant was made available on a random {{ AI.ab_fraction }}% of (annotator, segment) pairs.
+  Comparing the two arms estimates the <em>causal</em> effect of AI access (intent-to-treat), not just
+  a correlation.
+</p>
+<table class="result-table" data-table-name="ai_ab_experiment">
+  <thead><tr><th>Metric</th><th class="num">AI available</th><th class="num">Not available</th></tr></thead>
+  <tbody>
+    <tr><td>Ratings</td><td class="num">{{ AI.ab_eligible_ratings }}</td><td class="num">{{ AI.ab_ineligible_ratings }}</td></tr>
+    {% if AI.ab_mean_time_eligible is not none and AI.ab_mean_time_ineligible is not none %}
+    <tr><td>Mean time (s)</td><td class="num">{{ AI.ab_mean_time_eligible }}</td><td class="num">{{ AI.ab_mean_time_ineligible }}</td></tr>
+    {% endif %}
+    {% if AI.ab_mean_dev_eligible is not none and AI.ab_mean_dev_ineligible is not none %}
+    <tr><td>Mean deviation from consensus</td><td class="num">{{ AI.ab_mean_dev_eligible }}</td><td class="num">{{ AI.ab_mean_dev_ineligible }}</td></tr>
+    {% endif %}
+  </tbody>
+</table>
+<p class="result-note"><strong>{{ AI.ab_verdict }}</strong></p>
+{% endif %}
+{% endif %}
+
+{# ===================== DISAGREEMENT ===================== #}
+{% if results.disagreement and results.disagreement.contested_segments %}
+{% set D = results.disagreement %}
+<h3 class="result-h3">Disagreement</h3>
+<p class="result-note">
+  Where annotators diverge most. Disagreement metric: {{ D.metric }}. Use this to spot ambiguous
+  source items, unclear guidelines, or criteria that need tightening.
+</p>
+{% if D.by_criterion %}
+<table class="result-table" data-table-name="disagreement_by_criterion">
+  <thead><tr><th>Criterion</th><th class="num">Mean disagreement</th></tr></thead>
+  <tbody>
+    {% for c in D.by_criterion %}
+    <tr><td>{{ c.name }}</td><td class="num">{{ c.mean_disagreement }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+<h4 class="result-h4">Most contested segments</h4>
+<table class="result-table" data-table-name="contested_segments">
+  <thead><tr><th>Segment</th><th>Source</th><th class="num">Raters</th><th class="num">Disagreement</th><th>Breakdown</th></tr></thead>
+  <tbody>
+    {% for seg in D.contested_segments %}
+    <tr>
+      <td class="muted">{{ seg.segment_id }}</td>
+      <td>{{ seg.source }}{% if seg.source and seg.source|length >= 140 %}…{% endif %}</td>
+      <td class="num">{{ seg.n_raters }}</td>
+      <td class="num">{{ seg.disagreement }}</td>
+      <td class="muted">{{ seg.detail }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{# ===================== LIKERT ===================== #}
+{% if results.mode == 'likert' %}
+{% set L = results.likert %}
+<h3 class="result-h3">Scores &amp; agreement by criterion</h3>
+<div class="result-figures">
+  {% if charts.criteria_means %}{{ figure(charts.criteria_means, "Mean score by criterion", "criteria_means", "criteria_means") }}{% endif %}
+  {% if charts.score_distribution %}{{ figure(charts.score_distribution, "Rating distribution by criterion", "rating_distribution", "score_distribution") }}{% endif %}
+</div>
+<table class="result-table" data-table-name="criteria_scores">
+  <thead><tr><th>Criterion</th><th class="num">n</th><th class="num">Mean</th><th class="num">Std</th>
+    <th class="num" title="Krippendorff's alpha (interval): inter-annotator reliability">Krippendorff α</th>
+    <th class="num">Mean Pearson</th><th class="num">Mean Spearman</th></tr></thead>
+  <tbody>
+    {% for c in L.criteria %}
+    <tr><td>{{ c.name }}</td><td class="num">{{ c.n_ratings }}</td><td class="num">{{ num(c.mean) }}</td><td class="num">{{ num(c.std) }}</td>
+      <td class="num">{{ num(c.alpha) }}</td><td class="num">{{ num(c.mean_pairwise_pearson) }}</td><td class="num">{{ num(c.mean_pairwise_spearman) }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if L.annotator_corr_matrix.labels|length >= 2 %}
+<h3 class="result-h3">Inter-annotator correlation</h3>
+<div class="result-figures">
+  {% if charts.annotator_corr %}{{ figure(charts.annotator_corr, "Annotator agreement (Pearson)", "annotator_correlation") }}{% endif %}
+</div>
+{% if L.pairwise_corr %}
+<table class="result-table" data-table-name="annotator_correlation">
+  <thead><tr><th>Annotator A</th><th>Annotator B</th><th class="num">Pearson</th><th class="num">Spearman</th><th class="num">n (shared)</th></tr></thead>
+  <tbody>
+    {% for p in L.pairwise_corr %}
+    <tr><td>{{ p.a }}</td><td>{{ p.b }}</td><td class="num">{{ num(p.pearson) }}</td><td class="num">{{ num(p.spearman) }}</td><td class="num">{{ p.n }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endif %}
+
+{% if L.systems %}
+<h3 class="result-h3">Mean score by system</h3>
+<div class="result-figures">
+  {% if charts.system_means %}{{ figure(charts.system_means, "Mean score by system", "system_scores", "system_means") }}{% endif %}
+</div>
+<table class="result-table" data-table-name="system_scores">
+  <thead><tr><th>System</th><th>Criterion</th><th class="num">Mean</th><th class="num">Std</th><th class="num">n</th></tr></thead>
+  <tbody>
+    {% for r in L.systems %}
+    <tr><td>{{ r.system }}</td><td>{{ r.criterion }}</td><td class="num">{{ num(r.mean) }}</td><td class="num">{{ num(r.std) }}</td><td class="num">{{ r.n }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if L.spans %}
+{% set SP = L.spans %}
+<h3 class="result-h3">Error spans marked</h3>
+<div class="result-figures">
+  {% if charts.likert_spans_per_type %}{{ figure(charts.likert_spans_per_type, "Error spans by criterion", "error_spans", "likert_spans_per_type") }}{% endif %}
+  {% if charts.likert_span_agreement %}{{ figure(charts.likert_span_agreement, "Span agreement (character F1)", "span_agreement_char") }}{% endif %}
+  {% if charts.likert_span_agreement_token %}{{ figure(charts.likert_span_agreement_token, "Span agreement (token F1)", "span_agreement_token") }}{% endif %}
+</div>
+<table class="result-table" data-table-name="error_spans">
+  <thead><tr><th>Criterion</th><th class="num">Spans marked</th><th class="num">Characters</th><th class="num">Marked instances</th></tr></thead>
+  <tbody>
+    {% for c in SP.criteria %}
+    <tr><td>{{ c.name }}</td><td class="num">{{ c.n_spans }}</td><td class="num">{{ c.char_count }}</td><td class="num">{{ c.marked_instances }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% if SP.pairwise_f1 %}
+<p class="result-note">Mean inter-annotator span F1, character: {{ num(SP.mean_span_f1) }} · token: {{ num(SP.mean_span_f1_token) }}.</p>
+<table class="result-table" data-table-name="span_agreement">
+  <thead><tr><th>Annotator A</th><th>Annotator B</th><th class="num">Char F1</th><th class="num">Token F1</th><th class="num">n segments</th></tr></thead>
+  <tbody>
+    {% for p in SP.pairwise_f1 %}
+    <tr><td>{{ p.a }}</td><td>{{ p.b }}</td><td class="num">{{ num(p.f1) }}</td><td class="num">{{ num(p.f1_token) }}</td><td class="num">{{ p.n_segments }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endif %}
+{% endif %}
+
+{# ===================== PAIRWISE ===================== #}
+{% if results.mode == 'pairwise' %}
+{% set P = results.pairwise %}
+<h3 class="result-h3">Preferences &amp; agreement</h3>
+<div class="result-summary-row">
+  <div class="result-stat"><span class="result-stat-num">{{ P.n_judgements }}</span><span class="result-stat-label">Judgements</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ num(P.percent_agreement) }}%</span><span class="result-stat-label">Pairwise agreement</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ num(P.fleiss_kappa) }}</span><span class="result-stat-label">Fleiss' κ</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ num(P.mean_cohen_kappa) }}</span><span class="result-stat-label">Mean Cohen's κ</span></div>
+</div>
+<div class="result-figures">
+  {% if charts.preference_distribution %}{{ figure(charts.preference_distribution, "Preference distribution", "preference_distribution", "preference_distribution") }}{% endif %}
+</div>
+<table class="result-table" data-table-name="preference_distribution">
+  <thead><tr><th>Preference option</th><th class="num">Count</th></tr></thead>
+  <tbody>
+    {% for p in P.preference_distribution %}
+    <tr><td>{{ p.label }}</td><td class="num">{{ p.count }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="result-note">Outcome split. A: {{ num(P.outcome_rates.A) }}% · Tie: {{ num(P.outcome_rates.tie) }}% · B: {{ num(P.outcome_rates.B) }}%. <em>{{ P.mapping_note }}</em></p>
+
+{% if P.systems %}
+<h3 class="result-h3">System win rates</h3>
+<div class="result-figures">
+  {% if charts.system_winrate %}{{ figure(charts.system_winrate, "System win rate", "system_win_rates", "system_winrate") }}{% endif %}
+</div>
+<table class="result-table" data-table-name="system_win_rates">
+  <thead><tr><th>System</th><th class="num">Wins</th><th class="num">Losses</th><th class="num">Ties</th><th class="num">n</th><th class="num">Win rate</th></tr></thead>
+  <tbody>
+    {% for r in P.systems %}
+    <tr><td>{{ r.system }}</td><td class="num">{{ r.wins }}</td><td class="num">{{ r.losses }}</td><td class="num">{{ r.ties }}</td><td class="num">{{ r.n }}</td>
+      <td class="num">{% if r.win_rate is not none %}{{ (r.win_rate * 100)|round(1) }}%{% else %}—{% endif %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endif %}
+
+{# ===================== SPAN-ONLY ===================== #}
+{% if results.mode == 'span_only' %}
+{% set S = results.span_only %}
+<h3 class="result-h3">Error spans by type</h3>
+<div class="result-figures">
+  {% if charts.spans_per_type %}{{ figure(charts.spans_per_type, "Error spans by type", "error_spans", "spans_per_type") }}{% endif %}
+</div>
+<table class="result-table" data-table-name="error_spans">
+  <thead><tr><th>Error type</th><th class="num">Spans marked</th><th class="num">Characters</th><th class="num">Marked instances</th></tr></thead>
+  <tbody>
+    {% for c in S.criteria %}
+    <tr><td>{{ c.name }}</td><td class="num">{{ c.n_spans }}</td><td class="num">{{ c.char_count }}</td><td class="num">{{ c.marked_instances }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if S.f1_matrix.labels|length >= 2 %}
+<h3 class="result-h3">Inter-annotator span agreement <span class="result-note-inline">(mean F1: character {{ num(S.mean_span_f1) }} · token {{ num(S.mean_span_f1_token) }})</span></h3>
+<div class="result-figures">
+  {% if charts.span_agreement %}{{ figure(charts.span_agreement, "Span agreement (character F1)", "span_agreement_char") }}{% endif %}
+  {% if charts.span_agreement_token %}{{ figure(charts.span_agreement_token, "Span agreement (token F1)", "span_agreement_token") }}{% endif %}
+</div>
+{% if S.pairwise_f1 %}
+<table class="result-table" data-table-name="span_agreement">
+  <thead><tr><th>Annotator A</th><th>Annotator B</th><th class="num">Char F1</th><th class="num">Token F1</th><th class="num">n segments</th></tr></thead>
+  <tbody>
+    {% for p in S.pairwise_f1 %}
+    <tr><td>{{ p.a }}</td><td>{{ p.b }}</td><td class="num">{{ num(p.f1) }}</td><td class="num">{{ num(p.f1_token) }}</td><td class="num">{{ p.n_segments }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endif %}
+
+{% if S.systems %}
+<h3 class="result-h3">Errors by system</h3>
+<table class="result-table" data-table-name="errors_by_system">
+  <thead><tr><th>System</th><th class="num">Spans</th><th class="num">Characters</th><th class="num">Instances</th><th class="num">Spans / segment</th></tr></thead>
+  <tbody>
+    {% for r in S.systems %}
+    <tr><td>{{ r.system }}</td><td class="num">{{ r.spans }}</td><td class="num">{{ r.chars }}</td><td class="num">{{ r.n }}</td><td class="num">{{ num(r.spans_per_segment) }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endif %}
+
+{# ===================== POST-EDITING ===================== #}
+{% if results.mode == 'post_edit' %}
+{% set PE = results.post_edit %}
+<h3 class="result-h3">Post-editing effort <span class="result-note-inline">(less editing = better output)</span></h3>
+<div class="result-kpis">
+  <div class="result-kpi"><div class="kpi-value">{{ num(PE.percent_changed) }}%</div><div class="kpi-label">outputs changed</div></div>
+  <div class="result-kpi"><div class="kpi-value">{{ num(PE.mean_norm_distance) }}</div><div class="kpi-label">mean edit distance (0–1)</div></div>
+  <div class="result-kpi"><div class="kpi-value">{{ PE.n_post_edits }}</div><div class="kpi-label">post-edits collected</div></div>
+  {% if PE.change_agreement_pct is not none %}
+  <div class="result-kpi"><div class="kpi-value">{{ num(PE.change_agreement_pct) }}%</div><div class="kpi-label">agreement on "needs editing"</div></div>
+  {% endif %}
+  {% if PE.mean_pairwise_similarity is not none %}
+  <div class="result-kpi"><div class="kpi-value">{{ num(PE.mean_pairwise_similarity) }}</div><div class="kpi-label">similarity of annotators' edits (0–1)</div></div>
+  {% endif %}
+</div>
+{% if charts.postedit_by_system %}
+<div class="result-figures">
+  {{ figure(charts.postedit_by_system, "Post-editing effort by system", "postedit_by_system", "postedit_by_system") }}
+</div>
+{% endif %}
+{% if PE.systems %}
+<h3 class="result-h3">Editing effort by system</h3>
+<table class="result-table" data-table-name="postedit_by_system">
+  <thead><tr><th>System</th><th class="num">Post-edits</th><th class="num">Mean edit distance (0–1)</th></tr></thead>
+  <tbody>
+    {% for r in PE.systems %}
+    <tr><td>{{ r.system }}</td><td class="num">{{ r.n }}</td><td class="num">{{ num(r.mean_norm_distance) }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endif %}
+
+{% if results.difficulty %}
+{% set DF = results.difficulty %}
+<h3 class="result-h3">By difficulty
+  <span class="result-note-inline">({{ "admin-provided labels" if DF.source == 'provided' else "auto-classified" }})</span>
+</h3>
+<div class="result-figures">
+  {% if charts.difficulty_metric %}{{ figure(charts.difficulty_metric, (DF.metric_label ~ " by difficulty"), "difficulty_metric", "difficulty_metric") }}{% endif %}
+  {% if charts.difficulty_by_criterion %}{{ figure(charts.difficulty_by_criterion, "Mean score by criterion and difficulty", "difficulty_by_criterion", "difficulty_by_criterion") }}{% endif %}
+</div>
+<table class="result-table" data-table-name="by_difficulty">
+  <thead><tr><th>Difficulty</th><th class="num">Segments</th><th class="num">Ratings</th>{% if DF.metric_label %}<th class="num">{{ DF.metric_label }}</th>{% endif %}</tr></thead>
+  <tbody>
+    {% for r in DF.rows %}
+    <tr><td><span class="diff-tag diff-{{ r.level }}">{{ r.level|capitalize }}</span></td>
+      <td class="num">{{ r.n_segments }}</td><td class="num">{{ r.n_ratings }}</td>
+      {% if DF.metric_label %}<td class="num">{{ num(r.metric) }}</td>{% endif %}</tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<p class="result-glossary">
+  <strong>Reading the numbers:</strong>
+  Krippendorff's α and Cohen's/Fleiss' κ measure inter-annotator agreement beyond chance
+  (1 = perfect, 0 ≈ chance, &lt;0 = systematic disagreement; ≥0.667 is a common
+  acceptability threshold). Pearson/Spearman measure linear/rank correlation between annotators.
+  Span F1 is the overlap agreement between annotators (1 = identical): the
+  <em>character</em> variant counts overlapping characters, while the <em>token</em>
+  variant counts overlapping whole words (more forgiving of off-by-a-character boundary
+  differences). Both treat "neither marked anything here" as agreement.
+  Post-editing edit distance is the share of characters changed when correcting an output
+  (0 = left untouched, 1 = fully rewritten); lower means the system needed less fixing.
+  Treat all agreement figures cautiously when the overlapping-sample count is small.
+</p>

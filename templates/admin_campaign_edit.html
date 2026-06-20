@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Edit campaign · {{ campaign.name }}{% endblock %}
+
+{% block content %}
+{% set mode = 'edit' %}
+<div class="page-header">
+  <div>
+    <h1>Edit campaign</h1>
+    <p class="hint">{{ campaign.name }} · {{ campaign.num_segments }} segments</p>
+  </div>
+  <a href="{{ url_for('admin_campaign_detail', campaign_id=campaign.id) }}" class="link-btn">← back to campaign</a>
+</div>
+
+<div class="info-box" style="margin-bottom:16px;">
+  <strong>Editing is allowed until the campaign is closed.</strong>
+  <p class="hint" style="margin-top:6px;">
+    The uploaded segments can't be changed here; only the configuration below.
+    Renaming an existing criterion changes how its results are stored; previously saved
+    scores for that criterion will no longer line up. Editing a criterion's
+    <em>definition</em> (not its name) is always safe.
+  </p>
+</div>
+
+<section class="card">
+  <form method="post" action="{{ url_for('admin_campaign_edit', campaign_id=campaign.id) }}" class="register-form">
+    {% include "_campaign_form_fields.html" %}
+
+    <div class="form-actions">
+      <a href="{{ url_for('admin_campaign_detail', campaign_id=campaign.id) }}" class="btn">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save changes</button>
+    </div>
+  </form>
+</section>
+
+<script src="{{ url_for('static', filename='campaign_form.js') }}"></script>
+{% endblock %}

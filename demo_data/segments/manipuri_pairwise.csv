@@ -1,0 +1,7 @@
+id,source,target_a,target_b,system_a,system_b,domain
+mn1,The weather is very cold today.,ঙসি নুংশা য়াম্না ইংই।,ঙসি নোং অসি য়াম্না ইংই।,System A,System B,general
+mn2,She is reading a book in the library.,মহাক্না লাইব্রেরীদা লাইরিক পারি।,নুপীদুনা লাইব্রেরীদা লাইরিক অমা পারি।,System A,System B,general
+mn3,We will go to the market tomorrow.,অইখোয় হয়েং কীথেলদা চৎকনি।,অইখোয়না হয়েং কীথেলদা চৎলগনি।,System A,System B,general
+mn4,The children are playing in the field.,অঙাংসিং লমদা শান্নরি।,অঙাংসিংনা লৌপাম্দা শান্নরি।,System A,System B,general
+mn5,My mother cooks delicious food.,ইমাগী চাক্না য়াম্না নুংশি।,ইমান থোংবা চিনবা য়াম্না হোই।,System A,System B,general
+mn6,They planted many trees near the river.,মখোয়না তুরেলগী নকলদা পম্বী থারে।,মখোয়না তুরেল মনাক্তা উপাল কয়া থাখ্রে।,System A,System B,general

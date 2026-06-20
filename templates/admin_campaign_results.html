@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Results · {{ campaign.name }} · Aura{% endblock %}
+{% block content %}
+<div class="container">
+  <a href="{{ url_for('admin_campaign_detail', campaign_id=campaign.id) }}" class="link-btn">← back to campaign</a>
+
+  <div class="results-head">
+    <div>
+      <h1 class="page-title">Results: {{ campaign.name }}</h1>
+      <p class="page-sub">
+        {{ campaign.source_language }} → {{ campaign.target_language }} ·
+        {% if results.mode == 'likert' %}Likert rating{% elif results.mode == 'pairwise' %}Pairwise preference{% else %}Span annotation{% endif %}
+        {% if frozen %}· <span class="badge badge-closed">frozen snapshot (campaign closed)</span>
+        {% else %}· <span class="badge">live (updates as ratings arrive)</span>{% endif %}
+      </p>
+    </div>
+    <div class="results-actions">
+      <a href="{{ url_for('admin_campaign_results_report', campaign_id=campaign.id) }}" class="btn btn-primary">Download report (HTML)</a>
+      <a href="{{ url_for('admin_campaign_results_json', campaign_id=campaign.id) }}" class="btn btn-ghost">Download data (JSON)</a>
+    </div>
+  </div>
+
+  <div class="results-card">
+    {% include "_results_body.html" %}
+  </div>
+</div>
+<script>window.RESULTS = {{ results|tojson }};</script>
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='results.js') }}"></script>
+{% if not frozen %}
+<script>
+// Live results: poll a cheap version; when it changes, swap in a freshly-computed body.
+(function () {
+  var VERSION = {{ results_version|tojson }};
+  var VURL = {{ url_for('admin_campaign_results_version', campaign_id=campaign.id)|tojson }};
+  var FURL = {{ url_for('admin_campaign_results_fragment', campaign_id=campaign.id)|tojson }};
+  var card = document.querySelector('.results-card');
+  var busy = false;
+  async function refresh() {
+    if (busy) return; busy = true;
+    try {
+      var fr = await fetch(FURL, { headers: { 'Accept': 'application/json' } });
+      if (!fr.ok) return;
+      var data = await fr.json();
+      if (!data || !data.ok) return;
+      VERSION = data.version;
+      window.RESULTS = data.results;
+      if (card) card.innerHTML = data.html;
+      if (typeof window.renderResultCharts === 'function') window.renderResultCharts();
+    } finally { busy = false; }
+  }
+  async function poll() {
+    try {
+      var r = await fetch(VURL, { headers: { 'Accept': 'application/json' } });
+      if (!r.ok) return;
+      var d = await r.json();
+      if (d && d.ok && d.version !== VERSION) await refresh();
+    } catch (e) { /* retry next tick */ }
+  }
+  setInterval(poll, 6000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
+})();
+</script>
+{% endif %}
+{% endblock %}
