@@ -19,18 +19,24 @@ annotation can be edited until the admin closes the campaign.
 ## Quick start (local development)
 
 ```bash
-cd mt_eval_v2
+Steps to follow:
+
+Clone the repo
+
+cd to the folder
+
+maybe, create your virtual env and activate
 python3 -m venv venv
 source venv/bin/activate
+
 pip install -r requirements.txt
 
-# Required environment variables
-export MT_EVAL_ADMIN_EMAIL=youremail@example.com
-export MT_EVAL_ADMIN_PASSWORD=a-strong-password
-export MT_EVAL_SECRET_KEY=some-long-random-string
+export RESEND_API_KEY="re_JzsPfnHg_FemG4UCEqeCVMyE5DwZWPwgu"
+export MT_EVAL_EMAIL_FROM="Aura <noreply@aura-a.site>"
+python -m flask --app app test-email ADD-YOUR-EMAIL@gmail.com
+python -m flask --app app run
 
-
-python app.py            # serves on PORT or default 8000
+to test
 ```
 
 Open <http://localhost:8000> and click **Admin sign in**.
