@@ -1,0 +1,71 @@
+# =====================
+# Python
+# =====================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environment
+venv/
+env/
+ENV/
+.env/
+.venv/
+
+# =====================
+# Flask
+# =====================
+instance/
+.webassets-cache
+.env
+.flaskenv
+
+# Flask cache / logs
+*.log
+
+# =====================
+# Testing / coverage
+# =====================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# =====================
+# VS Code
+# =====================
+.vscode/
+*.code-workspace
+
+# =====================
+# OS files
+# =====================
+.DS_Store
+Thumbs.db
+
+# =====================
+# SQLite (common in Flask apps)
+# =====================
+*.sqlite3
+*.db
