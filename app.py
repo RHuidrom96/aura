@@ -346,23 +346,25 @@ with app.app_context():
 
 @app.context_processor
 def inject_globals():
-    # Decide which navigation chrome the page should show based on the *page*
-    # being viewed, not merely which sessions exist. Admin and annotator can be
-    # signed in at the same time, so an annotator page must show annotator chrome
-    # even when an admin session is also active (and vice versa).
     ep = request.endpoint or ""
-    annotator_endpoints = {
-        "annotator_dashboard", "annotator_update_password", "rate_view",
-        "annotator_login_view", "annotator_login_post", "annotator_register",
-        "annotator_logout", "api_submit", "api_config",
-    }
+
     if ep.startswith("admin_"):
         page_role = "admin"
-    elif ep in annotator_endpoints:
+
+    elif ep.startswith("annotator_") or ep in {
+        "rate_view",
+        "api_submit",
+        "api_config",
+    }:
         page_role = "annotator"
+
     else:
         page_role = "public"
-    return {"current_annotator": current_annotator(), "page_role": page_role}
+
+    return {
+        "current_annotator": current_annotator(),
+        "page_role": page_role,
+    }
 
 
 # ============================================================================
@@ -395,6 +397,50 @@ def admin_login_view():
             return redirect(request.args.get("next") or url_for("admin_dashboard"))
         flash("Invalid admin credentials.", "error")
     return render_template("admin_login.html", signup_enabled=admin_signup_enabled())
+
+@app.route("/admin/update-password", methods=["GET", "POST"])
+@require_admin
+def admin_update_password():
+    admin = Admin.query.filter_by(
+        email=session.get("admin_email")
+    ).first_or_404()
+
+    if request.method == "POST":
+        current_pw = request.form.get("current_password", "")
+        new_pw = request.form.get("new_password", "")
+        confirm_pw = request.form.get("confirm_password", "")
+
+        errors = []
+
+        if not admin.check_password(current_pw):
+            errors.append("Current password is incorrect.")
+
+        _np = password_problems(new_pw)
+        if _np:
+            errors.append(
+                "New password must contain " +
+                ", ".join(_np) + "."
+            )
+
+        if new_pw != confirm_pw:
+            errors.append("New passwords don't match.")
+
+        if errors:
+            for e in errors:
+                flash(e, "error")
+            return redirect(url_for("admin_update_password"))
+
+        admin.set_password(new_pw)
+        db.session.commit()
+
+        flash("Password updated successfully.", "success")
+        return redirect(url_for("admin_dashboard"))
+
+    return render_template(
+        "update_password.html",
+        role="admin",
+        action_url=url_for("admin_update_password")
+    )
 
 
 @app.cli.command("test-email")
@@ -1389,23 +1435,64 @@ def annotator_update_password():
         db.session.commit()
         flash("Password updated successfully.", "success")
         return redirect(url_for("annotator_dashboard"))
-    return render_template("annotator_update_password.html", annotator=ann)
+    return render_template(
+        "update_password.html",
+        role="annotator",
+        action_url=url_for("annotator_update_password")
+    )
 
 
 @app.route("/campaign/<campaign_id>")
-def annotator_login_view(campaign_id):
+def annotator_landing_view(campaign_id):
     c = Campaign.query.get_or_404(campaign_id)
+
     if c.is_closed:
         return render_template("campaign_closed.html", campaign=c)
-    # Already signed in? Take them straight into THIS campaign, not the generic
-    # dashboard. Clicking a campaign link should always open that campaign.
+
     if current_annotator():
         session["last_campaign_id"] = campaign_id
         return redirect(url_for("rate_view", campaign_id=campaign_id))
-    return render_template("annotator_login.html",
-                           campaign=c, scripts=SCRIPT_OPTIONS,
-                           criteria=get_criteria_for(c))
 
+    return render_template(
+        "annotator_landing.html",
+        campaign=c,
+        scripts=SCRIPT_OPTIONS,
+        criteria=get_criteria_for(c)
+    )
+
+@app.route("/campaign/<campaign_id>/login")
+def annotator_login_view(campaign_id):
+
+    c = Campaign.query.get_or_404(campaign_id)
+
+    if c.is_closed:
+        return render_template("campaign_closed.html", campaign=c)
+
+    if current_annotator():
+        session["last_campaign_id"] = campaign_id
+        return redirect(url_for("rate_view", campaign_id=campaign_id))
+
+    return render_template(
+        "annotator_login.html",
+        campaign=c,
+        scripts=SCRIPT_OPTIONS,
+        criteria=get_criteria_for(c)
+    )
+
+@app.route("/campaign/<campaign_id>/signup")
+def annotator_signup_view(campaign_id):
+
+    c = Campaign.query.get_or_404(campaign_id)
+
+    if c.is_closed:
+        return render_template("campaign_closed.html", campaign=c)
+
+    return render_template(
+        "annotator_signup.html",
+        campaign=c,
+        scripts=SCRIPT_OPTIONS,
+        criteria=get_criteria_for(c)
+    )
 
 @app.route("/campaign/<campaign_id>/login", methods=["POST"])
 def annotator_login_post(campaign_id):

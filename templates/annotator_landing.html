@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}{{ campaign.name }} · Aura{% endblock %}
+
+{% block content %}
+
+<section class="card hero-card auth-card">
+
+    <h1>{{ campaign.name }}</h1>
+
+    {% set io = campaign.io_labels() %}
+
+    <p class="lede">
+        {% if campaign.is_bilingual and campaign.source_language and campaign.target_language %}
+            {{ campaign.source_language }} → {{ campaign.target_language }} ·
+        {% endif %}
+        {{ campaign.num_segments }} segments
+    </p>
+
+    <div class="instructions-box">
+
+        <h3>Welcome</h3>
+    
+        <p>
+            Thank you for participating in the evaluation of
+            <strong>{{ campaign.name }}</strong>. Your feedback helps improve the
+            quality of machine translation systems and supports ongoing research.
+            Please take a moment to read the instructions below before you begin.
+        </p>
+    
+        <h3>How it works</h3>
+    
+        <ol>
+            <li>
+                Create a new account or Sign in to your existing account.
+                The same annotator account can be used across multiple evaluation campaigns.
+            </li>
+    
+            {% set n = criteria|length %}
+            {% set names = criteria|map(attribute='name')|list %}
+    
+            {% if campaign.mode == 'likert' %}
+            <li>
+                For each segment, evaluate the
+                <strong>{{ io[1]|lower }}</strong>
+                using
+                {% if n == 1 %}
+                    the criterion <strong>{{ names[0] }}</strong>.
+                {% else %}
+                    the following {{ n }} criteria:
+                    <strong>{{ names|join(', ') }}</strong>.
+                {% endif %}
+                Select the rating that best reflects the quality of the translation.
+            </li>
+    
+            {% if campaign.enable_spans %}
+            <li>
+                If necessary, highlight error spans by selecting words in the
+                {% if campaign.span_scope == 'both' %}
+                    <strong>{{ io[0]|lower }}</strong> or
+                    <strong>{{ io[1]|lower }}</strong>.
+                {% else %}
+                    <strong>{{ io[1]|lower }}</strong>.
+                {% endif %}
+            </li>
+            {% endif %}
+    
+            {% elif campaign.mode == 'pairwise' %}
+    
+            <li>
+                Compare the two
+                <strong>{{ io[1]|lower }}</strong>
+                candidates (A and B) and choose the one that provides the better translation.
+            </li>
+    
+            {% elif campaign.mode == 'span_only' %}
+    
+            <li>
+                Identify and highlight error spans in the
+                <strong>{{ io[1]|lower }}</strong>
+                by selecting the relevant words and assigning the appropriate error type
+                {% if names %}
+                    (<strong>{{ names|join(', ') }}</strong>).
+                {% endif %}
+                When finished, mark the segment as <strong>Reviewed</strong>.
+            </li>
+    
+            {% elif campaign.mode == 'post_edit' %}
+    
+            <li>
+                Edit the
+                <strong>{{ io[1]|lower }}</strong>
+                to correct any translation errors. If the translation is already satisfactory,
+                you may leave it unchanged.
+            </li>
+    
+            {% endif %}
+    
+            <li>
+                Your progress is saved automatically. You may leave and return at any time
+                until the campaign is closed by the administrator.
+            </li>
+    
+        </ol>
+    
+    </div>
+
+    <div class="landing-actions">
+
+        <a
+            href="{{ url_for('annotator_login_view', campaign_id=campaign.id) }}"
+            class="btn btn-primary btn-large btn-block"
+        >
+            Sign In
+        </a>
+
+        <a
+            href="{{ url_for('annotator_signup_view', campaign_id=campaign.id) }}"
+            class="btn btn-secondary btn-large btn-block"
+        >
+            Create Account
+        </a>
+
+    </div>
+
+</section>
+
+{% endblock %}

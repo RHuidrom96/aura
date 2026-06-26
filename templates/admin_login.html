@@ -15,12 +15,14 @@
       <label for="password">Password <span class="req">*</span></label>
       <input type="password" id="password" name="password" required autocomplete="current-password">
     </div>
-    <button type="submit" class="btn btn-primary btn-large">Sign in</button>
+    <button type="submit" class="btn btn-primary btn-large" style="margin-bottom: 5px; text-align: center; padding: 10px;" > 
+      Sign in</button>
   </form>
 
-  <p class="hint" style="margin-top: 18px; text-align: center;">
-    {% if signup_enabled %}New here? <a href="{{ url_for('admin_signup_view') }}">Create an admin account</a>
-    &nbsp;·&nbsp; {% endif %}<a href="{{ url_for('landing') }}">← back to home</a>
-  </p>
+  <form method="get" action="{{ url_for('admin_signup_view') }}" >
+    <button type="submit" class="btn btn-primary btn-large" style="margin-top: 5px; text-align: center; padding: 10px;">
+        Create an admin account
+    </button>
+  </form>
 </section>
 {% endblock %}
