@@ -181,3 +181,20 @@ def send_otp(to_email, code):
     if not ok:
         logger.info("OTP for %s not delivered (%s)", to_email, detail)
     return ok, detail
+
+def send_password_reset_otp(to_email, code):
+    subject = "Your Aura password reset code"
+
+    body = (
+        f"Your Aura password reset verification code is: {code}\n\n"
+        "Enter this code to reset your password. "
+        "This code expires in 15 minutes.\n\n"
+        "If you did not request a password reset, you can safely ignore this email."
+    )
+
+    ok, detail = send_email(to_email, subject, body)
+
+    if not ok:
+        logger.info("Password reset OTP for %s not delivered (%s)", to_email, detail)
+
+    return ok, detail

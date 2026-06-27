@@ -2,7 +2,6 @@
 
 Admin: env vars MT_EVAL_ADMIN_EMAIL / MT_EVAL_ADMIN_PASSWORD.
 Annotators: registered via /campaign/<id> after admin shares the link.
-Storage: SQLite locally + Google Drive mirror (service account).
 
 Run:
     PORT=8000 python app.py
@@ -18,9 +17,14 @@ import re
 import click
 from datetime import datetime, timedelta
 from pathlib import Path
+from flask_migrate import Migrate
 
 from flask import (Flask, render_template, request, jsonify, redirect, url_for,
                    session, flash, abort)
+
+from dotenv import load_dotenv
+
+load_dotenv()                   
 
 import exporter
 import results
@@ -38,6 +42,9 @@ logger = logging.getLogger(__name__)
 APP_ROOT = Path(__file__).parent
 DATA_DIR = APP_ROOT / "data"
 DATA_DIR.mkdir(exist_ok=True)
+
+
+
 
 # -- Evaluation rubric (shared with the rating template + JS) -----------------
 CRITERIA_DEFAULTS = [
@@ -259,13 +266,22 @@ def _load_or_create_secret_key():
 
 app.config["SECRET_KEY"] = _load_or_create_secret_key()
 
+
 # Database: use DATABASE_URL when provided (e.g. hosted Postgres on Render/Railway/Neon),
-# otherwise fall back to a local SQLite file. Many hosts hand out a "postgres://" URL that
-# SQLAlchemy needs as "postgresql://"; normalise it.
+
 _db_url = os.environ.get("DATABASE_URL", "").strip()
 if _db_url.startswith("postgres://"):
     _db_url = "postgresql://" + _db_url[len("postgres://"):]
-app.config["SQLALCHEMY_DATABASE_URI"] = _db_url or ("sqlite:///" + str(DATA_DIR / "app.db"))
+
+# PostgreSQL setup
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    f"postgresql+psycopg2://"
+    f"{os.getenv('POSTGRES_USER')}:"
+    f"{os.getenv('POSTGRES_PASSWORD')}@"
+    f"{os.getenv('POSTGRES_HOST')}:"
+    f"{os.getenv('POSTGRES_PORT')}/"
+    f"{os.getenv('POSTGRES_DB')}"
+)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB upload cap
 
@@ -277,71 +293,7 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 
 db.init_app(app)
-with app.app_context():
-    db.create_all()
-    # Lightweight migration: add any columns introduced after the DB was first
-    # created. SQLAlchemy's create_all() never ALTERs existing tables, so we add
-    # missing columns by hand. Each statement is idempotent (guarded by a check).
-    try:
-        from sqlalchemy import inspect as _sa_inspect, text as _sa_text
-        # The hand-written ALTERs below use SQLite-flavoured defaults. On Postgres (the
-        # typical hosted setup) create_all() already builds every current column on a fresh
-        # database, so this incremental migration is only needed for existing SQLite files.
-        if db.engine.dialect.name == "sqlite":
-            _insp = _sa_inspect(db.engine)
-            _existing_cols = {c["name"] for c in _insp.get_columns("campaigns")}
-            _added = {
-                "span_instructions": "TEXT DEFAULT ''",
-                "segments_per_page": "INTEGER DEFAULT 3",
-                "scale_type": "VARCHAR(20) DEFAULT 'likert'",
-                "scale_points": "INTEGER DEFAULT 5",
-                "scale_min": "INTEGER DEFAULT 0",
-                "scale_max": "INTEGER DEFAULT 100",
-                "scale_design": "VARCHAR(20) DEFAULT 'circles'",
-                "scale_labels_json": "TEXT DEFAULT ''",
-                "eval_mode": "VARCHAR(20) DEFAULT 'likert'",
-                "preferences_json": "TEXT DEFAULT ''",
-                "results_snapshot_json": "TEXT DEFAULT ''",
-                "ai_enabled": "BOOLEAN DEFAULT 0",
-                "ai_ab_enabled": "BOOLEAN DEFAULT 0",
-                "ai_ab_fraction": "INTEGER DEFAULT 50",
-                "ai_provider": "VARCHAR(40) DEFAULT ''",
-                "ai_model": "VARCHAR(120) DEFAULT ''",
-                "ai_base_url": "VARCHAR(300) DEFAULT ''",
-                "ai_api_key_enc": "TEXT DEFAULT ''",
-                "task_type": "VARCHAR(40) DEFAULT 'translation'",
-                "input_label": "VARCHAR(80) DEFAULT ''",
-                "output_label": "VARCHAR(80) DEFAULT ''",
-                "difficulty_method": "VARCHAR(20) DEFAULT 'auto'",
-                "difficulty_easy_max": "INTEGER DEFAULT 0",
-                "difficulty_hard_min": "INTEGER DEFAULT 0",
-                "served_difficulties": "VARCHAR(50) DEFAULT ''",
-                "expertise_matching": "BOOLEAN DEFAULT 0",
-                "rating_position": "VARCHAR(10) DEFAULT 'side'",
-                "span_position": "VARCHAR(10) DEFAULT 'below'",
-                "owner_email": "VARCHAR(200) DEFAULT ''",
-            }
-            with db.engine.begin() as _conn:
-                for _col, _decl in _added.items():
-                    if _col not in _existing_cols:
-                        _conn.execute(_sa_text(f"ALTER TABLE campaigns ADD COLUMN {_col} {_decl}"))
-                        logger.info("Migrated campaigns table: added column %s", _col)
-                _rating_cols = {c["name"] for c in _insp.get_columns("ratings")}
-                _rating_added = {
-                    "preference": "VARCHAR(100) DEFAULT ''",
-                    "reviewed": "BOOLEAN DEFAULT 0",
-                    "edited_text": "TEXT DEFAULT ''",
-                }
-                for _col, _decl in _rating_added.items():
-                    if _col not in _rating_cols:
-                        _conn.execute(_sa_text(f"ALTER TABLE ratings ADD COLUMN {_col} {_decl}"))
-                        logger.info("Migrated ratings table: added column %s", _col)
-                _ann_cols = {c["name"] for c in _insp.get_columns("annotators")}
-                if "expertise" not in _ann_cols:
-                    _conn.execute(_sa_text("ALTER TABLE annotators ADD COLUMN expertise VARCHAR(20) DEFAULT ''"))
-                    logger.info("Migrated annotators table: added column expertise")
-    except Exception:
-        logger.exception("Column migration at startup failed")
+migrate = Migrate(app, db)
 
 
 @app.context_processor
@@ -397,6 +349,129 @@ def admin_login_view():
             return redirect(request.args.get("next") or url_for("admin_dashboard"))
         flash("Invalid admin credentials.", "error")
     return render_template("admin_login.html", signup_enabled=admin_signup_enabled())
+
+
+@app.route("/admin/forgot-password", methods=["GET", "POST"])
+def admin_forgot_password():
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+
+        admin = Admin.query.filter_by(email=email).first()
+
+        if admin:
+            otp = generate_otp()
+            admin.set_otp(otp)
+            db.session.commit()
+
+            mailer.send_password_reset_otp(email, otp)
+
+        flash(
+            "If an account with that email exists, a verification code has been sent.",
+            "success"
+        )
+
+        session["reset_email"] = email
+
+        return redirect(url_for("admin_verify_otp"))
+
+    return render_template(
+        "forget_password.html",
+        action_url=url_for("admin_forgot_password"),
+        back_url=url_for("admin_login_view")
+    )
+
+
+@app.route("/admin/verify-otp", methods=["GET", "POST"])
+def admin_verify_otp():
+
+    email = session.get("reset_email")
+
+    if not email:
+        flash("Password reset session expired. Please start again.", "error")
+        return redirect(url_for("admin_forgot_password"))
+
+    admin = Admin.query.filter_by(email=email).first()
+
+    if request.method == "POST":
+        otp = request.form.get("otp", "").strip()
+
+        if not admin or not admin.check_otp(otp):
+            flash("Invalid or expired verification code.", "error")
+            return redirect(url_for("admin_verify_otp"))
+
+        # OTP is valid
+        admin.clear_otp()
+        db.session.commit()
+
+        session["reset_verified"] = True
+
+        flash(
+            "Verification successful. Please choose a new password.",
+            "success"
+        )
+
+        return redirect(url_for("admin_reset_password"))
+
+    return render_template(
+        "verify_otp.html",
+        action_url=url_for("admin_verify_otp"),
+        back_url=url_for("admin_forgot_password")
+    )
+
+@app.route("/admin/reset-password", methods=["GET", "POST"])
+def admin_reset_password():
+
+    email = session.get("reset_email")
+
+    if not email or not session.get("reset_verified"):
+        flash("Please verify your identity first.", "error")
+        return redirect(url_for("admin_forgot_password"))
+
+    admin = Admin.query.filter_by(email=email).first()
+
+    if not admin:
+        flash("Account not found.", "error")
+        return redirect(url_for("admin_forgot_password"))
+
+    if request.method == "POST":
+
+        password = request.form.get("password", "")
+        confirm = request.form.get("password_confirm", "")
+
+        errors = []
+
+        problems = password_problems(password)
+        if problems:
+            errors.append(
+                "Password must contain " + ", ".join(problems) + "."
+            )
+
+        if password != confirm:
+            errors.append("Passwords do not match.")
+
+        if errors:
+            for error in errors:
+                flash(error, "error")
+
+            return redirect(url_for("admin_reset_password"))
+
+        admin.set_password(password)
+        admin.clear_otp()
+
+        db.session.commit()
+
+        session.pop("reset_email", None)
+        session.pop("reset_verified", None)
+
+        flash("Password has been reset successfully.", "success")
+
+        return redirect(url_for("admin_login_view"))
+
+    return render_template(
+        "reset_password.html",
+        action_url=url_for("admin_reset_password")
+    )
 
 @app.route("/admin/update-password", methods=["GET", "POST"])
 @require_admin
@@ -491,6 +566,11 @@ def password_problems(pw):
     if not re.search(r"[^A-Za-z0-9]", pw or ""):
         probs.append("a symbol")
     return probs
+
+import secrets
+
+def generate_otp():
+    return f"{secrets.randbelow(1000000):06d}"
 
 
 def _csv_env(name):
@@ -1478,6 +1558,172 @@ def annotator_login_view(campaign_id):
         scripts=SCRIPT_OPTIONS,
         criteria=get_criteria_for(c)
     )
+
+
+@app.route("/campaign/<campaign_id>/forgot-password", methods=["GET", "POST"])
+def annotator_forgot_password(campaign_id):
+    campaign = Campaign.query.get_or_404(campaign_id)
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+
+        user = Annotator.query.filter_by(email=email).first()
+
+        if user:
+            otp = generate_otp()
+            user.set_otp(otp)
+            db.session.commit()
+
+            mailer.send_password_reset_otp(email, otp)
+
+        flash(
+            "If an account with that email exists, a verification code has been sent.",
+            "success"
+        )
+
+        session["reset_email"] = email
+
+        return redirect(
+            url_for("annotator_verify_otp", campaign_id=campaign_id)
+        )
+
+    return render_template(
+        "forget_password.html",
+        campaign=campaign,
+        action_url=url_for(
+            "annotator_forgot_password",
+            campaign_id=campaign_id
+        ),
+        back_url=url_for(
+            "annotator_login_view",
+            campaign_id=campaign_id
+        )
+    )
+
+@app.route("/campaign/<campaign_id>/verify-otp", methods=["GET", "POST"])
+def annotator_verify_otp(campaign_id):
+    campaign = Campaign.query.get_or_404(campaign_id)
+
+    email = session.get("reset_email")
+    if not email:
+        flash("Password reset session expired. Please start again.", "error")
+        return redirect(url_for("annotator_forgot_password", campaign_id=campaign_id))
+
+    user = Annotator.query.filter_by(email=email).first()
+
+    if request.method == "POST":
+        otp = request.form.get("otp", "").strip()
+
+        if not user or not user.check_otp(otp):
+            flash("Invalid or expired verification code.", "error")
+            return redirect(url_for("annotator_verify_otp", campaign_id=campaign_id))
+
+        # OTP is valid
+        user.clear_otp()
+        db.session.commit()
+
+        session["reset_verified"] = True
+
+        flash("Verification successful. Please choose a new password.", "success")
+
+        return redirect(
+            url_for("annotator_reset_password", campaign_id=campaign_id)
+        )
+
+    return render_template(
+        "verify_otp.html",
+        campaign=campaign,
+        action_url=url_for(
+            "annotator_verify_otp",
+            campaign_id=campaign_id
+        ),
+        back_url=url_for(
+            "annotator_forgot_password",
+            campaign_id=campaign_id
+        )
+    )
+
+
+@app.route("/campaign/<campaign_id>/reset-password", methods=["GET", "POST"])
+def annotator_reset_password(campaign_id):
+
+    campaign = Campaign.query.get_or_404(campaign_id)
+
+    email = session.get("reset_email")
+
+    if not email or not session.get("reset_verified"):
+        flash("Please verify your identity first.", "error")
+        return redirect(
+            url_for(
+                "annotator_forgot_password",
+                campaign_id=campaign_id
+            )
+        )
+
+    annotator = Annotator.query.filter_by(email=email).first()
+
+    if not annotator:
+        flash("Account not found.", "error")
+        return redirect(
+            url_for(
+                "annotator_forgot_password",
+                campaign_id=campaign_id
+            )
+        )
+
+    if request.method == "POST":
+
+        password = request.form.get("password", "")
+        confirm = request.form.get("password_confirm", "")
+
+        errors = []
+
+        problems = password_problems(password)
+        if problems:
+            errors.append(
+                "Password must contain " + ", ".join(problems) + "."
+            )
+
+        if password != confirm:
+            errors.append("Passwords do not match.")
+
+        if errors:
+            for error in errors:
+                flash(error, "error")
+
+            return redirect(
+                url_for(
+                    "annotator_reset_password",
+                    campaign_id=campaign_id
+                )
+            )
+
+        annotator.set_password(password)
+        annotator.clear_otp()
+
+        db.session.commit()
+
+        session.pop("reset_email", None)
+        session.pop("reset_verified", None)
+
+        flash("Password has been reset successfully.", "success")
+
+        return redirect(
+            url_for(
+                "annotator_login_view",
+                campaign_id=campaign_id
+            )
+        )
+
+    return render_template(
+        "reset_password.html",
+        campaign=campaign,
+        action_url=url_for(
+            "annotator_reset_password",
+            campaign_id=campaign_id
+        )
+    )
+
 
 @app.route("/campaign/<campaign_id>/signup")
 def annotator_signup_view(campaign_id):

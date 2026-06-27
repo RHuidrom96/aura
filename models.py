@@ -107,6 +107,11 @@ class Annotator(db.Model):
     name = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(200), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(200), nullable=False)
+
+    otp_hash = db.Column(db.String(200), default="")
+    otp_expires_at = db.Column(db.DateTime)
+    otp_attempts = db.Column(db.Integer, default=0)
+
     native_language = db.Column(db.String(100), default="")
     expertise = db.Column(db.String(20), default="")   # "" | "easy" | "medium" | "hard"
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -121,6 +126,36 @@ class Annotator(db.Model):
             return bcrypt.checkpw(raw.encode("utf-8"), self.password_hash.encode("utf-8"))
         except (ValueError, AttributeError):
             return False
+        
+    def set_otp(self, code, ttl_minutes=15):
+        self.otp_hash = bcrypt.hashpw(
+            code.encode("utf-8"),
+            bcrypt.gensalt()
+        ).decode("utf-8")
+
+        self.otp_expires_at = datetime.utcnow() + timedelta(minutes=ttl_minutes)
+        self.otp_attempts = 0
+
+
+    def check_otp(self, code):
+        if not self.otp_hash or not self.otp_expires_at:
+            return False
+
+        if datetime.utcnow() > self.otp_expires_at:
+            return False
+
+        try:
+            return bcrypt.checkpw(
+                code.encode("utf-8"),
+                self.otp_hash.encode("utf-8")
+            )
+        except (ValueError, AttributeError):
+            return False
+        
+    def clear_otp(self):
+        self.otp_hash = ""
+        self.otp_expires_at = None
+        self.otp_attempts = 0
 
 
 class Admin(db.Model):
@@ -164,6 +199,10 @@ class Admin(db.Model):
         except (ValueError, AttributeError):
             return False
 
+    def clear_otp(self):
+        self.otp_hash = ""
+        self.otp_expires_at = None
+        self.otp_attempts = 0
 
 class Campaign(db.Model):
     """One evaluation campaign created by the admin."""
