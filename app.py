@@ -274,7 +274,9 @@ if _db_url.startswith("postgres://"):
     _db_url = "postgresql://" + _db_url[len("postgres://"):]
 
 # PostgreSQL setup
+# PostgreSQL setup
 app.config["SQLALCHEMY_DATABASE_URI"] = (
+    os.getenv("DATABASE_URL") or
     f"postgresql+psycopg2://"
     f"{os.getenv('POSTGRES_USER')}:"
     f"{os.getenv('POSTGRES_PASSWORD')}@"
@@ -282,6 +284,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = (
     f"{os.getenv('POSTGRES_PORT')}/"
     f"{os.getenv('POSTGRES_DB')}"
 )
+
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB upload cap
 
