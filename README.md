@@ -30,6 +30,8 @@ python3 -m venv venv
 source venv/bin/activate
 
 pip install -r requirements.txt
+flask db migrate -m "Initial schema"   # only if migrations don't exist
+flask db upgrade
 
 export RESEND_API_KEY="re_JzsPfnHg_FemG4UCEqeCVMyE5DwZWPwgu"
 export MT_EVAL_EMAIL_FROM="Aura <noreply@aura-a.site>"
