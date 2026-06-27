@@ -30,6 +30,7 @@ venv/
 env/
 ENV/
 .env/
+.env.*
 .venv/
 
 # =====================
@@ -70,3 +71,13 @@ Thumbs.db
 *.sqlite3
 *.db
 data/*.db
+
+# PostgreSQL dump files
+*.sql
+*.dump
+*.backup
+*.bak
+
+# Local PostgreSQL data directory (if running PostgreSQL locally)
+postgres_data/
+pgdata/

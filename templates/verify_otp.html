@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Verify code · Aura{% endblock %}
+
+{% block content %}
+<section class="card hero-card auth-card">
+
+    <h1>Verify your identity</h1>
+
+    <p class="lede">
+        Enter the 6-digit verification code that was sent to your email.
+    </p>
+
+    <form method="post" action="{{ action_url }}" class="register-form">
+
+        <div class="field">
+            <label for="otp">
+                Verification code
+                <span class="req">*</span>
+            </label>
+
+            <input
+                type="text"
+                id="otp"
+                name="otp"
+                required
+                maxlength="6"
+                minlength="6"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                placeholder="123456"
+                autofocus
+            >
+
+            <p class="hint">
+                The code expires after 15 minutes.
+            </p>
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ back_url }}" class="btn btn-secondary">
+                Back
+            </a>
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Verify code
+            </button>
+        </div>
+
+    </form>
+
+</section>
+{% endblock %}
