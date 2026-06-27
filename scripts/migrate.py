@@ -28,14 +28,16 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SQLITE_URL = f"sqlite:///{os.path.join(ROOT,'data','app.db')}"
 
 POSTGRES_URL = (
-    f"postgresql+psycopg2://"
-    f"{os.getenv('POSTGRES_USER')}:"
-    f"{os.getenv('POSTGRES_PASSWORD')}@"
-    f"{os.getenv('POSTGRES_HOST')}:"
-    f"{os.getenv('POSTGRES_PORT')}/"
-    f"{os.getenv('POSTGRES_DB')}"
+    os.getenv("DATABASE_URL")
+    or (
+        f"postgresql+psycopg2://"
+        f"{os.getenv('POSTGRES_USER')}:"
+        f"{os.getenv('POSTGRES_PASSWORD')}@"
+        f"{os.getenv('POSTGRES_HOST')}:"
+        f"{os.getenv('POSTGRES_PORT')}/"
+        f"{os.getenv('POSTGRES_DB')}"
+    )
 )
-
 
 def reflect(engine):
     meta = MetaData()
