@@ -1,0 +1,10 @@
+flask>=3.0.0
+flask-sqlalchemy>=3.1.0
+sqlalchemy>=2.0.0
+bcrypt>=4.0.0
+gunicorn>=21.0.0
+numpy>=1.26
+matplotlib>=3.7
+cryptography>=42.0
+# Optional: only needed if you set DATABASE_URL to a Postgres database (hosted deployments).
+psycopg2-binary>=2.9

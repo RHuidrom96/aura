@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}My campaigns · Aura{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>My campaigns</h1>
+    <p class="hint">Campaigns you have participated in.</p>
+  </div>
+</div>
+
+{% if rows %}
+<div class="ann-campaign-list">
+  {% for row in rows %}
+  {% set c = row.campaign %}
+  <div class="ann-campaign-card {% if c.is_closed %}ann-campaign-closed{% endif %}">
+    <div class="ann-campaign-head">
+      <div>
+        <h3>{{ c.name }}</h3>
+        <p class="campaign-langs">{{ c.source_language }} → {{ c.target_language }}{% if c.script %} · {{ c.script }}{% endif %}</p>
+      </div>
+      {% if c.is_closed %}
+        <span class="status-pill status-closed">Closed</span>
+      {% else %}
+        <span class="status-pill status-open">Open</span>
+      {% endif %}
+    </div>
+
+    <div class="ann-progress-row">
+      <div class="ann-progress-track">
+        <div class="ann-progress-fill" style="width: {{ row.pct }}%;"></div>
+      </div>
+      <span class="ann-progress-label">{{ row.completed }} / {{ row.total }} segments rated</span>
+    </div>
+
+    {% if row.last_update %}
+    <p class="hint" style="margin: 6px 0 10px;">Last updated {{ row.last_update.strftime('%Y-%m-%d %H:%M UTC') }}</p>
+    {% endif %}
+
+    {% if not c.is_closed %}
+      {% if row.completed == row.total %}
+        <a href="{{ url_for('rate_view', campaign_id=c.id) }}" class="btn btn-ghost">
+          Review my ratings
+        </a>
+      {% else %}
+        <a href="{{ url_for('rate_view', campaign_id=c.id) }}" class="btn btn-primary">
+          Continue rating →
+        </a>
+      {% endif %}
+    {% else %}
+      <p class="hint" style="font-style: italic;">This campaign is closed. Ratings are locked.</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty-state">
+  <p>You haven't rated any campaigns yet.</p>
+  <p class="hint">Use the link your study admin sent you to get started.</p>
+</div>
+{% endif %}
+
+{% endblock %}

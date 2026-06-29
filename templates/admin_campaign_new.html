@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}New campaign · Aura{% endblock %}
+
+{% block head_extra %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=JetBrains+Mono&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --aura-bg: #F4F0E7;
+  --aura-surface: #FFFFFF;
+  --aura-border: #E7E1D3;
+  --aura-border-light: #E4DECF;
+  --aura-input-border: #DDD7C8;
+  --aura-text: #2A2A24;
+  --aura-text-muted: #6E6A5F;
+  --aura-text-faint: #9A9486;
+  --aura-accent: #34433A;
+  --aura-accent-pill: rgba(52, 67, 58, 0.08);
+  --aura-accent-pill-hover: rgba(52, 67, 58, 0.15);
+  --aura-hero-pattern-color: #2A2A24;
+}
+
+[data-theme="dark"] {
+  --aura-bg: #15171c;
+  --aura-surface: #1e2128;
+  --aura-border: rgba(255, 255, 255, 0.10);
+  --aura-border-light: rgba(255, 255, 255, 0.08);
+  --aura-input-border: rgba(255, 255, 255, 0.15);
+  --aura-text: #e6e7ea;
+  --aura-text-muted: #a7a9b0;
+  --aura-text-faint: #7e8089;
+  --aura-accent: #8e9e94;
+  --aura-accent-pill: rgba(142, 158, 148, 0.12);
+  --aura-accent-pill-hover: rgba(142, 158, 148, 0.20);
+  --aura-hero-pattern-color: #ffffff;
+}
+
+/* Base override for #app to stretch full-screen */
+#app {
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: var(--aura-bg) !important;
+  min-height: calc(100vh - 83px);
+}
+
+/* Header style mapping */
+.site-header {
+  background: var(--aura-bg) !important;
+  border-bottom: 1px solid var(--aura-border-light) !important;
+  padding: 22px 48px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+.site-header .brand {
+  font-family: 'Cormorant Garamond', serif !important;
+  font-weight: 600 !important;
+  font-size: 24px !important;
+  letter-spacing: 3px !important;
+  color: var(--aura-text) !important;
+  text-decoration: none !important;
+}
+.site-header .brand-word {
+  font-family: 'Cormorant Garamond', serif !important;
+}
+.site-nav {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+}
+.theme-toggle {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--aura-border-light) !important;
+  background: transparent !important;
+  color: var(--aura-text-muted) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: background 0.15s !important;
+}
+.theme-toggle:hover {
+  background: var(--aura-border-light) !important;
+}
+.avatar-btn {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 999px !important;
+  background: var(--aura-accent) !important;
+  color: var(--aura-bg) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: 'Cormorant Garamond', serif !important;
+  font-weight: 600 !important;
+  font-size: 18px !important;
+  border: none !important;
+  cursor: pointer !important;
+}
+
+/* Selection and fonts */
+::selection {
+  background: var(--aura-accent);
+  color: var(--aura-bg);
+}
+
+/* Text and Select inputs */
+.ff-in {
+  width: 100%;
+  font-family: 'Work Sans', sans-serif;
+  font-size: 14px;
+  color: var(--aura-text);
+  background: var(--aura-surface);
+  border: 1px solid var(--aura-input-border);
+  border-radius: 6px;
+  padding: 11px 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.ff-in:focus {
+  border-color: var(--aura-accent);
+}
+.ff-in::placeholder {
+  color: var(--aura-text-faint);
+}
+textarea.ff-in {
+  resize: vertical;
+  line-height: 1.65;
+}
+select.ff-in {
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238C887B' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 34px;
+  cursor: pointer;
+}
+
+/* Interactive Card states via :has() */
+.eval-card:has(input[type="radio"]:checked) {
+  border-color: var(--aura-accent) !important;
+  background: var(--aura-accent-pill) !important;
+}
+.eval-card:has(input[type="radio"]:checked) .eval-radio-dot {
+  border-color: var(--aura-accent) !important;
+}
+.eval-card:has(input[type="radio"]:checked) .eval-dot {
+  display: block !important;
+  background: var(--aura-accent) !important;
+}
+
+/* Grid layout for Likert Point Labels */
+.likert-labels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.likert-label-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.likert-label-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--aura-accent);
+  color: var(--aura-bg);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Custom button hover transitions */
+button[style-hover]:hover,
+a[style-hover]:hover,
+label[style-hover]:hover {
+  background: var(--aura-accent-pill) !important;
+}
+
+/* Flash stack styling alignment */
+.flash-stack {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 16px 48px 0;
+}
+.flash {
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.flash-error {
+  background: #fdf2f2;
+  border: 1px solid #f8b4b4;
+  color: #9b1c1c;
+}
+.flash-success {
+  background: #f3faf7;
+  border: 1px solid #def7ec;
+  color: #03543f;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set mode = 'new' %}
+
+<form method="post" action="{{ url_for('admin_campaign_new') }}" enctype="multipart/form-data" class="register-form">
+  <!-- hero -->
+  <section style="position:relative; overflow:hidden; border-bottom:1px solid var(--aura-border-light);">
+    <div style="position:absolute; inset:0; pointer-events:none;">
+      {% set glyphs = [
+        {'ch': 'অ', 'top': '-20px', 'left': '10%', 'size': '130px'},
+        {'ch': '字', 'top': '30px', 'left': '40%', 'size': '100px'},
+        {'ch': 'ক', 'top': '-10px', 'left': '70%', 'size': '120px'},
+        {'ch': 'ñ', 'top': '50px', 'left': '88%', 'size': '100px'},
+        {'ch': 'ω', 'top': '60px', 'left': '24%', 'size': '80px'},
+        {'ch': 'র', 'top': '0px', 'left': '56%', 'size': '90px'}
+      ] %}
+      {% for g in glyphs %}
+        <span style="position:absolute; top:{{ g.top }}; left:{{ g.left }}; font-family:'Cormorant Garamond', serif; font-size:{{ g.size }}; color:var(--aura-hero-pattern-color); opacity:0.04; user-select:none;">{{ g.ch }}</span>
+      {% endfor %}
+    </div>
+    <div style="position:relative; max-width:1040px; margin:0 auto; padding:38px 48px 34px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:28px; flex-wrap:wrap;">
+        <div>
+          <a href="{{ url_for('admin_dashboard') }}" style="display:inline-flex; align-items:center; gap:7px; font-size:12px; letter-spacing:0.4px; color:var(--aura-text-muted); text-decoration:none; margin-bottom:18px;" style-hover="color:var(--aura-text);">← Back to dashboard</a>
+          <h1 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:46px; line-height:1.02; margin:0; color:var(--aura-text);">New campaign</h1>
+          <p style="font-family:'Cormorant Garamond', serif; font-style:italic; font-size:20px; color:var(--aura-text-muted); margin:8px 0 0;">Define the study your annotators will run.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main style="max-width:1040px; margin:0 auto; padding:34px 48px 80px; display:flex; flex-direction:column; gap:22px;">
+    {% include "_campaign_form_fields_new.html" %}
+
+    <!-- Footer actions -->
+    <div style="display:flex; align-items:center; justify-content:flex-end; gap:14px; padding-top:6px;">
+      <a href="{{ url_for('admin_dashboard') }}" style="text-decoration:none; font-family:'Work Sans',sans-serif; font-weight:600; font-size:13px; letter-spacing:0.3px; padding:13px 22px; border-radius:6px; border:1px solid var(--aura-input-border); background:transparent; color:var(--aura-text-muted); cursor:pointer;" style-hover="background:var(--aura-accent-pill);">Cancel</a>
+      <button type="submit" style="font-family:'Work Sans',sans-serif; font-weight:600; font-size:13px; letter-spacing:0.4px; padding:13px 26px; border-radius:6px; border:1px solid var(--aura-accent); background:var(--aura-accent); color:var(--aura-bg); cursor:pointer;" style-hover="opacity:0.9;">Create campaign</button>
+    </div>
+  </main>
+</form>
+
+<script src="{{ url_for('static', filename='campaign_form.js') }}"></script>
+{% endblock %}

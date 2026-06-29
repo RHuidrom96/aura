@@ -1,0 +1,7 @@
+id,source,target,system,domain,difficulty
+as1,The weather is very cold today.,আজি বতৰ বহুত ঠাণ্ডা।,System A,general,easy
+as2,She is reading a book in the library.,তাই পুথিভঁৰালত এখন কিতাপ পঢ়ি আছে।,System A,general,easy
+as3,We will go to the market tomorrow.,আমি কাইলৈ বজাৰলৈ যাম।,System A,general,medium
+as4,The children are playing in the field.,ল’ৰা-ছোৱালীবোৰ পথাৰত খেলি আছে।,System A,general,medium
+as5,My mother cooks delicious food.,মোৰ মাকে সুস্বাদু খাদ্য ৰান্ধে।,System A,general,hard
+as6,They planted many trees near the river.,তেওঁলোকে নৈৰ ওচৰত বহুতো গছ ৰুলিলে।,System A,general,hard

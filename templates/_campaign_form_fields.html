@@ -1,0 +1,489 @@
+{# Shared campaign-configuration fields. Expects `form_data`, `scripts`,
+   `scale_types`, `scale_designs`, `eval_modes`, and `mode`
+   ('new' or 'edit') in context. #}
+
+<div class="field">
+  <label for="name">Campaign name <span class="req">*</span></label>
+  <input type="text" id="name" name="name" required
+         value="{{ form_data.get('name', '') }}"
+         placeholder="e.g. Manipuri → English evaluation, Round 1">
+  <p class="hint">A short label visible to admins. Annotators don't see it.</p>
+</div>
+
+<div class="field">
+  <label for="task_type">Task type <span class="req">*</span></label>
+  <select id="task_type" name="task_type">
+    {% for tid, t in task_types.items() %}
+    <option value="{{ tid }}" {{ 'selected' if form_data.get('task_type', 'translation') == tid else '' }}>{{ t.name }}</option>
+    {% endfor %}
+  </select>
+  <p class="hint">What kind of outputs are being evaluated. This sets the interface labels and
+    suggests criteria; the three evaluation modes work for any task. Choose
+    <strong>Machine translation</strong> for the original MT behaviour.</p>
+</div>
+
+<div class="form-row">
+  <div class="field">
+    <label for="input_label">Input label</label>
+    <input type="text" id="input_label" name="input_label" maxlength="80"
+           value="{{ form_data.get('input_label', '') }}" placeholder="Source">
+    <p class="hint">What to call the input shown to annotators (e.g. Source, Document, Question).</p>
+  </div>
+  <div class="field">
+    <label for="output_label">Output label</label>
+    <input type="text" id="output_label" name="output_label" maxlength="80"
+           value="{{ form_data.get('output_label', '') }}" placeholder="Translation">
+    <p class="hint">What to call the output being judged (e.g. Translation, Summary, Answer).</p>
+  </div>
+</div>
+
+<div class="form-row" id="language-row">
+  <div class="field">
+    <label for="source_language">Source language <span class="req lang-req">*</span></label>
+    <input type="text" id="source_language" name="source_language"
+           value="{{ form_data.get('source_language', '') }}"
+           list="lang-suggest" placeholder="e.g. Manipuri">
+  </div>
+  <div class="field">
+    <label for="target_language">Target language <span class="req lang-req">*</span></label>
+    <input type="text" id="target_language" name="target_language"
+           value="{{ form_data.get('target_language', '') }}"
+           list="lang-suggest" placeholder="e.g. English">
+  </div>
+</div>
+<datalist id="lang-suggest">
+  <!-- Northeast India -->
+  <option value="Assamese"></option><option value="Manipuri (Meitei)"></option>
+  <option value="Bodo"></option><option value="Mizo"></option>
+  <option value="Khasi"></option><option value="Nyishi"></option>
+  <option value="Kokborok"></option><option value="Nagamese"></option>
+  <option value="Garo"></option><option value="Ao"></option>
+  <option value="Angami"></option><option value="Sumi"></option>
+  <option value="Lotha"></option><option value="Tangkhul"></option>
+  <option value="Hmar"></option><option value="Paite"></option>
+  <option value="Thadou (Kuki)"></option><option value="Karbi"></option>
+  <option value="Dimasa"></option><option value="Rabha"></option>
+  <option value="Adi"></option><option value="Apatani"></option>
+  <option value="Rongmei"></option><option value="Tiwa"></option>
+  <option value="Deori"></option><option value="Bishnupriya Manipuri"></option>
+  <option value="Khasi (Pnar)"></option><option value="Chakma"></option>
+  <!-- Other Indian + common -->
+  <option value="English"></option><option value="Hindi"></option>
+  <option value="Bengali"></option><option value="Nepali"></option>
+  <option value="Tamil"></option><option value="Telugu"></option>
+  <option value="Kannada"></option><option value="Malayalam"></option>
+  <option value="Marathi"></option><option value="Gujarati"></option>
+  <option value="Punjabi"></option><option value="Odia"></option>
+  <option value="Urdu"></option><option value="Sanskrit"></option>
+  <option value="Santali"></option><option value="Maithili"></option>
+</datalist>
+
+<div class="field">
+  <label for="script">Script (optional)</label>
+  <select id="script" name="script">
+    <option value="">(not applicable)</option>
+    {% for s in scripts %}
+    <option value="{{ s.id }}" {% if form_data.get('script') == s.id %}selected{% endif %}>{{ s.name }}</option>
+    {% endfor %}
+  </select>
+  <p class="hint">Set this when the language has multiple scripts (e.g. Assamese/Manipuri in
+    Eastern Nagari vs. Meitei Mayek, Bodo in Devanagari, or a Roman transliteration).</p>
+</div>
+
+<div class="field">
+  <label for="difficulty_method">Difficulty grouping</label>
+  <select id="difficulty_method" name="difficulty_method">
+    <option value="auto" {{ 'selected' if form_data.get('difficulty_method','auto')=='auto' else '' }}>Automatic: composite heuristic (length, long words, punctuation/numbers, rare characters)</option>
+    <option value="length" {{ 'selected' if form_data.get('difficulty_method')=='length' else '' }}>By input length (character thresholds)</option>
+    <option value="manual" {{ 'selected' if form_data.get('difficulty_method')=='manual' else '' }}>Manual: use only the per-segment "difficulty" labels you provide</option>
+    <option value="none" {{ 'selected' if form_data.get('difficulty_method')=='none' else '' }}>None: don't group by difficulty</option>
+  </select>
+  <p class="hint">How samples are grouped into easy / medium / hard in the results. A per-segment
+    <code>difficulty</code> field (easy/medium/hard) in your data overrides this (except when set to None).</p>
+  <div id="difficulty-length-row" class="form-row" style="margin-top:8px;">
+    <div class="field">
+      <label for="difficulty_easy_max">Easy: up to N characters</label>
+      <input type="number" min="0" id="difficulty_easy_max" name="difficulty_easy_max"
+             value="{{ form_data.get('difficulty_easy_max','') }}" placeholder="auto (terciles)">
+    </div>
+    <div class="field">
+      <label for="difficulty_hard_min">Hard: from N characters</label>
+      <input type="number" min="0" id="difficulty_hard_min" name="difficulty_hard_min"
+             value="{{ form_data.get('difficulty_hard_min','') }}" placeholder="auto (terciles)">
+    </div>
+  </div>
+
+  <div id="served-difficulty-row" class="field" style="margin-top:10px;">
+    <label class="checkbox-inline" style="font-weight:500;">
+      <input type="checkbox" id="expertise_matching" name="expertise_matching" value="1"
+        {{ 'checked' if form_data.get('expertise_matching') else '' }}>
+      Match annotators to difficulty by their self-reported expertise
+    </label>
+    <p class="hint" style="margin-top:4px;">
+      When on, each annotator picks an expertise level when they register, and is shown only the
+      matching difficulty: <strong>Beginner → Easy</strong>, <strong>Intermediate → Medium</strong>,
+      <strong>Advanced → Hard</strong>. Leave off to assign difficulty yourself with the checkboxes below.
+    </p>
+
+    <div id="served-difficulty-checks">
+    <label style="margin-top:8px;">Serve which difficulty levels to annotators</label>
+    <div class="checkbox-row" style="display:flex; gap:18px; flex-wrap:wrap; margin-top:4px;">
+      {% set served = (form_data.get('served_difficulties','') or '').split(',') %}
+      <label class="checkbox-inline"><input type="checkbox" name="served_diff" value="easy"
+        {{ 'checked' if (not form_data.get('served_difficulties')) or 'easy' in served else '' }}> Easy</label>
+      <label class="checkbox-inline"><input type="checkbox" name="served_diff" value="medium"
+        {{ 'checked' if (not form_data.get('served_difficulties')) or 'medium' in served else '' }}> Medium</label>
+      <label class="checkbox-inline"><input type="checkbox" name="served_diff" value="hard"
+        {{ 'checked' if (not form_data.get('served_difficulties')) or 'hard' in served else '' }}> Hard</label>
+    </div>
+    <p class="hint">
+      Annotators only see segments at the checked levels, handy for matching data difficulty to
+      annotator expertise (e.g. an "Easy only" campaign for newcomers, "Hard only" for experts).
+      Leave all checked to serve everything. To give different people different levels, make one
+      campaign per level and share each link with the right group. Segments whose difficulty can't
+      be determined are not served while a subset is selected.
+    </p>
+    </div>
+  </div>
+</div>
+
+<div class="field">
+  <label>Rating page layout</label>
+  <div class="form-row">
+    <div class="field">
+      <label for="rating_position" class="sublabel">Rating / preference panel</label>
+      <select id="rating_position" name="rating_position">
+        <option value="side" {{ 'selected' if form_data.get('rating_position','side')=='side' else '' }}>Beside the text (right column)</option>
+        <option value="below" {{ 'selected' if form_data.get('rating_position')=='below' else '' }}>Below the text (full width)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="span_position" class="sublabel">Span annotation section</label>
+      <select id="span_position" name="span_position">
+        <option value="below" {{ 'selected' if form_data.get('span_position','below')=='below' else '' }}>Below the text</option>
+        <option value="beside" {{ 'selected' if form_data.get('span_position')=='beside' else '' }}>Beside the text</option>
+      </select>
+    </div>
+  </div>
+  <p class="hint">Controls where the rating scale / preference buttons and the span-marking area
+    appear on the annotator's screen. (Applies to the modes that use them.)</p>
+</div>
+
+<hr class="form-divider">
+
+{# ----------------------- Evaluation mode ----------------------- #}
+<div class="field">
+  <label>Evaluation mode <span class="req">*</span></label>
+  <p class="hint">What annotators do for each segment.</p>
+  <div class="radio-group">
+    {% for m in eval_modes %}
+    <label class="radio-row">
+      <input type="radio" name="eval_mode" value="{{ m.id }}"
+             {% if form_data.get('eval_mode', 'likert') == m.id %}checked{% endif %}
+             onchange="onEvalModeChange()">
+      <span><strong>{{ m.name }}</strong> <span class="hint-inline">{{ m.desc }}</span></span>
+    </label>
+    {% endfor %}
+  </div>
+</div>
+
+<hr class="form-divider">
+
+{# ----------------------- Criteria (likert + span_only) ----------------------- #}
+<div class="field" data-mode-block="likert span_only">
+  <label id="criteria-label">Evaluation criteria <span class="req">*</span></label>
+  <p class="hint" id="criteria-hint">Define what annotators will rate. Each has a name and a definition shown to annotators.</p>
+  <div id="criteria-rows">
+    {% for c in form_data.get('criteria', []) %}
+    <div class="criterion-row">
+      <div class="criterion-row-fields">
+        <input type="text" name="crit_name" placeholder="Criterion name (e.g. Adequacy)"
+               value="{{ c.get('name', '') }}" class="crit-name-input">
+        <textarea name="crit_desc" rows="2" placeholder="Definition shown to annotators"
+                  class="crit-desc-input">{{ c.get('desc', '') }}</textarea>
+      </div>
+      <button type="button" class="btn-remove-row" title="Remove" onclick="removeCriterionRow(this)">×</button>
+    </div>
+    {% endfor %}
+  </div>
+  <button type="button" class="btn btn-ghost btn-small" onclick="addCriterionRow()">+ Add criterion</button>
+</div>
+
+{# ----------------------- Preferences (pairwise) ----------------------- #}
+<div class="field" data-mode-block="pairwise">
+  <label>Preference options <span class="req">*</span></label>
+  <p class="hint">The choices an annotator picks from when comparing translation <strong>A</strong> vs <strong>B</strong>. Order them as you want them shown. At least two.</p>
+  <div id="preference-rows">
+    {% for p in form_data.get('preferences', []) %}
+    <div class="criterion-row">
+      <div class="criterion-row-fields">
+        <input type="text" name="pref_label" placeholder="e.g. A is better"
+               value="{{ p.get('label', '') }}" class="pref-label-input">
+      </div>
+      <button type="button" class="btn-remove-row" title="Remove" onclick="removePreferenceRow(this)">×</button>
+    </div>
+    {% endfor %}
+  </div>
+  <button type="button" class="btn btn-ghost btn-small" onclick="addPreferenceRow()">+ Add option</button>
+  <p class="hint" style="margin-top:8px;">
+    For pairwise mode, each uploaded segment must provide two candidates: use
+    <code class="code-inline">target_a</code> and <code class="code-inline">target_b</code>
+    (optionally <code class="code-inline">system_a</code>/<code class="code-inline">system_b</code>),
+    or a <code class="code-inline">candidates</code> array of two.
+  </p>
+</div>
+
+<hr class="form-divider" data-mode-block="likert">
+
+{# ----------------------- Rating scale (likert only) ----------------------- #}
+<div class="field" data-mode-block="likert">
+  <label>Rating scale type <span class="req">*</span></label>
+  <p class="hint">How annotators record their judgement for each criterion.</p>
+  <div class="radio-group">
+    {% for t in scale_types %}
+    <label class="radio-row">
+      <input type="radio" name="scale_type" value="{{ t.id }}"
+             {% if form_data.scale.type == t.id %}checked{% endif %}
+             onchange="onScaleTypeChange()">
+      <span><strong>{{ t.name }}</strong> <span class="hint-inline">{{ t.desc }}</span></span>
+    </label>
+    {% endfor %}
+  </div>
+
+  <div id="likert-config" class="scale-config-block"
+       {% if form_data.scale.type != 'likert' %}style="display:none"{% endif %}>
+    <div class="form-row">
+      <div class="field">
+        <label for="scale_points">Number of points</label>
+        <input type="number" id="scale_points" name="scale_points" min="2" max="11"
+               value="{{ form_data.scale.points or 5 }}" onchange="rebuildLikertLabels()" oninput="rebuildLikertLabels()">
+        <p class="hint">Between 2 and 11.</p>
+      </div>
+      <div class="field">
+        <label for="scale_design_likert">Appearance</label>
+        <select id="scale_design_likert" name="scale_design">
+          {% for d in scale_designs.likert %}
+          <option value="{{ d.id }}" {% if form_data.scale.design == d.id %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+        <p class="hint" id="likert-design-desc"></p>
+      </div>
+    </div>
+    <div class="field">
+      <label>Point labels <span class="optional">(optional)</span></label>
+      <p class="hint">Short label per point (shown to annotators and in the legend). Leave blank for numbers only.</p>
+      <div id="likert-labels" class="likert-labels-grid"></div>
+    </div>
+  </div>
+
+  <div id="continuous-config" class="scale-config-block"
+       {% if form_data.scale.type != 'continuous' %}style="display:none"{% endif %}>
+    <div class="form-row">
+      <div class="field">
+        <label for="scale_min">Minimum value</label>
+        <input type="number" id="scale_min" name="scale_min" value="{{ form_data.scale.min if form_data.scale.min is not none else 0 }}">
+      </div>
+      <div class="field">
+        <label for="scale_max">Maximum value</label>
+        <input type="number" id="scale_max" name="scale_max" value="{{ form_data.scale.max if form_data.scale.max is not none else 100 }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label for="scale_min_label">Label at minimum <span class="optional">(optional)</span></label>
+        <input type="text" id="scale_min_label" name="scale_min_label"
+               value="{{ form_data.scale.labels.get('min', '') }}" placeholder="e.g. Worst">
+      </div>
+      <div class="field">
+        <label for="scale_max_label">Label at maximum <span class="optional">(optional)</span></label>
+        <input type="text" id="scale_max_label" name="scale_max_label"
+               value="{{ form_data.scale.labels.get('max', '') }}" placeholder="e.g. Perfect">
+      </div>
+    </div>
+    <div class="field">
+      <label for="scale_design_continuous">Appearance</label>
+      <select id="scale_design_continuous">
+        {% for d in scale_designs.continuous %}
+        <option value="{{ d.id }}" {% if form_data.scale.design == d.id %}selected{% endif %}>{{ d.name }}</option>
+        {% endfor %}
+      </select>
+      <p class="hint">A slider lets annotators pick any value in the range (Direct-Assessment style).</p>
+    </div>
+  </div>
+</div>
+
+<hr class="form-divider">
+
+{# ----------------------- Layout ----------------------- #}
+<div class="field">
+  <label for="segments_per_page">Segments per page <span class="req">*</span></label>
+  <input type="number" id="segments_per_page" name="segments_per_page" min="1" max="50"
+         value="{{ form_data.get('segments_per_page', 3) }}">
+  <p class="hint">How many segments an annotator sees on each page before "Save &amp; next page". Between 1 and 50.</p>
+</div>
+
+<hr class="form-divider" data-mode-block="likert span_only">
+
+{# ----------------------- Span annotation ----------------------- #}
+<div class="field" data-mode-block="likert" id="span-enable-field">
+  <label class="toggle-row">
+    <input type="checkbox" name="enable_spans" id="enable_spans"
+           {% if form_data.get('enable_spans', true) %}checked{% endif %}
+           onchange="toggleSpanScope()">
+    <span class="toggle-label">
+      Enable error span annotation
+      <span class="hint-inline">(annotators select words in the text to mark error locations)</span>
+    </span>
+  </label>
+</div>
+
+<div id="span-scope-block" class="field" data-mode-block="likert span_only">
+  <label>
+    Where can spans be marked? <span class="req">*</span>
+    <span class="hint-inline" id="span-scope-required-hint"
+          style="color:#c44;display:none"> (required)</span>
+  </label>
+  <div class="radio-group">
+    <label class="radio-row">
+      <input type="radio" name="span_scope" value="target" id="span_target"
+             {% if form_data.get('span_scope', 'target') == 'target' %}checked{% endif %}>
+      <span>Target text only <span class="hint-inline">(mark errors in the translation only)</span></span>
+    </label>
+    <label class="radio-row">
+      <input type="radio" name="span_scope" value="both"
+             {% if form_data.get('span_scope') == 'both' %}checked{% endif %}>
+      <span>Both source and target <span class="hint-inline">(mark spans in either text)</span></span>
+    </label>
+  </div>
+
+  <div class="field" style="margin-top:12px;">
+    <label for="span_instructions">Span annotation instructions <span class="optional">(optional)</span></label>
+    <textarea id="span_instructions" name="span_instructions" rows="4"
+              placeholder="Shown in the span-annotation section on the rating page. Explain how to mark spans, what each error type means, examples, etc.">{{ form_data.get('span_instructions', '') }}</textarea>
+    <p class="hint">Plain text; line breaks preserved. If left blank, a default explanation is shown.</p>
+  </div>
+</div>
+
+<hr class="form-divider">
+
+{# ----------------------- General instructions ----------------------- #}
+<div class="field">
+  <label for="instructions">Annotation instructions <span class="req">*</span></label>
+  <textarea id="instructions" name="instructions" rows="5" required
+            placeholder="Instructions shown to annotators on every rating page.">{{ form_data.get('instructions', '') }}</textarea>
+  <p class="hint">Plain text. Line breaks preserved. Shown in a collapsible panel on the rating screen.</p>
+</div>
+
+{% if mode == 'new' %}
+<hr class="form-divider">
+<div class="field">
+  <label for="segments_file">Segments file <span class="req">*</span></label>
+  <input type="file" id="segments_file" name="segments_file" accept=".json,application/json">
+  <p class="hint">A JSON array of objects. Likert / span-only: each needs <code class="code-inline">id</code>, <code class="code-inline">source</code>, <code class="code-inline">target</code>. Pairwise: <code class="code-inline">id</code>, <code class="code-inline">source</code>, <code class="code-inline">target_a</code>, <code class="code-inline">target_b</code>. Optional: <code class="code-inline">reference</code>, <code class="code-inline">system</code>, <code class="code-inline">domain</code>. <a href="#" onclick="document.getElementById('paste-toggle').open=true; document.getElementById('segments_paste').focus(); return false;">Or paste below.</a></p>
+</div>
+
+<details id="paste-toggle">
+  <summary class="link-btn" style="display:inline-block;margin-bottom:6px;">Paste JSON instead</summary>
+  <div class="field">
+    <label for="segments_paste">Segments JSON</label>
+    <textarea id="segments_paste" name="segments_paste" rows="8"
+              placeholder='[{"id": "seg_001", "source": "...", "target": "..."}, ...]'>{{ form_data.get('segments_paste', '') }}</textarea>
+  </div>
+</details>
+{% endif %}
+
+<hr class="form-divider">
+
+{# ----------------------- AI guideline assistant ----------------------- #}
+<div class="field">
+  <label class="toggle-row">
+    <input type="checkbox" name="ai_enabled" id="ai_enabled"
+           {% if form_data.get('ai_enabled') %}checked{% endif %}
+           onchange="onAiToggle()">
+    <span class="toggle-label">
+      Enable the AI guideline assistant
+      <span class="hint-inline">(annotators can ask grounded questions about your guidelines after forming their own judgment; it never assigns scores or labels)</span>
+    </span>
+  </label>
+</div>
+
+<div id="ai-config" {% if not form_data.get('ai_enabled') %}style="display:none"{% endif %}>
+  <div class="scale-config-block">
+    <div class="form-row">
+      <div class="field">
+        <label for="ai_provider">Model provider</label>
+        <select id="ai_provider" name="ai_provider" onchange="onAiProvider()">
+          {% for p in ai_providers %}
+          <option value="{{ p.id }}" {% if form_data.get('ai_provider', 'anthropic') == p.id %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+        <p class="hint" id="ai-provider-desc"></p>
+      </div>
+      <div class="field">
+        <label for="ai_model">Model</label>
+        <input type="text" id="ai_model" name="ai_model" value="{{ form_data.get('ai_model', '') }}"
+               placeholder="model name">
+        <p class="hint">Editable. Leave blank to use the provider's default.</p>
+      </div>
+    </div>
+
+    <div class="field" id="ai-base-url-field">
+      <label for="ai_base_url">Endpoint URL</label>
+      <input type="text" id="ai_base_url" name="ai_base_url" value="{{ form_data.get('ai_base_url', '') }}"
+             placeholder="http://localhost:11434/v1">
+      <p class="hint">For Ollama / OpenAI-compatible servers. Leave blank for the default.</p>
+    </div>
+
+    <div class="field" id="ai-key-field">
+      <label for="ai_api_key">API key</label>
+      <input type="password" id="ai_api_key" name="ai_api_key" autocomplete="off"
+             placeholder="{% if form_data.get('ai_has_key') %}•••••••• (saved, leave blank to keep){% else %}paste your key{% endif %}">
+      <p class="hint">Stored encrypted; only the admin sets it. Annotators never see or send it.</p>
+    </div>
+
+    <div class="ai-test-row">
+      <button type="button" class="btn btn-ghost btn-small" onclick="testAiConnection()">Test connection</button>
+      <span id="ai-test-result" class="ai-test-result"></span>
+    </div>
+
+    <hr class="form-divider">
+    <div class="field">
+      <label class="checkbox-inline" style="font-weight:500;">
+        <input type="checkbox" id="ai_ab_enabled" name="ai_ab_enabled" value="1"
+          {% if form_data.get('ai_ab_enabled') %}checked{% endif %}
+          onchange="document.getElementById('ai-ab-frac').style.display=this.checked?'':'none'">
+        Run a randomised AI experiment (A/B)
+      </label>
+      <p class="hint">
+        Makes the assistant available on a random share of (annotator, segment) pairs instead of all
+        of them. Because availability is randomised, the results dashboard can then estimate the
+        <em>causal</em> effect of AI help on speed and agreement, not just a correlation.
+      </p>
+      <div id="ai-ab-frac" style="{% if not form_data.get('ai_ab_enabled') %}display:none;{% endif %} max-width:260px;">
+        <label for="ai_ab_fraction" class="sublabel">% of pairs with AI available</label>
+        <input type="number" id="ai_ab_fraction" name="ai_ab_fraction" min="0" max="100" step="5"
+               value="{{ form_data.get('ai_ab_fraction', 50) }}">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.SCALE_LABELS_PREFILL = {{ form_data.scale.labels | tojson }};
+  window.SCALE_DESIGN_PREFILL = {{ form_data.scale.design | tojson }};
+  window.SCALE_LIKERT_DESC_MAP = {
+    {% for d in scale_designs.likert %}{{ d.id | tojson }}: {{ d.desc | tojson }}{% if not loop.last %},{% endif %}{% endfor %}
+  };
+  window.AI_PROVIDERS = {
+    {% for p in ai_providers %}{{ p.id | tojson }}: {"needs_key": {{ p.needs_key|tojson }}, "needs_base_url": {{ p.needs_base_url|tojson }}, "default_model": {{ p.default_model|tojson }}, "default_base_url": {{ p.default_base_url|tojson }}, "desc": {{ p.desc|tojson }}}{% if not loop.last %},{% endif %}
+    {% endfor %}
+  };
+  window.AI_CAMPAIGN_ID = {{ (campaign.id if campaign is defined and campaign else '') | tojson }};
+  window.AI_TEST_URL = {{ url_for('admin_ai_test') | tojson }};
+  window.TASK_PRESETS = {
+    {% for tid, t in task_types.items() %}{{ tid|tojson }}: {"input": {{ t.input|tojson }}, "output": {{ t.output|tojson }}, "bilingual": {{ t.bilingual|tojson }}, "criteria": [{% for n in t.criteria %}{"name": {{ n|tojson }}, "guide": {{ criterion_guides.get(n, '')|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]}{% if not loop.last %},{% endif %}
+    {% endfor %}
+  };
+  window.TASK_TYPE_INITIAL = {{ form_data.get('task_type', 'translation')|tojson }};
+</script>
+

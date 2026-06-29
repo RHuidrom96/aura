@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Aura 💫{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script>
+  // Apply saved theme before paint to avoid a flash.
+  (function () {
+    try {
+      var t = localStorage.getItem('aura-theme');
+      if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  })();
+</script>
+{% block head_extra %}{% endblock %}
+</head>
+<body>
+
+<header class="site-header">
+  {# Brand link: matches the page you're on, not just which sessions exist #}
+  {% if page_role == 'admin' and session.get('is_admin') %}
+    <a href="{{ url_for('admin_dashboard') }}" class="brand"><span class="brand-word">Aura</span> 💫</a>
+  {% elif page_role == 'annotator' and session.get('annotator_id') and current_annotator %}
+    <a href="{{ url_for('annotator_dashboard') }}" class="brand"><span class="brand-word">Aura</span> 💫</a>
+  {% else %}
+    <a href="{{ url_for('landing') }}" class="brand"><span class="brand-word">Aura</span> 💫</a>
+  {% endif %}
+
+  <div class="site-nav">
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle light/dark">
+      <svg class="theme-ico-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="theme-ico-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    {% if page_role == 'admin' and session.get('is_admin') %}
+      <div class="avatar-menu" id="avatar-menu">
+        <button type="button" class="avatar-btn" id="avatar-btn"
+                aria-haspopup="true" aria-expanded="false"
+                title="{{ session['admin_email'] }}">
+          A
+        </button>
+        <div class="avatar-dropdown" id="avatar-dropdown" hidden>
+          <div class="avatar-dropdown-header">
+            <strong>Admin</strong>
+            <span class="muted">{{ session['admin_email'] }}</span>
+          </div>
+          <div class="avatar-dropdown-divider"></div>
+          <a href="{{ url_for('admin_dashboard') }}" class="avatar-dropdown-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            My campaigns
+          </a>
+          <div class="avatar-dropdown-divider"></div>
+          <form action="{{ url_for('admin_logout') }}" method="post">
+            <button type="submit" class="avatar-dropdown-item avatar-dropdown-signout">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Sign out
+            </button>
+          </form>
+        </div>
+      </div>
+
+    {% elif page_role == 'annotator' and session.get('annotator_id') %}
+      {% set ann = current_annotator %}
+      {% if ann %}
+        {# Avatar dropdown #}
+        <div class="avatar-menu" id="avatar-menu">
+          <button type="button" class="avatar-btn" id="avatar-btn"
+                  aria-haspopup="true" aria-expanded="false"
+                  title="{{ ann.name }}">
+            {{ ann.name[0]|upper }}
+          </button>
+          <div class="avatar-dropdown" id="avatar-dropdown" hidden>
+            <div class="avatar-dropdown-header">
+              <strong>{{ ann.name }}</strong>
+              <span class="muted">{{ ann.email }}</span>
+            </div>
+            <div class="avatar-dropdown-divider"></div>
+            <a href="{{ url_for('annotator_dashboard') }}" class="avatar-dropdown-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              My campaigns
+            </a>
+            <a href="{{ url_for('annotator_update_password') }}" class="avatar-dropdown-item">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Update password
+            </a>
+            <div class="avatar-dropdown-divider"></div>
+            <form action="{{ url_for('annotator_logout') }}" method="post">
+              <button type="submit" class="avatar-dropdown-item avatar-dropdown-signout">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sign out
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+</header>
+
+<main id="app">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-stack">
+        {% for category, msg in messages %}
+          <div class="flash flash-{{ category }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+
+</main>
+
+{% block scripts %}{% endblock %}
+
+<script>
+// Light/dark theme toggle
+(function () {
+  const btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('aura-theme', next); } catch (e) {}
+  });
+})();
+
+// Avatar dropdown toggle
+(function() {
+  const btn = document.getElementById('avatar-btn');
+  const dropdown = document.getElementById('avatar-dropdown');
+  if (!btn || !dropdown) return;
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = !dropdown.hidden;
+    dropdown.hidden = open;
+    btn.setAttribute('aria-expanded', String(!open));
+  });
+
+  // Close when clicking outside
+  document.addEventListener('click', () => {
+    if (dropdown && !dropdown.hidden) {
+      dropdown.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  // Don't close when clicking inside the dropdown itself
+  dropdown.addEventListener('click', (e) => e.stopPropagation());
+})();
+</script>
+</body>
+</html>

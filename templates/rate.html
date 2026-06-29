@@ -1,0 +1,1358 @@
+{% extends "base.html" %}
+{% block title %}Rate · {{ campaign.name }} · Aura{% endblock %}
+
+{% block head_extra %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=JetBrains+Mono&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --aura-bg: #F4F0E7;
+  --aura-surface: #FFFFFF;
+  --aura-surface-2: #FAF7F0;
+  --aura-border: #E7E1D3;
+  --aura-border-light: #E4DECF;
+  --aura-input-border: #DDD7C8;
+  --aura-text: #2A2A24;
+  --aura-text-muted: #6E6A5F;
+  --aura-text-faint: #9A9486;
+  --aura-accent: #34433A;
+  --aura-accent-pill: rgba(52, 67, 58, 0.08);
+  --aura-accent-pill-hover: rgba(52, 67, 58, 0.15);
+}
+
+[data-theme="dark"] {
+  --aura-bg: #15171c;
+  --aura-surface: #1e2128;
+  --aura-surface-2: #262a33;
+  --aura-border: rgba(255, 255, 255, 0.10);
+  --aura-border-light: rgba(255, 255, 255, 0.08);
+  --aura-input-border: rgba(255, 255, 255, 0.15);
+  --aura-text: #e6e7ea;
+  --aura-text-muted: #a7a9b0;
+  --aura-text-faint: #7e8089;
+  --aura-accent: #8e9e94;
+  --aura-accent-pill: rgba(142, 158, 148, 0.12);
+  --aura-accent-pill-hover: rgba(142, 158, 148, 0.20);
+}
+
+/* Base override for #app to stretch full-screen */
+#app {
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: var(--aura-bg) !important;
+  min-height: calc(100vh - 83px);
+}
+
+/* Header style mapping */
+.site-header {
+  background: var(--aura-bg) !important;
+  border-bottom: 1px solid var(--aura-border-light) !important;
+  padding: 18px 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+}
+.site-header .brand {
+  font-family: 'Cormorant Garamond', serif !important;
+  font-weight: 600 !important;
+  font-size: 24px !important;
+  letter-spacing: 3px !important;
+  color: var(--aura-text) !important;
+  text-decoration: none !important;
+}
+.site-header .brand-word {
+  font-family: 'Cormorant Garamond', serif !important;
+}
+.site-nav {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+}
+.theme-toggle {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--aura-border-light) !important;
+  background: transparent !important;
+  color: var(--aura-text-muted) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: background 0.15s !important;
+}
+.theme-toggle:hover {
+  background: var(--aura-border-light) !important;
+}
+.avatar-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 999px !important;
+  background: var(--aura-accent) !important;
+  color: var(--aura-bg) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: 'Cormorant Garamond', serif !important;
+  font-weight: 600 !important;
+  font-size: 17px !important;
+  border: none !important;
+  cursor: pointer !important;
+}
+
+/* Selection and fonts */
+::selection {
+  background: var(--aura-accent);
+  color: var(--aura-bg);
+}
+
+/* Document layout & sidebar navigator rail */
+.rate-page-container {
+  max-width: 1380px !important;
+  margin: 0 auto !important;
+  padding: 28px 40px 60px !important;
+  display: flex !important;
+  gap: 32px !important;
+  align-items: flex-start !important;
+}
+.sidebar-rail {
+  width: 288px !important;
+  flex-shrink: 0 !important;
+  position: sticky !important;
+  top: 92px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+.sidebar-back-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  font-size: 12px !important;
+  letter-spacing: 0.3px !important;
+  color: var(--aura-text-muted) !important;
+  text-decoration: none !important;
+  transition: color 0.15s;
+}
+.sidebar-back-btn:hover {
+  color: var(--aura-text) !important;
+}
+.sidebar-card {
+  background: var(--aura-surface) !important;
+  border: 1px solid var(--aura-border) !important;
+  border-radius: 10px !important;
+  padding: 20px !important;
+}
+.sidebar-segment-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 11px !important;
+  padding: 9px 10px !important;
+  border-radius: 7px !important;
+  cursor: pointer !important;
+  transition: background 0.15s;
+}
+.sidebar-segment-row:hover {
+  background: var(--aura-surface-2) !important;
+}
+.sidebar-btn-prev {
+  flex: 1 !important;
+  font-family: 'Work Sans', sans-serif !important;
+  font-size: 13px !important;
+  padding: 11px !important;
+  border-radius: 7px !important;
+  border: 1px solid var(--aura-input-border) !important;
+  background: var(--aura-surface) !important;
+  color: var(--aura-text-muted) !important;
+  cursor: pointer !important;
+  transition: background 0.12s;
+  text-align: center;
+}
+.sidebar-btn-prev:hover {
+  background: var(--aura-accent-pill) !important;
+}
+.sidebar-btn-prev:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+.sidebar-btn-next {
+  flex: 1 !important;
+  font-family: 'Work Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  padding: 11px !important;
+  border-radius: 7px !important;
+  border: 1px solid var(--aura-accent) !important;
+  background: var(--aura-accent) !important;
+  color: var(--aura-bg) !important;
+  cursor: pointer !important;
+  transition: opacity 0.12s;
+  text-align: center;
+}
+.sidebar-btn-next:hover {
+  opacity: 0.9 !important;
+}
+.sidebar-btn-next:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+.main-content {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 18px !important;
+}
+
+/* Instructions card styling */
+.instructions-panel {
+  background: var(--aura-surface-2) !important;
+  border: 1px solid var(--aura-border-light) !important;
+  border-left: 4px solid var(--aura-accent) !important;
+  border-radius: 8px !important;
+  padding: 18px 22px !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+.instructions-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 8px !important;
+  padding: 0 !important;
+  border: none !important;
+}
+.instructions-header h3 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--aura-text) !important;
+  margin: 0 !important;
+}
+.info-bullet {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 999px !important;
+  background: var(--aura-accent) !important;
+  color: var(--aura-bg) !important;
+  font-size: 11px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-style: italic !important;
+}
+#toggle-instructions {
+  font-family: 'Work Sans', sans-serif !important;
+  font-size: 12px !important;
+  padding: 6px 13px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--aura-input-border) !important;
+  background: var(--aura-surface) !important;
+  color: var(--aura-text-muted) !important;
+  cursor: pointer !important;
+  transition: background 0.12s;
+}
+#toggle-instructions:hover {
+  background: var(--aura-accent-pill) !important;
+}
+.instructions-body {
+  font-size: 13.5px !important;
+  color: var(--aura-text-muted) !important;
+  line-height: 1.6 !important;
+}
+.instructions-body.collapsed {
+  display: none !important;
+}
+.instructions-subhead {
+  font-weight: 600 !important;
+  margin: 14px 0 6px !important;
+  color: var(--aura-text) !important;
+}
+.crit-def {
+  margin-bottom: 6px !important;
+  font-size: 13px !important;
+}
+.crit-def-swatch {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 999px !important;
+  display: inline-block !important;
+  margin-right: 6px !important;
+}
+
+/* Criteria dynamic list definitions inside rating cards */
+.criterion {
+  margin-bottom: 14px !important;
+}
+.criterion-title {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--aura-text) !important;
+  margin-bottom: 8px !important;
+  display: flex !important;
+  align-items: center;
+}
+.criterion-swatch {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 999px !important;
+  display: inline-block !important;
+  margin-right: 6px !important;
+}
+
+/* Likert Circles & Likert Buttons overrides */
+.likert-circle-row, .likert-row, .scale-radio-row, .scale-stars {
+  display: flex !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+.likert-circle {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--aura-input-border) !important;
+  background: var(--aura-surface) !important;
+  color: var(--aura-text-muted) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.12s;
+}
+.likert-circle:hover {
+  background: var(--aura-accent-pill) !important;
+  border-color: var(--aura-accent) !important;
+  color: var(--aura-text) !important;
+}
+.likert-circle.selected {
+  background: var(--aura-accent) !important;
+  border-color: var(--aura-accent) !important;
+  color: var(--aura-bg) !important;
+}
+
+.likert-btn {
+  font-family: 'Work Sans', sans-serif !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  padding: 8px 14px !important;
+  border-radius: 6px !important;
+  border: 1px solid var(--aura-input-border) !important;
+  background: var(--aura-surface) !important;
+  color: var(--aura-text-muted) !important;
+  cursor: pointer !important;
+  transition: all 0.12s;
+}
+.likert-btn:hover {
+  background: var(--aura-accent-pill) !important;
+  border-color: var(--aura-accent) !important;
+  color: var(--aura-text) !important;
+}
+.likert-btn.selected {
+  background: var(--aura-accent) !important;
+  border-color: var(--aura-accent) !important;
+  color: var(--aura-bg) !important;
+}
+
+.star-btn {
+  font-size: 20px !important;
+  color: var(--aura-border-light) !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: color 0.12s;
+}
+.star-btn.filled {
+  color: #C99A3F !important;
+}
+
+/* Pairwise Preference selection buttons */
+.preference-pill {
+  flex: 1 !important;
+  min-width: 0 !important;
+  font-family: 'Work Sans', sans-serif !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  line-height: 1.3 !important;
+  padding: 13px 8px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--aura-border) !important;
+  background: var(--aura-surface-2) !important;
+  color: var(--aura-text-muted) !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  transition: all .12s ease !important;
+}
+.preference-pill:hover {
+  background: var(--aura-accent-pill) !important;
+  border-color: var(--aura-accent) !important;
+  color: var(--aura-text) !important;
+}
+.preference-pill.selected {
+  background: var(--aura-accent-pill) !important;
+  border-color: var(--aura-accent) !important;
+  color: var(--aura-accent) !important;
+  font-weight: 600 !important;
+}
+.preference-options {
+  display: flex !important;
+  gap: 8px !important;
+  margin-top: 10px !important;
+}
+
+/* Card details & texts styling */
+.segment-card {
+  background: var(--aura-surface) !important;
+  border: 1px solid var(--aura-border) !important;
+  border-radius: 12px !important;
+  padding: 26px !important;
+  margin-bottom: 18px !important;
+  scroll-margin-top: 90px !important;
+}
+.segment-card-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin-bottom: 20px !important;
+  border-bottom: none !important;
+  padding: 0 !important;
+}
+.segment-number {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--aura-accent) !important;
+  background: var(--aura-accent-pill) !important;
+  padding: 5px 12px !important;
+  border-radius: 999px !important;
+}
+.seg-meta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+.meta-chip {
+  font-size: 12px !important;
+  color: var(--aura-text-muted) !important;
+  background: var(--aura-surface-2) !important;
+  padding: 5px 11px !important;
+  border-radius: 999px !important;
+  border: none !important;
+}
+.segment-saved-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--aura-text-faint) !important;
+}
+.segment-saved-badge.ready {
+  color: #8A6A24 !important;
+}
+.segment-saved-badge.saved {
+  color: var(--aura-accent) !important;
+}
+.segment-saved-badge::before {
+  content: "" !important;
+  width: 7px !important;
+  height: 7px !important;
+  border-radius: 999px !important;
+  background: var(--aura-text-faint) !important;
+  display: inline-block !important;
+}
+.segment-saved-badge.ready::before {
+  background: #C99A3F !important;
+}
+.segment-saved-badge.saved::before {
+  background: var(--aura-accent) !important;
+}
+
+/* Two-column layout grid inside segments */
+.segment-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px !important;
+}
+.segment-left {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+.text-panel {
+  background: var(--aura-surface-2) !important;
+  border: 1px solid var(--aura-border-light) !important;
+  border-radius: 8px !important;
+  padding: 16px 18px !important;
+  margin-bottom: 0 !important;
+  box-shadow: none !important;
+}
+.text-panel-label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  margin-bottom: 9px !important;
+  font-size: 10px !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+  color: var(--aura-text-faint) !important;
+  font-weight: 600 !important;
+  border-bottom: none !important;
+  padding: 0 !important;
+}
+.text-panel-body {
+  font-size: 16px !important;
+  color: var(--aura-text) !important;
+  line-height: 1.5 !important;
+  font-family: 'Work Sans', sans-serif !important;
+}
+.text-panel-body.text-target, .text-panel-body.text-target-b {
+  font-family: 'Noto Sans Bengali', 'Work Sans', sans-serif !important;
+  font-size: 18px !important;
+  line-height: 1.6 !important;
+}
+
+/* Reference elements overrides */
+.reference-toggle {
+  margin-top: 0px !important;
+  background: #FAF7F0 !important;
+  border: 1px solid var(--aura-border-light) !important;
+  border-radius: 8px !important;
+  padding: 14px 18px !important;
+}
+[data-theme="dark"] .reference-toggle {
+  background: #19211c !important;
+}
+.reference-toggle summary {
+  font-size: 10px !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+  color: #8B9A86 !important;
+  cursor: pointer !important;
+  outline: none !important;
+  font-weight: 600;
+}
+.reference-hint {
+  font-size: 10px !important;
+  color: var(--aura-text-faint) !important;
+  text-transform: none !important;
+  font-weight: 400 !important;
+}
+.reference-body {
+  font-family: 'Noto Sans Bengali', 'Work Sans', sans-serif !important;
+  font-size: 17px !important;
+  color: #3A463A !important;
+  line-height: 1.6 !important;
+  margin-top: 8px !important;
+}
+[data-theme="dark"] .reference-body {
+  color: #8B9A86 !important;
+}
+
+.rating-block-label {
+  font-size: 10px !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+  color: var(--aura-text-faint) !important;
+  font-weight: 600 !important;
+  margin-bottom: 12px !important;
+}
+
+/* Comments block overrides */
+.comments-field {
+  margin-top: 18px !important;
+  padding-top: 16px !important;
+  border-top: 1px solid var(--aura-border-light) !important;
+}
+.comments-field label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--aura-text) !important;
+  margin-bottom: 7px !important;
+  display: block !important;
+}
+.comments-field .hint {
+  font-size: 12px !important;
+  color: var(--aura-text-faint) !important;
+  margin: 0 0 8px !important;
+}
+.comments-field textarea {
+  width: 100% !important;
+  font-family: 'Work Sans', sans-serif !important;
+  font-size: 14px !important;
+  color: var(--aura-text) !important;
+  background: var(--aura-surface) !important;
+  border: 1px solid var(--aura-input-border) !important;
+  border-radius: 6px !important;
+  padding: 11px 13px !important;
+  outline: none !important;
+  resize: vertical !important;
+  line-height: 1.6 !important;
+}
+.comments-field textarea:focus {
+  border-color: var(--aura-accent) !important;
+}
+
+/* Secondary actions list */
+.link-btn {
+  font-family: 'Work Sans', sans-serif !important;
+  font-size: 13px !important;
+  color: var(--aura-text-muted) !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  transition: color 0.12s;
+}
+.link-btn:hover {
+  color: var(--aura-text) !important;
+}
+
+/* Span marking section */
+.span-section {
+  border-top: 1px solid var(--aura-border-light) !important;
+  padding-top: 18px !important;
+  margin-top: 18px !important;
+}
+.span-section-header h3 {
+  font-family: 'Cormorant Garamond', serif !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  color: var(--aura-text) !important;
+  margin: 0 !important;
+}
+.span-section-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 12px !important;
+  padding: 0 !important;
+}
+.span-help {
+  font-size: 13px !important;
+  color: var(--aura-text-muted) !important;
+  line-height: 1.5 !important;
+  background: var(--aura-surface-2) !important;
+  border: 1px solid var(--aura-border-light) !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  margin-bottom: 14px !important;
+}
+.span-help.collapsed {
+  display: none !important;
+}
+.span-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-bottom: 14px !important;
+}
+.span-controls-label {
+  font-size: 10px !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+  color: var(--aura-text-faint) !important;
+  font-weight: 600 !important;
+}
+.error-type-picker {
+  display: flex !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+.error-type-pill {
+  font-family: 'Work Sans', sans-serif !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
+  border: 1px solid var(--aura-input-border) !important;
+  background: var(--aura-surface) !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+.error-type-swatch {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+}
+.error-type-pill:hover {
+  background: var(--aura-accent-pill) !important;
+  border-color: currentColor !important;
+}
+.error-type-pill.selected {
+  background: var(--aura-accent-pill) !important;
+  border-color: currentColor !important;
+  font-weight: 600 !important;
+}
+.error-type-count {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  background: var(--aura-bg) !important;
+  padding: 1px 6px !important;
+  border-radius: 999px !important;
+  color: var(--aura-text) !important;
+}
+.span-target-wrap {
+  margin-bottom: 14px !important;
+}
+.span-target {
+  font-family: 'Noto Sans Bengali', 'Work Sans', sans-serif !important;
+  font-size: 18px !important;
+  line-height: 1.7 !important;
+  color: var(--aura-text) !important;
+  background: var(--aura-surface-2) !important;
+  border: 1px solid var(--aura-border-light) !important;
+  border-radius: 8px !important;
+  padding: 16px 18px !important;
+}
+.char {
+  cursor: text !important;
+  border-radius: 3px !important;
+  transition: background 0.1s;
+}
+.char:hover {
+  background: var(--active-select-bg) !important;
+}
+.char.in-span {
+  background: var(--span-bg) !important;
+  box-shadow: var(--span-underlines) !important;
+}
+.span-summary {
+  display: flex !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+  margin-top: 10px !important;
+}
+.sum-pill {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  background: var(--aura-accent-pill) !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  border: 1px solid currentColor !important;
+}
+.sum-dot {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+}
+
+/* Locked spans state styling */
+.span-section.locked {
+  opacity: 0.6 !important;
+  pointer-events: none !important;
+}
+.span-locked-hint {
+  font-size: 12px !important;
+  color: #8A6D3B !important;
+  background: #FBF4E9 !important;
+  border: 1px solid #ECDDC2 !important;
+  border-radius: 6px !important;
+  padding: 10px 14px !important;
+  margin-bottom: 14px !important;
+}
+
+/* Post editing block overrides */
+.postedit-block {
+  margin-top: 18px !important;
+  padding-top: 16px !important;
+  border-top: 1px solid var(--aura-border-light) !important;
+}
+.postedit-block textarea {
+  width: 100% !important;
+  font-family: 'Noto Sans Bengali', 'Work Sans', sans-serif !important;
+  font-size: 18px !important;
+  color: var(--aura-text) !important;
+  background: var(--aura-surface) !important;
+  border: 1px solid var(--aura-input-border) !important;
+  border-radius: 6px !important;
+  padding: 11px 13px !important;
+  outline: none !important;
+  resize: vertical !important;
+  line-height: 1.6 !important;
+}
+.postedit-block textarea:focus {
+  border-color: var(--aura-accent) !important;
+}
+.postedit-controls {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-top: 8px !important;
+}
+
+/* Floating Guideline Assistant */
+.assist-launcher {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  background: var(--aura-accent) !important;
+  color: var(--aura-bg) !important;
+  font-family: 'Work Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  letter-spacing: 0.3px !important;
+  border-radius: 999px !important;
+  padding: 12px 20px !important;
+  border: none !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  z-index: 100 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: opacity 0.15s;
+}
+.assist-launcher:hover {
+  opacity: 0.9 !important;
+}
+.assist-panel {
+  position: fixed !important;
+  bottom: 84px !important;
+  right: 24px !important;
+  width: 380px !important;
+  max-height: 520px !important;
+  background: var(--aura-surface) !important;
+  border: 1px solid var(--aura-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+  z-index: 100 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.assist-panel-head {
+  padding: 16px 20px !important;
+  border-bottom: 1px solid var(--aura-border-light) !important;
+  background: var(--aura-surface-2) !important;
+  border-radius: 12px 12px 0 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+.assist-badge {
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  color: var(--aura-text-faint) !important;
+  border: 1px solid var(--aura-border-light) !important;
+  background: var(--aura-surface) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  margin-left: 6px !important;
+}
+.assist-close {
+  background: transparent !important;
+  border: none !important;
+  font-size: 16px !important;
+  cursor: pointer !important;
+  color: var(--aura-text-muted) !important;
+}
+.assist-panel-sub {
+  padding: 12px 20px !important;
+  font-size: 12px !important;
+  color: var(--aura-text-muted) !important;
+  background: var(--aura-surface-2) !important;
+  line-height: 1.4 !important;
+  border-bottom: 1px solid var(--aura-border-light) !important;
+}
+.assist-presets {
+  display: flex !important;
+  gap: 6px !important;
+  flex-wrap: wrap !important;
+  padding: 12px 20px !important;
+  border-bottom: 1px solid var(--aura-border-light) !important;
+  max-height: 110px !important;
+  overflow-y: auto !important;
+}
+.assist-preset {
+  font-family: inherit !important;
+  font-size: 11.5px !important;
+  color: var(--aura-text-muted) !important;
+  background: var(--aura-surface-2) !important;
+  border: 1px solid var(--aura-input-border) !important;
+  border-radius: 999px !important;
+  padding: 4px 10px !important;
+  cursor: pointer !important;
+  transition: all 0.12s;
+}
+.assist-preset:hover {
+  background: var(--aura-accent-pill) !important;
+  border-color: var(--aura-accent) !important;
+  color: var(--aura-text) !important;
+}
+.assist-transcript {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding: 16px 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+.assist-msg {
+  max-width: 85% !important;
+  padding: 10px 14px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  line-height: 1.45 !important;
+}
+.assist-msg.user {
+  background: var(--aura-accent) !important;
+  color: var(--aura-bg) !important;
+  align-self: flex-end !important;
+  border-bottom-right-radius: 2px !important;
+}
+.assist-msg.assistant {
+  background: var(--aura-surface-2) !important;
+  color: var(--aura-text) !important;
+  align-self: flex-start !important;
+  border-bottom-left-radius: 2px !important;
+  border: 1px solid var(--aura-border-light) !important;
+}
+.assist-ask-row {
+  padding: 12px 20px !important;
+  border-top: 1px solid var(--aura-border-light) !important;
+  display: flex !important;
+  gap: 8px !important;
+}
+.assist-input {
+  flex: 1 !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  border: 1px solid var(--aura-input-border) !important;
+  outline: none !important;
+  background: var(--aura-surface) !important;
+  color: var(--aura-text) !important;
+}
+.assist-input:focus {
+  border-color: var(--aura-accent) !important;
+}
+.assist-ask-row button {
+  font-family: inherit !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  padding: 8px 14px !important;
+  border-radius: 6px !important;
+  background: var(--aura-accent) !important;
+  color: var(--aura-bg) !important;
+  border: none !important;
+  cursor: pointer !important;
+}
+
+/* Save status alert toast overlay */
+.save-status {
+  position: fixed !important;
+  bottom: 24px !important;
+  left: 24px !important;
+  padding: 10px 16px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  z-index: 1000 !important;
+  display: none !important;
+}
+.save-status.success {
+  display: block !important;
+  background: #def7ec !important;
+  color: #03543f !important;
+  border: 1px solid #bcf0da !important;
+}
+.save-status.error {
+  display: block !important;
+  background: #fde8e8 !important;
+  color: #9b1c1c !important;
+  border: 1px solid #f8b4b4 !important;
+}
+
+/* Done screen styling */
+.done-card {
+  max-width: 580px !important;
+  margin: 80px auto !important;
+  background: var(--aura-surface) !important;
+  border: 1px solid var(--aura-border) !important;
+  border-radius: 12px !important;
+  padding: 40px !important;
+  text-align: center !important;
+}
+.done-icon {
+  margin-bottom: 20px !important;
+  color: var(--aura-accent) !important;
+}
+.done-card h1 {
+  font-family: 'Cormorant Garamond', serif !important;
+  font-size: 32px !important;
+  font-weight: 600 !important;
+  color: var(--aura-text) !important;
+  margin: 0 0 10px !important;
+}
+.done-card .lede {
+  font-size: 15px !important;
+  color: var(--aura-text-muted) !important;
+  line-height: 1.6 !important;
+  margin: 0 0 30px !important;
+}
+.done-actions {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 14px !important;
+}
+.done-actions .btn {
+  font-family: 'Work Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  padding: 12px 24px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+}
+.done-actions #btn-review {
+  background: var(--aura-accent) !important;
+  color: var(--aura-bg) !important;
+  border: 1px solid var(--aura-accent) !important;
+}
+.done-actions a.btn-ghost {
+  background: transparent !important;
+  color: var(--aura-text-muted) !important;
+  border: 1px solid var(--aura-input-border) !important;
+  text-decoration: none !important;
+}
+.done-actions a.btn-ghost:hover {
+  background: var(--aura-accent-pill) !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ============== RATING SCREEN ============== -->
+<section id="screen-rate" class="screen active">
+  <div class="rate-page-container">
+    <!-- NAVIGATOR RAIL -->
+    <aside class="sidebar-rail">
+      <a href="{{ url_for('annotator_dashboard') }}" class="sidebar-back-btn">← Back to dashboard</a>
+
+      <!-- Page info / Progress details -->
+      <div class="sidebar-card">
+        <div style="display:flex; align-items:baseline; justify-content:space-between;">
+          <span style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:30px; line-height:1; color:var(--aura-text);">Page <span id="page-current">1</span></span>
+          <span style="font-size:12px; color:var(--aura-text-faint);">of <span id="page-total">1</span></span>
+        </div>
+        <div class="progress-track" style="margin-top:16px; height:6px; border-radius:999px; background:#EDE8DB; overflow:hidden;">
+          <div class="progress-fill" id="progress-fill" style="height:100%; width:0%; background:var(--aura-accent); border-radius:999px; transition:width .25s ease;"></div>
+        </div>
+        <div style="font-size:12px; color:var(--aura-text-muted); margin-top:9px;"><strong id="rated-count" style="color:var(--aura-text); font-weight:600;">0</strong> / <span id="seg-total">{{ segments|length }}</span> segments rated</div>
+      </div>
+
+      <!-- Segment list items on this page -->
+      <div class="sidebar-card">
+        <div style="font-size:10px; letter-spacing:1.6px; text-transform:uppercase; color:var(--aura-text-faint); margin-bottom:12px;">This page</div>
+        <div id="sidebar-this-page-list" style="display:flex; flex-direction:column; gap:4px;"></div>
+      </div>
+
+      <!-- Pages Grid squares -->
+      <div class="sidebar-card">
+        <div style="font-size:10px; letter-spacing:1.6px; text-transform:uppercase; color:var(--aura-text-faint); margin-bottom:12px;">Pages</div>
+        <div id="sidebar-pages-grid" style="display:grid; grid-template-columns:repeat(6, 1fr); gap:7px;"></div>
+      </div>
+
+      <!-- Pagination Buttons -->
+      <div style="display:flex; gap:10px;">
+        <button type="button" id="btn-prev" class="sidebar-btn-prev">← Previous</button>
+        <button type="button" id="btn-next" class="sidebar-btn-next">Save &amp; next page →</button>
+      </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="main-content">
+      <!-- Instructions Panel (retained with same class/ID for rate.js compatibility) -->
+      <div class="instructions-panel" id="instructions-panel">
+        <div class="instructions-header">
+          <h3>
+            <span class="info-bullet" aria-hidden="true">i</span>
+            Rating instructions
+          </h3>
+          <button type="button" id="toggle-instructions" aria-expanded="true">Hide</button>
+        </div>
+        <div class="instructions-body" id="instructions-body">
+          {% if instructions %}
+          <div class="admin-instructions" style="white-space: pre-line;">{{ instructions }}</div>
+          {% else %}
+          <p>
+            Read the <strong>{{ input_label|lower }}</strong> carefully, then read the
+            <strong>{{ output_label|lower }}</strong>. Rate on each criterion shown on the right.
+            {% if is_bilingual %}The reference is hidden by default to avoid biasing your judgment.{% endif %}
+          </p>
+          {% endif %}
+
+          {% if eval_mode in ['likert', 'span_only'] %}
+          <p class="instructions-subhead">{{ 'What each error type means' if eval_mode == 'span_only' else 'What each criterion means' }}</p>
+          <div class="crit-defs">
+            {% for c in criteria %}
+            <div class="crit-def">
+              <span class="crit-def-swatch" style="background: {{ c.color }}" aria-hidden="true"></span>
+              <span class="crit-def-text">
+                <strong>{{ c.name }}</strong>{% if c.guide %}: {{ c.guide }}{% elif c.desc %}: {{ c.desc }}{% else %}: <em class="crit-def-missing">no definition provided by the campaign admin</em>{% endif %}
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          {% if eval_mode == 'likert' %}
+          <p class="instructions-subhead">
+            {% if scale.type == 'continuous' %}
+            What the scale means ({{ scale.min }}–{{ scale.max }} slider)
+            {% else %}
+            What each rating means ({{ scale.points }}-point scale)
+            {% endif %}
+          </p>
+          <div class="scale-legend">
+            {% for item in scale_legend %}
+            <span class="legend-item" style="margin-right: 12px; display: inline-block;"><span class="legend-num" style="font-weight: 600; color: var(--aura-text);">{{ item.value }}</span>{% if item.label %} {{ item.label }}{% endif %}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Segment Stack containing segment card items -->
+      <div id="segment-stack"></div>
+    </main>
+  </div>
+
+  <div class="save-status" id="save-status" aria-live="polite"></div>
+
+  {% if ai_available %}
+  <!-- Floating guideline assistant panels -->
+  <button type="button" id="assist-launcher" class="assist-launcher" aria-label="Open the guideline assistant" hidden>
+    <span class="assist-launcher-icon">💬</span>
+    <span class="assist-launcher-text">Ask the assistant</span>
+  </button>
+
+  <div id="assist-panel" class="assist-panel" style="display:none;">
+    <div class="assist-panel-head">
+      <div>
+        <strong style="font-size:14px;">Guideline assistant</strong>
+        <span class="assist-badge">advisory</span>
+      </div>
+      <button type="button" id="assist-close" class="assist-close" aria-label="Close">✕</button>
+    </div>
+    <div class="assist-panel-sub">
+      Ask about the instructions, the criteria and their definitions, how the interface works,
+      or the segment you’re viewing. The assistant explains guidelines; it won’t choose a score
+      or label for you.
+    </div>
+    <div id="assist-presets" class="assist-presets"></div>
+    <div id="assist-transcript" class="assist-transcript"></div>
+    <div class="assist-ask-row">
+      <input type="text" id="assist-input" class="assist-input"
+             placeholder="Ask a question…" maxlength="1000" autocomplete="off">
+      <button type="button" id="assist-send">Ask</button>
+    </div>
+  </div>
+  {% endif %}
+</section>
+
+<!-- ============== TEMPLATE for one segment (cloned by JS) ============== -->
+<template id="segment-template">
+  <article class="segment-card" data-seg-index="">
+    <div class="segment-card-head">
+      <span class="segment-number"></span>
+      <div class="seg-meta">
+        <span class="meta-chip meta-pair"></span>
+        <span class="meta-chip meta-domain"></span>
+        <span class="meta-chip meta-chip-muted meta-system"></span>
+      </div>
+      <span class="segment-saved-badge" aria-live="polite"></span>
+    </div>
+
+    <div class="segment-grid">
+      <!-- LEFT: input / output / reference -->
+      <div class="segment-left">
+        <div class="text-panel">
+          <div class="text-panel-label">
+            <span style="width:7px; height:7px; border-radius:999px; background:var(--aura-accent); display:inline-block; margin-right:4px;"></span>
+            {{ input_label }}
+          </div>
+          <div class="text-panel-body text-source-body text-source"></div>
+        </div>
+        <div class="text-panel">
+          <div class="text-panel-label">
+            <span style="width:7px; height:7px; border-radius:999px; background:#5B8C6E; display:inline-block; margin-right:4px;"></span>
+            <span class="target-panel-label">{{ output_label }}</span>
+          </div>
+          <div class="text-panel-body text-target"></div>
+        </div>
+        <div class="text-panel text-panel-b" hidden>
+          <div class="text-panel-label">
+            <span style="width:7px; height:7px; border-radius:999px; background:#8A6FB0; display:inline-block; margin-right:4px;"></span>
+            <span class="target-b-panel-label">{{ output_label }} B</span>
+          </div>
+          <div class="text-panel-body text-target-b"></div>
+        </div>
+        
+        <details class="reference-toggle">
+          <summary>
+            Show reference
+            <span class="reference-hint">Reveal after forming your own judgment</span>
+          </summary>
+          <div class="reference-body text-reference"></div>
+        </details>
+      </div>
+
+      <!-- RIGHT: likert circles per criterion (likert mode) -->
+      <div class="segment-right">
+        <div class="rating-block-label">Your ratings</div>
+        <div class="criteria-list"></div>
+
+        <!-- Pairwise preference selector (shown in pairwise mode) -->
+        <div class="preference-block" hidden>
+          <div class="rating-block-label">Which translation is better?</div>
+          <div class="preference-options" role="radiogroup" aria-label="Preference"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Span-only: explicit review confirmation -->
+    <div class="reviewed-field" hidden>
+      <label class="toggle-row" style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; font-weight:500; cursor:pointer;">
+        <input type="checkbox" class="seg-reviewed">
+        <span class="toggle-label">I have reviewed this segment and marked all errors (or there are none)</span>
+      </label>
+    </div>
+
+    <!-- Post-editing: editable corrected output -->
+    <div class="postedit-block" hidden>
+      <div class="text-panel-label">
+        <span style="width:7px; height:7px; border-radius:999px; background:var(--aura-accent); display:inline-block; margin-right:4px;"></span>
+        Corrected {{ output_label|lower }}: edit the text to fix any errors
+      </div>
+      <textarea class="seg-postedit" rows="4" spellcheck="false"
+                placeholder="Edit the {{ output_label|lower }} here…"></textarea>
+      <div class="postedit-controls">
+        <button type="button" class="link-btn postedit-reset">Reset to original</button>
+        <span class="postedit-status muted"></span>
+      </div>
+    </div>
+
+    <!-- FULL-WIDTH: span annotation, below both columns -->
+    <div class="span-section" data-enable-spans="">
+      <div class="span-section-header">
+        <h3>Mark error spans in the {{ output_label|lower }}</h3>
+        <button type="button" class="link-btn toggle-span-help" aria-expanded="true">Hide help</button>
+      </div>
+
+      <div class="span-help">
+        <div class="span-help-content"></div>
+      </div>
+
+      <div class="span-controls">
+        <span class="span-controls-label">Marking:</span>
+        <div class="error-type-picker"></div>
+        <button type="button" class="link-btn span-clear-btn span-clear-current" style="margin-left:auto;">
+          Clear current type
+        </button>
+      </div>
+
+      <div class="span-target-wrap span-source-wrap" hidden>
+        <div class="text-panel-label">
+          <span style="width:7px; height:7px; border-radius:999px; background:var(--aura-accent); display:inline-block; margin-right:4px;"></span>
+          {{ input_label }}: select text to mark errors
+        </div>
+        <div class="span-target span-target-source span-source"></div>
+      </div>
+
+      <div class="span-target-wrap">
+        <div class="text-panel-label">
+          <span style="width:7px; height:7px; border-radius:999px; background:var(--aura-accent); display:inline-block; margin-right:4px;"></span>
+          {{ output_label }}: select text to mark errors
+        </div>
+        <div class="span-target span-target-main"></div>
+      </div>
+
+      <div class="span-summary"></div>
+    </div>
+
+    <div class="comments-field">
+      <label>Comments <span class="optional">(optional)</span></label>
+      <p class="hint">Describe specific errors: mistranslations, omissions, hallucinated content, awkward phrasing, etc.</p>
+      <textarea class="seg-comments" rows="2"></textarea>
+    </div>
+  </article>
+</template>
+
+<!-- ============== DONE SCREEN ============== -->
+<section id="screen-done" class="screen">
+  <div class="card hero-card done-card">
+    <div class="done-icon" aria-hidden="true">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" opacity="0.2"/>
+        <path d="M8 12l3 3 5-6"/>
+      </svg>
+    </div>
+    <h1>Thank you for participating</h1>
+    <p class="lede">
+      Your ratings have been saved. You can come back and edit any of them until the campaign is closed.
+    </p>
+    <div class="done-actions">
+      <button type="button" class="btn" id="btn-review">Review my ratings</button>
+      <a href="{{ url_for('annotator_dashboard') }}" class="btn btn-ghost">Done</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============== JUMP MODAL placeholder (kept hidden for rate.js compatibility) ============== -->
+<button type="button" id="btn-jump" style="display:none;"></button>
+<div class="modal-backdrop" id="jump-modal" style="display:none;" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Jump to segment</h3>
+      <button type="button" id="jump-close">×</button>
+    </div>
+    <div class="modal-body" id="jump-list"></div>
+  </div>
+</div>
+<div class="action-bar" style="display:none;"></div>
+
+<script>
+  window.CAMPAIGN     = {{ {"id": campaign.id, "name": campaign.name, "num_segments": campaign.num_segments, "source_language": campaign.source_language, "target_language": campaign.target_language}|tojson }};
+  window.SEGMENTS     = {{ segments|tojson }};
+  window.CRITERIA     = {{ criteria|tojson }};
+  window.SCALE_CONFIG = {{ scale|tojson }};
+  window.EVAL_MODE    = {{ eval_mode|tojson }};
+  window.IO_LABELS    = {input: {{ input_label|tojson }}, output: {{ output_label|tojson }}};
+  window.PREFERENCES  = {{ preferences|tojson }};
+  window.EXISTING     = {{ existing|tojson }};
+  window.SUBMIT_URL   = {{ url_for('api_submit', campaign_id=campaign.id)|tojson }};
+  window.CONFIG_URL   = {{ url_for('api_config', campaign_id=campaign.id)|tojson }};
+  window.CONFIG_VERSION = {{ campaign.config_fingerprint()|tojson }};
+  window.SPAN_SCOPE   = {{ span_scope|tojson }};
+  window.ENABLE_SPANS = {{ enable_spans|tojson }};
+  window.RATING_POSITION = {{ (campaign.rating_position or 'side')|tojson }};
+  window.SPAN_POSITION   = {{ (campaign.span_position or 'below')|tojson }};
+  window.SPAN_INSTRUCTIONS = {{ span_instructions|tojson }};
+  window.PER_PAGE     = {{ segments_per_page|tojson }};
+  window.AI_AVAILABLE = {{ ai_available|tojson }};
+  window.AI_AB_ENABLED = {{ ai_ab_enabled|tojson }};
+  window.AI_AB_ELIGIBLE = {{ ai_ab_eligible|tojson }};
+  window.ASSIST_URL   = {{ url_for('api_assist', campaign_id=campaign.id)|tojson }};
+  window.ASSIST_FEEDBACK_URL = {{ url_for('api_assist_feedback', campaign_id=campaign.id)|tojson }};
+</script>
+<script src="{{ url_for('static', filename='rate.js') }}"></script>
+
+{% endblock %}

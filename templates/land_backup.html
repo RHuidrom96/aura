@@ -1,0 +1,106 @@
+<!-- {% extends "base.html" %}
+{% block title %}Aura 💫{% endblock %}
+
+{% block content %}
+<section class="landing-hero-wrap">
+  <div class="aura-glow" aria-hidden="true"></div>
+  <div class="landing-hero">
+    <span class="landing-eyebrow">Human evaluation for language &amp; translation models</span>
+    <h1 class="landing-title"><span class="brand-word">Aura</span>&nbsp;💫</h1>
+    <p class="lede">
+      Run rigorous human-evaluation studies of language-model and translation outputs.
+      Create annotation campaigns, share a link, and Aura turns annotators' judgments into
+      agreement statistics, disagreement analysis, and charts, all live.
+    </p>
+
+    <div class="landing-actions">
+      {% if is_admin %}
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary btn-large">
+          Go to admin dashboard <span class="btn-arrow" aria-hidden="true">&rarr;</span>
+        </a>
+      {% else %}
+        {% if signup_enabled %}
+        <a href="{{ url_for('admin_signup_view') }}" class="btn btn-primary btn-large">Create admin account</a>
+        <a href="{{ url_for('admin_login_view') }}" class="btn btn-large">Admin sign in</a>
+        {% else %}
+        <a href="{{ url_for('admin_login_view') }}" class="btn btn-primary btn-large">Admin sign in</a>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <p class="hint landing-annotator-note">
+      Annotators: please use the link your study admin sent you.
+    </p>
+  </div>
+</section>
+
+<section class="card landing-steps-card">
+  <h2 class="landing-h2">How it works</h2>
+  <div class="landing-steps">
+    <div class="landing-step">
+      <div class="landing-step-num">1</div>
+      <h3>Create a campaign</h3>
+      <p>Pick an evaluation mode, define criteria and a scale, upload your segments. Or load the
+        demo to explore in one click.</p>
+    </div>
+    <div class="landing-step-arrow" aria-hidden="true">&rarr;</div>
+    <div class="landing-step">
+      <div class="landing-step-num">2</div>
+      <h3>Share the link</h3>
+      <p>Annotators register and score, compare, mark error spans, or post-edit, on any device,
+        with progress saved as they go.</p>
+    </div>
+    <div class="landing-step-arrow" aria-hidden="true">&rarr;</div>
+    <div class="landing-step">
+      <div class="landing-step-num">3</div>
+      <h3>Read the results</h3>
+      <p>Agreement stats, per-annotator quality, disagreement hot-spots and charts update live,
+        and a full results pack is emailed when you close.</p>
+    </div>
+  </div>
+</section>
+
+<section class="card landing-features">
+  <h2 class="landing-h2">What you can do with Aura</h2>
+  <div class="feature-grid">
+    <div class="feature">
+      <div class="feature-ico" aria-hidden="true">&#9733;</div>
+      <h3>Four evaluation modes</h3>
+      <p>Rate on a Likert scale, compare two outputs side-by-side (A/B preference), mark and type
+        error spans (MQM), or post-edit the output directly &mdash; whichever fits your study.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-ico" aria-hidden="true">&#9703;</div>
+      <h3>Built for any task</h3>
+      <p>Machine translation, summarization, simplification, dialogue, question answering,
+        factuality/hallucination checking, or general LLM output &mdash; labels and criteria adapt to the task.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-ico" aria-hidden="true">&#128202;</div>
+      <h3>Agreement &amp; disagreement</h3>
+      <p>Krippendorff's &alpha;, Fleiss'/Cohen's &kappa;, percent agreement, span F1 (character and token),
+        post-edit distance, plus the most-contested segments &mdash; with interactive charts and exports.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-ico" aria-hidden="true">&#128100;</div>
+      <h3>Quality monitoring</h3>
+      <p>Per-annotator agreement, timing and flags, expertise-based routing of easy/medium/hard items,
+        and a randomised A/B mode to measure whether the AI assistant actually helps.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-ico" aria-hidden="true">&#9881;</div>
+      <h3>Flexible setup</h3>
+      <p>Custom criteria and scales, optional reference text, difficulty grouping, light/dark and
+        colour-blind-friendly visuals, and one-click demo data to explore it all.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-ico" aria-hidden="true">&#9993;</div>
+      <h3>Results by email</h3>
+      <p>Close a campaign and Aura emails a complete pack &mdash; per-rating CSV, summary tables,
+        charts, raw JSON, and a self-contained HTML report.</p>
+    </div>
+  </div>
+</section>
+
+<p class="landing-footer">Aura · a space for careful human evaluation.</p>
+{% endblock %} -->

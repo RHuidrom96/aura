@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Aura | Human Evaluation for Language &amp; Translation Models</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600&amp;family=Libre+Caslon+Text:wght@400;700&amp;family=Playfair+Display:ital,wght@0,400..900;1,400..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "inverse-primary": "#b6cbc0",
+                        "secondary-container": "#cae6fb",
+                        "primary": "#33453d",
+                        "inverse-on-surface": "#f3f0ef",
+                        "secondary": "#476273",
+                        "on-secondary-fixed": "#001e2d",
+                        "surface-container-highest": "#e5e2e1",
+                        "primary-container": "#4a5d54",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fcf9f8",
+                        "on-surface-variant": "#424845",
+                        "secondary-fixed": "#cae6fb",
+                        "on-tertiary-fixed-variant": "#494640",
+                        "on-primary-fixed-variant": "#384b42",
+                        "outline-variant": "#c2c8c3",
+                        "error-container": "#ffdad6",
+                        "surface": "#fcf9f8",
+                        "tertiary-fixed": "#e8e2d9",
+                        "primary-fixed": "#d2e7dc",
+                        "surface-variant": "#e5e2e1",
+                        "outline": "#737874",
+                        "inverse-surface": "#313030",
+                        "surface-container-high": "#eae7e7",
+                        "on-tertiary-container": "#d4cfc6",
+                        "tertiary-fixed-dim": "#cbc6bd",
+                        "on-primary-fixed": "#0d1f18",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#1d1b16",
+                        "surface-dim": "#dcd9d9",
+                        "surface-tint": "#4f6359",
+                        "tertiary-container": "#5c5851",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-container": "#4d6879",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed-dim": "#b6cbc0",
+                        "background": "#fcf9f8",
+                        "surface-container-low": "#f6f3f2",
+                        "on-primary-container": "#c0d5c9",
+                        "tertiary": "#44413b",
+                        "on-secondary-fixed-variant": "#2f4a5a",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#aecade",
+                        "on-background": "#1c1b1b",
+                        "surface-container": "#f0eded",
+                        "on-surface": "#1c1b1b",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px"
+                    },
+                    spacing: {
+                        "section-gap": "120px",
+                        "margin-desktop": "80px",
+                        "unit": "8px",
+                        "margin-mobile": "20px",
+                        "gutter": "24px"
+                    },
+                    fontFamily: {
+                        "label-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Libre Caslon Text"],
+                        "headline-lg-mobile": ["Libre Caslon Text"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-md": ["Libre Caslon Text"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "display-lg": ["Libre Caslon Text"],
+                        "playfair": ["Playfair Display", "serif"]
+                    },
+                    fontSize: {
+                        "label-md": ["14px", { lineHeight: "1.0", letterSpacing: "0.05em", fontWeight: "600" }],
+                        "headline-lg": ["48px", { lineHeight: "1.2", fontWeight: "400" }],
+                        "headline-lg-mobile": ["32px", { lineHeight: "1.2", fontWeight: "400" }],
+                        "body-md": ["16px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "headline-md": ["32px", { lineHeight: "1.3", fontWeight: "400" }],
+                        "body-lg": ["18px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "display-lg": ["64px", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+        .hairline-border {
+            border: 0.5px solid rgba(28, 27, 27, 0.15); /* Off-Black at 15% */
+        }
+        .hairline-border-b {
+            border-bottom: 0.5px solid rgba(28, 27, 27, 0.15);
+        }
+        .hairline-border-t {
+            border-top: 0.5px solid rgba(28, 27, 27, 0.15);
+        }
+        .hairline-border-l {
+            border-left: 0.5px solid rgba(28, 27, 27, 0.15);
+        }
+        .hairline-border-r {
+            border-right: 0.5px solid rgba(28, 27, 27, 0.15);
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-primary-fixed selection:text-on-primary-fixed overflow-x-hidden relative">
+<main class="relative z-10">
+<!-- Floating Hero Section -->
+<section class="px-margin-mobile md:px-margin-desktop min-h-[70vh] py-24 flex items-center justify-center relative overflow-hidden">
+<div class="absolute inset-0 z-0" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAk05v2fAyVVoy_F_Rtlyz_504afS_HyRKWY2NTHNnXsTbCZQGZ4GQb6c4yV-UXsZpsgMxRsn2S9s7rZk46CrB1y1crwiT1H7vp6aV0VvH4bAeOT78a5vQ4PqzRMkLUQCFDxftpLjdav-vyfWf1I1O6JFEioriKSGgFuR-4bmR0ApUkBoNEchSclns2PSI_OAGvLlo35OB6X8JBL5UIpL3sGjBsdCYVDBnQaZU-adwwvgJYiZ3lJPqk4EyuhvSVfQC3Nv0F_N7s1ZC_'); background-size: cover; background-position: center; opacity: 0.4;"></div>
+<div class="absolute inset-0 bg-background/90 z-0"></div>
+<div class="max-w-4xl mx-auto text-center relative z-10">
+<!-- Abstract geometric accent -->
+<div class="absolute -top-12 -left-12 w-24 h-24 border-l border-t border-outline-variant/30 hidden md:block"></div>
+<div class="absolute -bottom-12 -right-12 w-24 h-24 border-r border-b border-outline-variant/30 hidden md:block"></div>
+<h1 class="font-playfair text-display-lg text-on-background mb-4 leading-tight">
+                A.U.R.A
+            </h1>
+<h2 class="font-headline-md text-headline-md text-on-background mb-10">
+                Annotation Utility for Reliable Assessment
+            </h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto mb-16">
+                Run rigorous human-evaluation studies. Create campaigns, share a link, and get live agreement statistics. Minimal friction, maximum clarity.
+            </p>
+<div class="flex flex-col sm:flex-row gap-4 justify-center">
+<button class="inline-flex items-center justify-center bg-primary text-on-primary font-label-md text-label-md uppercase tracking-wider px-[40px] py-5 rounded-none hover:bg-primary-container hover:shadow-lg transition-all duration-500 w-fit">
+                    Go to admin dashboard
+                </button>
+</div>
+</div>
+</section>
+<!-- How it works - Staggered -->
+<section class="px-margin-mobile md:px-margin-desktop py-section-gap relative overflow-hidden">
+<!-- New Abstract Shape Background -->
+<div class="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDdw-O8XiLKwPfADywGBaOpN3afeqTSS__ZVyPmMWZmepOWJrcHWw6XS8Hn_9KKjJj6M75f5n1vZQeiFRcd3MOVtfcaxcJhUWZN7J7_mzOdW6YqO97w53OogGhoGZsbJFHRfEEiBDLjAjJ_EpatFQS_tD4hBPD0rIk8ziEnD5sAErABXTnTsyc9nF_TKLD8k86Zdg0ppDBioqcad4x9bPwAL3RGU3nbh7juSq0YOv0qwzHMWAhDC1eP01ZleHaPmIfDsO9WRlkF3uR8'); background-size: cover; background-position: center;"></div>
+<!-- Subtle vertical connecting line -->
+<div class="absolute left-1/2 top-0 bottom-0 w-px bg-outline-variant/20 hidden lg:block -translate-x-1/2 z-10"></div>
+<div class="relative z-10">
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background mb-20 text-center">
+                How it works
+            </h2>
+<div class="max-w-6xl mx-auto space-y-16">
+<!-- Step 1 - Left aligned -->
+<div class="flex flex-col md:flex-row items-center gap-8 lg:gap-16">
+<div class="md:w-1/2 flex justify-end md:text-right relative">
+<div class="font-display-lg text-[120px] leading-none text-surface-container-highest absolute -top-16 -left-8 md:left-auto md:-right-8 -z-10 select-none">01</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-background mb-6">Create a campaign</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-md ml-auto">Define your evaluation criteria and upload your model outputs. Configure tasks in seconds.</p>
+</div>
+</div>
+<div class="md:w-1/2 h-px bg-outline-variant/30 hidden md:block relative">
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary hidden lg:block -translate-x-[5px]"></div>
+</div>
+</div>
+<!-- Step 2 - Right aligned -->
+<div class="flex flex-col md:flex-row-reverse items-center gap-8 lg:gap-16">
+<div class="md:w-1/2 flex justify-start relative">
+<div class="font-display-lg text-[120px] leading-none text-surface-container-highest absolute -top-16 -left-8 -z-10 select-none">02</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-background mb-6">Share the link</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-md">Distribute a simple URL to your annotators. No login required for reviewers.</p>
+</div>
+</div>
+<div class="md:w-1/2 h-px bg-outline-variant/30 hidden md:block relative">
+<div class="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary hidden lg:block translate-x-[5px]"></div>
+</div>
+</div>
+<!-- Step 3 - Left aligned -->
+<div class="flex flex-col md:flex-row items-center gap-8 lg:gap-16">
+<div class="md:w-1/2 flex justify-end md:text-right relative">
+<div class="font-display-lg text-[120px] leading-none text-surface-container-highest absolute -top-16 -left-8 md:left-auto md:-right-8 -z-10 select-none">03</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-background mb-6">Read the results</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-md ml-auto">Monitor agreement live as evaluations come in. Export clear, structured data.</p>
+</div>
+</div>
+<div class="md:w-1/2 h-px bg-outline-variant/30 hidden md:block relative">
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary hidden lg:block -translate-x-[5px]"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- What you can do - Staggered Organic Grid -->
+<section class="px-margin-mobile md:px-margin-desktop py-section-gap bg-surface-container-low hairline-border-t hairline-border-b relative overflow-hidden">
+<!-- Subtle background elements -->
+<div class="absolute bottom-0 left-0 w-1/3 h-[600px] opacity-[0.04] pointer-events-none z-0 rotate-180" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAJIPu3kMO8T8ClwZHcQvWS1J3mJg-RusRSnCOhrBAWo3sH4zOdl9Tb3Z-45JXR434adiBLiA7NWvTgKFwmaEVUggWELK38LxaDkBl1RnKy3YbILwRtfrCiBFdw8M2kr55ANpPrW5RHI_QyrHP4LmqsSCyMCLUKbB8w_GKkq20YDTtpxEum_4BOy1rCveYZ06ZsFJJt1SioMwTuDBdapRch14cUiwW8JVf4xDarY9aqnwuAgOmyMLN_AZqU-q4vxA9JuR8ePRZ0RtDW'); background-size: cover; background-position: center; mix-blend-mode: multiply;"></div>
+<div class="relative z-10 max-w-7xl mx-auto">
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-background mb-20 text-center max-w-3xl mx-auto">
+                What you can do with Aura
+            </h2>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-y-16 gap-x-gutter">
+<!-- Feature 1 -->
+<div class="md:col-span-5 md:col-start-2 group cursor-default">
+<div class="mb-8 w-16 h-16 flex items-center justify-center hairline-border bg-surface rounded-full group-hover:bg-primary-container group-hover:border-primary-container transition-colors duration-500">
+<span class="material-symbols-outlined text-[32px] text-primary group-hover:text-on-primary transition-colors duration-500" style="font-variation-settings: 'FILL' 0;">category</span>
+</div>
+<h3 class="font-headline-md text-[24px] text-on-background mb-4">Four evaluation modes</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Choose from ranking, rating, side-by-side comparison, or qualitative feedback.</p>
+<div class="mt-8 w-0 h-px bg-primary group-hover:w-full transition-all duration-700 ease-in-out"></div>
+</div>
+<!-- Feature 2 -->
+<div class="md:col-span-5 md:col-start-8 md:mt-16 group cursor-default">
+<div class="mb-8 w-16 h-16 flex items-center justify-center hairline-border bg-surface rounded-full group-hover:bg-primary-container group-hover:border-primary-container transition-colors duration-500">
+<span class="material-symbols-outlined text-[32px] text-primary group-hover:text-on-primary transition-colors duration-500" style="font-variation-settings: 'FILL' 0;">build</span>
+</div>
+<h3 class="font-headline-md text-[24px] text-on-background mb-4">Built for any task</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Adaptable to translation quality, factual accuracy, tone, or style evaluations.</p>
+<div class="mt-8 w-0 h-px bg-primary group-hover:w-full transition-all duration-700 ease-in-out"></div>
+</div>
+<!-- Feature 3 -->
+<div class="md:col-span-5 md:col-start-1 group cursor-default">
+<div class="mb-8 w-16 h-16 flex items-center justify-center hairline-border bg-surface rounded-full group-hover:bg-primary-container group-hover:border-primary-container transition-colors duration-500">
+<span class="material-symbols-outlined text-[32px] text-primary group-hover:text-on-primary transition-colors duration-500" style="font-variation-settings: 'FILL' 0;">handshake</span>
+</div>
+<h3 class="font-headline-md text-[24px] text-on-background mb-4">Agreement &amp; disagreement</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Automatically calculate inter-annotator agreement metrics like Cohen's Kappa.</p>
+<div class="mt-8 w-0 h-px bg-primary group-hover:w-full transition-all duration-700 ease-in-out"></div>
+</div>
+<!-- Feature 4 -->
+<div class="md:col-span-5 md:col-start-7 md:mt-16 group cursor-default">
+<div class="mb-8 w-16 h-16 flex items-center justify-center hairline-border bg-surface rounded-full group-hover:bg-primary-container group-hover:border-primary-container transition-colors duration-500">
+<span class="material-symbols-outlined text-[32px] text-primary group-hover:text-on-primary transition-colors duration-500" style="font-variation-settings: 'FILL' 0;">monitoring</span>
+</div>
+<h3 class="font-headline-md text-[24px] text-on-background mb-4">Quality monitoring</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Identify outlier annotators and ensure high-quality data collection.</p>
+<div class="mt-8 w-0 h-px bg-primary group-hover:w-full transition-all duration-700 ease-in-out"></div>
+</div>
+<!-- Feature 5 -->
+<div class="md:col-span-5 md:col-start-3 group cursor-default">
+<div class="mb-8 w-16 h-16 flex items-center justify-center hairline-border bg-surface rounded-full group-hover:bg-primary-container group-hover:border-primary-container transition-colors duration-500">
+<span class="material-symbols-outlined text-[32px] text-primary group-hover:text-on-primary transition-colors duration-500" style="font-variation-settings: 'FILL' 0;">tune</span>
+</div>
+<h3 class="font-headline-md text-[24px] text-on-background mb-4">Flexible setup</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Customize UI elements, instructions, and schemas for your specific use case.</p>
+<div class="mt-8 w-0 h-px bg-primary group-hover:w-full transition-all duration-700 ease-in-out"></div>
+</div>
+<!-- Feature 6 -->
+<div class="md:col-span-4 md:col-start-9 md:mt-16 group cursor-default">
+<div class="mb-8 w-16 h-16 flex items-center justify-center hairline-border bg-surface rounded-full group-hover:bg-primary-container group-hover:border-primary-container transition-colors duration-500">
+<span class="material-symbols-outlined text-[32px] text-primary group-hover:text-on-primary transition-colors duration-500" style="font-variation-settings: 'FILL' 0;">mail</span>
+</div>
+<h3 class="font-headline-md text-[24px] text-on-background mb-4">Results by email</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Receive automated daily or weekly digests of evaluation progress.</p>
+<div class="mt-8 w-0 h-px bg-primary group-hover:w-full transition-all duration-700 ease-in-out"></div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full py-section-gap bg-background">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter px-margin-mobile md:px-margin-desktop max-w-full mx-auto">
+<div>
+<a class="font-headline-md text-headline-md text-primary block mb-6" href="#">Aura</a>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-sm">
+                © 2024 Aura Evaluation Systems. Designed in the spirit of Lagom.
+            </p>
+</div>
+<div class="flex flex-col md:items-end gap-6">
+<a class="font-body-md text-body-md text-secondary underline-offset-8 hover:underline hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="font-body-md text-body-md text-secondary underline-offset-8 hover:underline hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="font-body-md text-body-md text-secondary underline-offset-8 hover:underline hover:text-primary transition-colors" href="#">Security</a>
+<a class="font-body-md text-body-md text-secondary underline-offset-8 hover:underline hover:text-primary transition-colors" href="#">Contact</a>
+</div>
+</div>
+</footer>
+</body></html>
