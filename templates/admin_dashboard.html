@@ -1,57 +1,548 @@
 {% extends "base.html" %}
 {% block title %}Admin dashboard · Aura{% endblock %}
 
+{% block head_extra %}
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=Work+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+  #app {
+    max-width: none;
+    padding: 0 0 80px;
+  }
+
+  .site-header {
+    background: #f4f0e7;
+    border-bottom-color: #e4decf;
+  }
+
+  .site-header .brand {
+    color: #2a2a24;
+  }
+
+  .flash-stack {
+    max-width: 1384px;
+    margin: 18px auto 0;
+    padding: 0 48px;
+  }
+
+  .aura-dashboard {
+    min-height: calc(100vh - 65px);
+    background: #f4f0e7;
+    color: #2a2a24;
+    font-family: "Work Sans", var(--font);
+  }
+
+  .aura-dashboard a {
+    color: inherit;
+  }
+
+  .aura-serif {
+    font-family: "Cormorant Garamond", Georgia, serif;
+  }
+
+  .aura-hero {
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid #e4decf;
+  }
+
+  .aura-glyphs {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .aura-glyph {
+    position: absolute;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    color: #2a2a24;
+    opacity: 0.045;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .aura-shell {
+    position: relative;
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 54px 48px 40px;
+  }
+
+  .aura-hero-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .aura-kicker {
+    margin-bottom: 10px;
+    color: #9a9486;
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+  }
+
+  .aura-title {
+    margin: 0;
+    color: #2a2a24;
+    font-size: 58px;
+    font-weight: 600;
+    letter-spacing: 0;
+    line-height: 1;
+  }
+
+  .aura-subtitle {
+    max-width: 520px;
+    margin: 12px 0 0;
+    color: #6e6a5f;
+    font-size: 21px;
+    font-style: italic;
+    line-height: 1.35;
+  }
+
+  .aura-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .aura-button {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: 1px solid #d8d2c2;
+    padding: 12px 20px;
+    background: transparent;
+    color: #54503f;
+    cursor: pointer;
+    font: 600 13px/1 var(--font);
+    letter-spacing: 0.3px;
+    text-decoration: none;
+    transition: background .18s ease, border-color .18s ease, color .18s ease, opacity .18s ease;
+  }
+
+  .aura-button:hover {
+    background: #ede8db;
+  }
+
+  .aura-button-primary {
+    border-color: #34433a;
+    background: #34433a;
+    color: #f4f0e7;
+  }
+
+  .aura-button-primary:hover {
+    background: #29352e;
+    border-color: #29352e;
+    color: #f4f0e7;
+  }
+
+  .aura-overview {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: 44px;
+    border-top: 1px solid #e4decf;
+  }
+
+  .aura-metric {
+    min-width: 0;
+    padding: 22px 28px 4px;
+    border-right: 1px solid #e4decf;
+  }
+
+  .aura-metric:last-child {
+    border-right: 0;
+  }
+
+  .aura-metric-number {
+    color: #2a2a24;
+    font-size: 46px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .aura-metric-label {
+    margin-top: 8px;
+    color: #9a9486;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .aura-main {
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 40px 48px 72px;
+  }
+
+  .aura-campaign-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .aura-campaign-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: 24px;
+    border: 1px solid #e7e1d3;
+    border-radius: 8px;
+    background: #fff;
+    color: inherit;
+    text-decoration: none;
+    transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease;
+  }
+
+  .aura-campaign-card:hover {
+    border-color: #d8d2c2;
+    box-shadow: 0 8px 28px rgba(42, 42, 36, 0.08);
+    transform: translateY(-2px);
+  }
+
+  .aura-card-top,
+  .aura-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .aura-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .aura-demo-pill {
+    border-radius: 4px;
+    background: #efeadd;
+    color: #9a9486;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    line-height: 1;
+    padding: 4px 7px;
+    text-transform: uppercase;
+  }
+
+  .aura-mode {
+    color: #9a9486;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .aura-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: 5px 10px;
+    background: rgba(52, 67, 58, 0.08);
+    color: #34433a;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .aura-status-pill::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .aura-status-closed {
+    background: #efeadf;
+    color: #8c887b;
+  }
+
+  .aura-card-title {
+    margin: 14px 0 0;
+    color: #2a2a24;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0;
+    line-height: 1.18;
+  }
+
+  .aura-languages {
+    margin-top: 6px;
+    color: #8c887b;
+    font-size: 13px;
+  }
+
+  .aura-divider {
+    height: 1px;
+    margin: 20px 0;
+    background: #efeae0;
+  }
+
+  .aura-card-stats {
+    display: flex;
+    gap: 26px;
+    flex-wrap: wrap;
+  }
+
+  .aura-card-stat-number {
+    color: #2a2a24;
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .aura-card-stat-label {
+    margin-top: 5px;
+    color: #9a9486;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .aura-card-footer {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid #f1ece2;
+  }
+
+  .aura-created {
+    color: #a39e90;
+    font-size: 12px;
+  }
+
+  .aura-open {
+    color: #34433a;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .aura-empty {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 44px 28px;
+    border: 1px solid #e7e1d3;
+    border-radius: 8px;
+    background: #fff;
+    text-align: center;
+  }
+
+  .aura-empty-title {
+    margin: 0 0 8px;
+    color: #2a2a24;
+    font-size: 30px;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  .aura-empty p {
+    margin: 0 0 18px;
+    color: #6e6a5f;
+  }
+
+  .aura-empty-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 1120px) {
+    .aura-campaign-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 760px) {
+    .flash-stack,
+    .aura-shell,
+    .aura-main {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .aura-shell {
+      padding-top: 38px;
+    }
+
+    .aura-title {
+      font-size: 44px;
+    }
+
+    .aura-actions,
+    .aura-actions form,
+    .aura-button {
+      width: 100%;
+    }
+
+    .aura-overview {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .aura-metric {
+      border-bottom: 1px solid #e4decf;
+      padding-left: 0;
+    }
+
+    .aura-metric:nth-child(2n) {
+      border-right: 0;
+    }
+
+    .aura-campaign-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
-  <h1>Campaigns</h1>
-  <div style="display:flex; gap:8px;">
-    {% if has_demo %}
-    <form method="post" action="{{ url_for('admin_campaign.admin_unload_demo') }}" style="display:inline;"
-          onsubmit="return confirm('Remove all demo campaigns, demo annotators, and their ratings? Your own campaigns are not affected.');">
-      <button type="submit" class="btn btn-ghost">Remove demo data</button>
-    </form>
+{% set total_segments = campaigns|sum(attribute='num_segments') %}
+{% set total_campaigns = campaigns|length %}
+{% set target_languages = campaigns|map(attribute='target_language')|unique|list|length %}
+{% set totals = namespace(ratings=0) %}
+{% for c in campaigns %}
+  {% set totals.ratings = totals.ratings + stats[c.id].total_ratings %}
+{% endfor %}
+
+<div class="aura-dashboard">
+  <section class="aura-hero">
+    <div class="aura-glyphs" aria-hidden="true">
+      <span class="aura-glyph" style="top:-10px;left:4%;font-size:150px;">अ</span>
+      <span class="aura-glyph" style="top:30px;left:20%;font-size:120px;">字</span>
+      <span class="aura-glyph" style="top:120px;left:12%;font-size:90px;">ω</span>
+      <span class="aura-glyph" style="top:-20px;left:46%;font-size:130px;">ñ</span>
+      <span class="aura-glyph" style="top:90px;left:58%;font-size:110px;">ক</span>
+      <span class="aura-glyph" style="top:10px;left:72%;font-size:140px;">文</span>
+      <span class="aura-glyph" style="top:130px;left:84%;font-size:100px;">α</span>
+      <span class="aura-glyph" style="top:-30px;left:92%;font-size:120px;">ह</span>
+      <span class="aura-glyph" style="top:150px;left:34%;font-size:95px;">る</span>
+      <span class="aura-glyph" style="top:40px;left:88%;font-size:80px;">ব</span>
+    </div>
+
+    <div class="aura-shell">
+      <div class="aura-hero-row">
+        <div>
+          <div class="aura-kicker">Admin workspace</div>
+          <h1 class="aura-title aura-serif">Campaigns</h1>
+          <p class="aura-subtitle aura-serif">Every evaluation study you are running, at a glance.</p>
+        </div>
+        <div class="aura-actions">
+          {% if has_demo %}
+          <form method="post" action="{{ url_for('admin_campaign.admin_unload_demo') }}"
+                onsubmit="return confirm('Remove all demo campaigns, demo annotators, and their ratings? Your own campaigns are not affected.');">
+            <button type="submit" class="aura-button">Remove demo data</button>
+          </form>
+          {% else %}
+          <form method="post" action="{{ url_for('admin_campaign.admin_seed_demo') }}"
+                onsubmit="return confirm('Load the demo campaigns (9 Northeast India languages) plus demo annotators and synthetic ratings?');">
+            <button type="submit" class="aura-button">Load demo data</button>
+          </form>
+          {% endif %}
+          <a href="{{ url_for('admin_campaign.admin_campaign_new') }}" class="aura-button aura-button-primary">+ New campaign</a>
+        </div>
+      </div>
+
+      <div class="aura-overview" aria-label="Campaign overview">
+        <div class="aura-metric">
+          <div class="aura-metric-number aura-serif">{{ total_campaigns }}</div>
+          <div class="aura-metric-label">Campaigns</div>
+        </div>
+        <div class="aura-metric">
+          <div class="aura-metric-number aura-serif">{{ target_languages }}</div>
+          <div class="aura-metric-label">Target languages</div>
+        </div>
+        <div class="aura-metric">
+          <div class="aura-metric-number aura-serif">{{ total_segments }}</div>
+          <div class="aura-metric-label">Segments</div>
+        </div>
+        <div class="aura-metric">
+          <div class="aura-metric-number aura-serif">{{ totals.ratings }}</div>
+          <div class="aura-metric-label">Ratings collected</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="aura-main">
+    {% if campaigns %}
+    <div class="aura-campaign-grid">
+      {% for c in campaigns %}
+        {% set s = stats[c.id] %}
+        {% set is_demo_campaign = c.name.startswith('[DEMO] ') %}
+        {% set display_name = c.name[7:] if is_demo_campaign else c.name %}
+        <a href="{{ url_for('admin_campaign.admin_campaign_detail', campaign_id=c.id) }}" class="aura-campaign-card" data-cid="{{ c.id }}">
+          <div class="aura-card-top">
+            <div class="aura-card-meta">
+              {% if is_demo_campaign %}
+              <span class="aura-demo-pill">Demo</span>
+              {% endif %}
+              <span class="aura-mode">{{ c.mode|replace('_', ' ')|title if c.mode else 'Evaluation' }}</span>
+            </div>
+            <span class="aura-status-pill {{ 'aura-status-closed' if c.is_closed else 'aura-status-open' }}" data-status>
+              {{ 'Closed' if c.is_closed else 'Open' }}
+            </span>
+          </div>
+
+          <h2 class="aura-card-title aura-serif">{{ display_name }}</h2>
+          <div class="aura-languages">
+            {{ c.source_language }} → {{ c.target_language }}{% if c.script %} · {{ c.script }}{% endif %}
+          </div>
+
+          <div class="aura-divider"></div>
+
+          <div class="aura-card-stats">
+            <div>
+              <div class="aura-card-stat-number aura-serif">{{ c.num_segments }}</div>
+              <div class="aura-card-stat-label">Segments</div>
+            </div>
+            <div>
+              <div class="aura-card-stat-number aura-serif" data-stat="annotators">{{ s.annotator_count }}</div>
+              <div class="aura-card-stat-label">Annotators</div>
+            </div>
+            <div>
+              <div class="aura-card-stat-number aura-serif" data-stat="ratings">{{ s.total_ratings }}</div>
+              <div class="aura-card-stat-label">Ratings</div>
+            </div>
+          </div>
+
+          <div class="aura-card-footer">
+            <span class="aura-created">Created {{ c.created_at.strftime('%Y-%m-%d') }}</span>
+            <span class="aura-open">View →</span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
     {% else %}
-    <form method="post" action="{{ url_for('admin_campaign.admin_seed_demo') }}" style="display:inline;"
-          onsubmit="return confirm('Load the demo campaigns (9 Northeast India languages) plus demo annotators and synthetic ratings?');">
-      <button type="submit" class="btn btn-ghost">Load demo data</button>
-    </form>
+    <div class="aura-empty">
+      <h2 class="aura-empty-title aura-serif">No campaigns yet.</h2>
+      <p>Create your first evaluation campaign or load a small demo set to explore the workflow.</p>
+      <div class="aura-empty-actions">
+        <a href="{{ url_for('admin_campaign.admin_campaign_new') }}" class="aura-button aura-button-primary">Create your first campaign</a>
+        <form method="post" action="{{ url_for('admin_campaign.admin_seed_demo') }}">
+          <button type="submit" class="aura-button">Load demo campaigns</button>
+        </form>
+      </div>
+    </div>
     {% endif %}
-    <a href="{{ url_for('admin_campaign.admin_campaign_new') }}" class="btn btn-primary">+ New campaign</a>
-  </div>
+  </main>
 </div>
+{% endblock %}
 
-{% if campaigns %}
-<div class="campaign-grid">
-  {% for c in campaigns %}
-    {% set s = stats[c.id] %}
-    <a href="{{ url_for('admin_campaign.admin_campaign_detail', campaign_id=c.id) }}" class="campaign-card" data-cid="{{ c.id }}">
-      <div class="campaign-card-head">
-        <h3>{{ c.name }}</h3>
-        <span class="status-pill {{ 'status-closed' if c.is_closed else 'status-open' }}" data-status>{{ 'Closed' if c.is_closed else 'Open' }}</span>
-      </div>
-      <p class="campaign-langs">{{ c.source_language }} → {{ c.target_language }}{% if c.script %} · {{ c.script }}{% endif %}</p>
-      <div class="campaign-stats">
-        <div><span class="stat-num">{{ c.num_segments }}</span><span class="stat-label">segments</span></div>
-        <div><span class="stat-num" data-stat="annotators">{{ s.annotator_count }}</span><span class="stat-label">annotators</span></div>
-        <div><span class="stat-num" data-stat="ratings">{{ s.total_ratings }}</span><span class="stat-label">ratings</span></div>
-      </div>
-      <p class="hint">Created {{ c.created_at.strftime('%Y-%m-%d') }}</p>
-    </a>
-  {% endfor %}
-</div>
-{% else %}
-<div class="card empty-state">
-  <p>No campaigns yet.</p>
-  <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-    <a href="{{ url_for('admin_campaign.admin_campaign_new') }}" class="btn btn-primary">Create your first campaign</a>
-    <form method="post" action="{{ url_for('admin_campaign.admin_seed_demo') }}" style="display:inline;">
-      <button type="submit" class="btn btn-ghost">Load demo campaigns (Northeast India languages)</button>
-    </form>
-  </div>
-  <p class="hint" style="margin-top:12px;">The demo loads small pilot campaigns (Assamese, Manipuri, Mizo, Bodo) across all evaluation modes so you can try the full workflow. The sample translations are illustrative; replace them with your own system outputs for a real run.</p>
-</div>
-{% endif %}
-
+{% block scripts %}
 <script>
 // Live dashboard: refresh per-campaign counts/status without a manual reload.
 (function () {
@@ -63,7 +554,7 @@
       var d = await r.json();
       if (!d || !d.ok) return;
       (d.campaigns || []).forEach(function (c) {
-        var card = document.querySelector('.campaign-card[data-cid="' + c.id + '"]');
+        var card = document.querySelector('.aura-campaign-card[data-cid="' + c.id + '"]');
         if (!card) return;
         var a = card.querySelector('[data-stat="annotators"]');
         var rt = card.querySelector('[data-stat="ratings"]');
@@ -72,7 +563,7 @@
         var pill = card.querySelector('[data-status]');
         if (pill) {
           pill.textContent = c.is_closed ? 'Closed' : 'Open';
-          pill.className = 'status-pill ' + (c.is_closed ? 'status-closed' : 'status-open');
+          pill.className = 'aura-status-pill ' + (c.is_closed ? 'aura-status-closed' : 'aura-status-open');
         }
       });
     } catch (e) { /* retry next tick */ }
@@ -81,5 +572,4 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
 })();
 </script>
-
 {% endblock %}

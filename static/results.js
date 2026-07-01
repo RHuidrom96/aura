@@ -104,14 +104,27 @@
   }
 
   /* ---------------- interactive charts (Chart.js) ---------------- */
-  const PALETTE = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00", "#F0E442"];
+  const PALETTE = ["#34433A", "#C99A3F", "#A24B3B", "#5B8C6E", "#3E4C5E", "#5A4632", "#8e9e94"];
+
+  function getAccent() {
+    return getComputedStyle(document.documentElement).getPropertyValue('--aura-accent').trim() || "#34433A";
+  }
+  function getGridColor() {
+    return getComputedStyle(document.documentElement).getPropertyValue('--aura-border-light').trim() || "#ecebe6";
+  }
+  function getTooltipBg() {
+    return getComputedStyle(document.documentElement).getPropertyValue('--aura-surface').trim() || "#2c2c2a";
+  }
+  function getTooltipText() {
+    return getComputedStyle(document.documentElement).getPropertyValue('--aura-text').trim() || "#ffffff";
+  }
 
   function chartConfig(key, R) {
-    const grid = { color: "#ecebe6" };
+    const grid = { color: getGridColor() };
     const common = {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false },
-                 tooltip: { backgroundColor: "#2c2c2a", padding: 10, cornerRadius: 6 } },
+                 tooltip: { backgroundColor: getTooltipBg(), titleColor: getTooltipText(), bodyColor: getTooltipText(), padding: 10, cornerRadius: 6 } },
       scales: { y: { beginAtZero: true, grid: grid, border: { display: false } },
                 x: { grid: { display: false }, border: { display: false },
                      ticks: { autoSkip: false, maxRotation: 30, minRotation: 0 } } },
@@ -123,7 +136,7 @@
       return { type: "bar",
         data: { labels: cs.map(c => c.name),
                 datasets: [{ label: "Mean", data: cs.map(c => c.mean),
-                             backgroundColor: "#0072B2", borderRadius: 4,
+                             backgroundColor: getAccent(), borderRadius: 4,
                              _std: cs.map(c => c.std) }] },
         options: Object.assign(clone(common), {
           plugins: { legend: { display: false },
@@ -163,7 +176,7 @@
       return { type: "bar",
         data: { labels: pd.map(p => p.label),
                 datasets: [{ label: "Count", data: pd.map(p => p.count),
-                             backgroundColor: "#0072B2", borderRadius: 4 }] },
+                             backgroundColor: getAccent(), borderRadius: 4 }] },
         options: clone(common) };
     }
 
@@ -172,7 +185,7 @@
       return { type: "bar",
         data: { labels: ss.map(r => r.system),
                 datasets: [{ label: "Win rate (%)", data: ss.map(r => (r.win_rate || 0) * 100),
-                             backgroundColor: "#009E73", borderRadius: 4 }] },
+                             backgroundColor: getAccent(), borderRadius: 4 }] },
         options: Object.assign(clone(common), { scales: { y: { beginAtZero: true, max: 100 }, x: { grid: { display: false }, ticks: { autoSkip: false, maxRotation: 30, minRotation: 0 } } } }) };
     }
 
@@ -203,7 +216,7 @@
         options: clone(common) };
     }
 
-    var DIFFC = { easy: "#3a9b7a", medium: "#e0962e", hard: "#c0563f" };
+    var DIFFC = { easy: "#5B8C6E", medium: "#C99A3F", hard: "#A24B3B" };
     if (key === "difficulty_metric" && R.difficulty) {
       const rows = (R.difficulty.rows || []).filter(r => r.metric != null);
       return { type: "bar",

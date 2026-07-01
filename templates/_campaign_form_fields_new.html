@@ -1,0 +1,417 @@
+{# Shared campaign-configuration fields using the Aura New Campaign design. Expects `form_data`, `scripts`,
+   `scale_types`, `scale_designs`, `eval_modes`, and `mode` ('new' or 'edit') in context. #}
+
+<!-- Basics -->
+<section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Basics</h2></div>
+
+  <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Campaign name <span style="color:#B0654F;">*</span></label>
+  <input type="text" id="name" name="name" required class="ff-in" value="{{ form_data.get('name', '') }}" placeholder="e.g. Manipuri → English evaluation, Round 1">
+  <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">A short label visible to admins. Annotators don’t see it.</div>
+
+  <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin:22px 0 7px;">Task type <span style="color:#B0654F;">*</span></label>
+  <select id="task_type" name="task_type" class="ff-in">
+    {% for tid, t in task_types.items() %}
+    <option value="{{ tid }}" {{ 'selected' if form_data.get('task_type', 'translation') == tid else '' }}>{{ t.name }}</option>
+    {% endfor %}
+  </select>
+  <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px; line-height:1.5;">Sets the input/output labels and suggested criteria. Choose <strong style="font-weight:600; color:var(--aura-text-muted);">Machine translation</strong> for the original MT behaviour.</div>
+</section>
+
+<!-- Labels & languages -->
+<section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Labels &amp; languages</h2></div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <div>
+      <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Input label</label>
+      <input type="text" id="input_label" name="input_label" class="ff-in" value="{{ form_data.get('input_label', '') }}" placeholder="Source">
+      <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">What to call the input shown to annotators.</div>
+    </div>
+    <div>
+      <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Output label</label>
+      <input type="text" id="output_label" name="output_label" class="ff-in" value="{{ form_data.get('output_label', '') }}" placeholder="Translation">
+      <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">What to call the output being judged.</div>
+    </div>
+    <div>
+      <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Source language <span style="color:#B0654F;" class="lang-req">*</span></label>
+      <input type="text" id="source_language" name="source_language" class="ff-in" value="{{ form_data.get('source_language', '') }}" list="lang-suggest" placeholder="e.g. Manipuri">
+    </div>
+    <div>
+      <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Target language <span style="color:#B0654F;" class="lang-req">*</span></label>
+      <input type="text" id="target_language" name="target_language" class="ff-in" value="{{ form_data.get('target_language', '') }}" list="lang-suggest" placeholder="e.g. English">
+    </div>
+  </div>
+  <datalist id="lang-suggest">
+    <option value="Assamese"></option><option value="Manipuri (Meitei)"></option>
+    <option value="Bodo"></option><option value="Mizo"></option>
+    <option value="Khasi"></option><option value="Nyishi"></option>
+    <option value="Kokborok"></option><option value="Nagamese"></option>
+    <option value="Garo"></option><option value="Ao"></option>
+    <option value="Angami"></option><option value="Sumi"></option>
+    <option value="Lotha"></option><option value="Tangkhul"></option>
+    <option value="Hmar"></option><option value="Paite"></option>
+    <option value="Thadou (Kuki)"></option><option value="Karbi"></option>
+    <option value="Dimasa"></option><option value="Rabha"></option>
+    <option value="Adi"></option><option value="Apatani"></option>
+    <option value="Rongmei"></option><option value="Tiwa"></option>
+    <option value="Deori"></option><option value="Bishnupriya Manipuri"></option>
+    <option value="Khasi (Pnar)"></option><option value="Chakma"></option>
+    <option value="English"></option><option value="Hindi"></option>
+    <option value="Bengali"></option><option value="Nepali"></option>
+    <option value="Tamil"></option><option value="Telugu"></option>
+    <option value="Kannada"></option><option value="Malayalam"></option>
+    <option value="Marathi"></option><option value="Gujarati"></option>
+    <option value="Punjabi"></option><option value="Odia"></option>
+    <option value="Urdu"></option><option value="Sanskrit"></option>
+    <option value="Santali"></option><option value="Maithili"></option>
+  </datalist>
+
+  <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin:22px 0 7px;">Script <span style="color:var(--aura-text-faint); font-weight:400;">(optional)</span></label>
+  <select id="script" name="script" class="ff-in">
+    <option value="">(not applicable)</option>
+    {% for s in scripts %}
+    <option value="{{ s.id }}" {% if form_data.get('script') == s.id %}selected{% endif %}>{{ s.name }}</option>
+    {% endfor %}
+  </select>
+  <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px; line-height:1.5;">Set this when the language has multiple scripts.</div>
+
+  <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin:22px 0 7px;">Difficulty grouping</label>
+  <select id="difficulty_method" name="difficulty_method" class="ff-in">
+    <option value="auto" {{ 'selected' if form_data.get('difficulty_method','auto')=='auto' else '' }}>Automatic: composite heuristic (length, long words, punctuation/numbers, rare characters)</option>
+    <option value="length" {{ 'selected' if form_data.get('difficulty_method')=='length' else '' }}>By input length (character thresholds)</option>
+    <option value="manual" {{ 'selected' if form_data.get('difficulty_method')=='manual' else '' }}>Manual: use only the per-segment "difficulty" labels you provide</option>
+    <option value="none" {{ 'selected' if form_data.get('difficulty_method')=='none' else '' }}>None: don't group by difficulty</option>
+  </select>
+  <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px; line-height:1.5;">How samples are grouped into easy / medium / hard tiers. A per-segment <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">difficulty</span> field in your data overrides this.</div>
+
+  <div id="difficulty-length-row" style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:14px;">
+    <div>
+      <label for="difficulty_easy_max" style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Easy: up to N characters</label>
+      <input type="number" min="0" id="difficulty_easy_max" name="difficulty_easy_max" class="ff-in" value="{{ form_data.get('difficulty_easy_max','') }}" placeholder="auto (terciles)">
+    </div>
+    <div>
+      <label for="difficulty_hard_min" style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Hard: from N characters</label>
+      <input type="number" min="0" id="difficulty_hard_min" name="difficulty_hard_min" class="ff-in" value="{{ form_data.get('difficulty_hard_min','') }}" placeholder="auto (terciles)">
+    </div>
+  </div>
+
+  <div id="served-difficulty-row" style="margin-top:22px;">
+    <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+      <input type="checkbox" id="expertise_matching" name="expertise_matching" value="1" {{ 'checked' if form_data.get('expertise_matching') else '' }} style="accent-color:var(--aura-accent); width:16px; height:16px; margin-top:1px; cursor:pointer;">
+      <span><span style="font-size:13px; font-weight:600; color:var(--aura-text);">Match annotators to difficulty by their self-reported expertise</span><br><span style="font-size:12px; color:var(--aura-text-faint); line-height:1.5;">Beginner → Easy, Intermediate → Medium, Advanced → Hard. Leave off to assign difficulty yourself below.</span></span>
+    </label>
+
+    <div id="served-difficulty-checks" style="margin-top:22px;">
+      <div style="font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:10px;">Serve which difficulty levels to annotators</div>
+      <div style="display:flex; gap:24px;">
+        {% set served = (form_data.get('served_difficulties','') or '').split(',') %}
+        <label style="display:flex; align-items:center; gap:8px; font-size:14px; color:var(--aura-text); cursor:pointer;">
+          <input type="checkbox" name="served_diff" value="easy" {{ 'checked' if (not form_data.get('served_difficulties')) or 'easy' in served else '' }} style="accent-color:var(--aura-accent); width:16px; height:16px; cursor:pointer;"> Easy
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:14px; color:var(--aura-text); cursor:pointer;">
+          <input type="checkbox" name="served_diff" value="medium" {{ 'checked' if (not form_data.get('served_difficulties')) or 'medium' in served else '' }} style="accent-color:var(--aura-accent); width:16px; height:16px; cursor:pointer;"> Medium
+        </label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:14px; color:var(--aura-text); cursor:pointer;">
+          <input type="checkbox" name="served_diff" value="hard" {{ 'checked' if (not form_data.get('served_difficulties')) or 'hard' in served else '' }} style="accent-color:var(--aura-accent); width:16px; height:16px; cursor:pointer;"> Hard
+        </label>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Rating page layout -->
+<section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Rating page layout</h2></div>
+  <p style="font-size:12px; color:var(--aura-text-faint); margin:0 0 20px; line-height:1.5;">Where the rating scale and span-marking area appear on the annotator’s screen.</p>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <div>
+      <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Rating / preference panel</label>
+      <select id="rating_position" name="rating_position" class="ff-in">
+        <option value="side" {{ 'selected' if form_data.get('rating_position','side')=='side' else '' }}>Beside the text (right column)</option>
+        <option value="below" {{ 'selected' if form_data.get('rating_position')=='below' else '' }}>Below the text</option>
+      </select>
+    </div>
+    <div>
+      <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Span annotation section</label>
+      <select id="span_position" name="span_position" class="ff-in">
+        <option value="below" {{ 'selected' if form_data.get('span_position','below')=='below' else '' }}>Below the text</option>
+        <option value="beside" {{ 'selected' if form_data.get('span_position')=='beside' else '' }}>Beside the text (right column)</option>
+      </select>
+    </div>
+  </div>
+</section>
+
+<!-- Evaluation mode -->
+<section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Evaluation mode <span style="color:#B0654F; font-size:18px;">*</span></h2></div>
+  <p style="font-size:12px; color:var(--aura-text-faint); margin:0 0 18px;">What annotators do for each segment.</p>
+  <div style="display:flex; flex-direction:column; gap:12px;">
+    {% for m in eval_modes %}
+      <label class="eval-card" style="display:flex; align-items:flex-start; gap:14px; padding:18px 20px; border:1px solid var(--aura-border); background:var(--aura-surface); border-radius:8px; cursor:pointer; transition:border-color .15s, background .15s;">
+        <input type="radio" name="eval_mode" value="{{ m.id }}" {% if form_data.get('eval_mode', 'likert') == m.id %}checked{% endif %} onchange="onEvalModeChange()" style="display:none;">
+        <div class="eval-radio-dot" style="width:18px; height:18px; border-radius:999px; border:2px solid var(--aura-border); flex-shrink:0; margin-top:1px; display:flex; align-items:center; justify-content:center;">
+          <div class="eval-dot" style="width:8px; height:8px; border-radius:999px; display:none;"></div>
+        </div>
+        <div>
+          <span style="font-size:14px; font-weight:600; color:var(--aura-text);">{{ m.name }}</span> 
+          <span style="font-size:13px; color:var(--aura-text-muted); line-height:1.5;">{{ m.desc }}</span>
+        </div>
+      </label>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Evaluation criteria -->
+<div class="field" data-mode-block="likert span_only" style="border:none; padding:0; margin:0;">
+  <section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 id="criteria-label" style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Evaluation criteria <span style="color:#B0654F; font-size:18px;">*</span></h2></div>
+    <p id="criteria-hint" style="font-size:12px; color:var(--aura-text-faint); margin:0 0 20px;">Define what annotators will rate. Each has a name and a definition shown to annotators.</p>
+
+    <div id="criteria-rows" style="display:flex; flex-direction:column; gap:16px;">
+      {% for c in form_data.get('criteria', []) %}
+        <div class="criterion-row" style="border:1px solid var(--aura-border); border-radius:8px; padding:18px; background:var(--aura-bg);">
+          <div class="criterion-row-fields" style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+            <input type="text" name="crit_name" placeholder="Criterion name (e.g. Adequacy)" value="{{ c.get('name', '') }}" class="ff-in crit-name-input" style="font-weight:600;">
+            <button type="button" class="btn-remove-row" title="Remove criterion" onclick="removeCriterionRow(this)" style="flex-shrink:0; width:36px; height:36px; border-radius:6px; border:1px solid #E2D6D1; background:#FFFFFF; color:#B07A6E; font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;">×</button>
+          </div>
+          <textarea name="crit_desc" placeholder="Describe what this criterion measures and how annotators should judge it…" class="ff-in crit-desc-input" style="min-height:128px;">{{ c.get('desc', '') }}</textarea>
+        </div>
+      {% endfor %}
+    </div>
+
+    <button type="button" onclick="addCriterionRow()" style="margin-top:18px; display:inline-flex; align-items:center; gap:8px; font-family:'Work Sans',sans-serif; font-weight:600; font-size:13px; color:var(--aura-accent); background:var(--aura-accent-pill); border:1px dashed var(--aura-accent); border-radius:6px; padding:11px 18px; cursor:pointer;">+ Add criterion</button>
+  </section>
+</div>
+
+<!-- Preferences (pairwise) -->
+<div class="field" data-mode-block="pairwise" style="border:none; padding:0; margin:0;">
+  <section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Preference options <span style="color:#B0654F; font-size:18px;">*</span></h2></div>
+    <p style="font-size:12px; color:var(--aura-text-faint); margin:0 0 20px;">The choices an annotator picks from when comparing translation A vs B. Order them as you want them shown. At least two.</p>
+
+    <div id="preference-rows" style="display:flex; flex-direction:column; gap:12px;">
+      {% for p in form_data.get('preferences', []) %}
+        <div class="criterion-row" style="display:flex; align-items:center; gap:12px;">
+          <input type="text" name="pref_label" placeholder="e.g. A is better" value="{{ p.get('label', '') }}" class="ff-in pref-label-input" style="font-weight:600;">
+          <button type="button" class="btn-remove-row" title="Remove" onclick="removePreferenceRow(this)" style="flex-shrink:0; width:36px; height:36px; border-radius:6px; border:1px solid #E2D6D1; background:#FFFFFF; color:#B07A6E; font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;">×</button>
+        </div>
+      {% endfor %}
+    </div>
+
+    <button type="button" onclick="addPreferenceRow()" style="margin-top:18px; display:inline-flex; align-items:center; gap:8px; font-family:'Work Sans',sans-serif; font-weight:600; font-size:13px; color:var(--aura-accent); background:var(--aura-accent-pill); border:1px dashed var(--aura-accent); border-radius:6px; padding:11px 18px; cursor:pointer;">+ Add option</button>
+    <p style="font-size:12px; color:var(--aura-text-faint); margin-top:12px; line-height:1.5;">For pairwise mode, each uploaded segment must provide two candidates: use <code style="font-family:'JetBrains Mono',monospace; font-size:11px;">target_a</code> and <code style="font-family:'JetBrains Mono',monospace; font-size:11px;">target_b</code> or a <code style="font-family:'JetBrains Mono',monospace; font-size:11px;">candidates</code> array of two.</p>
+  </section>
+</div>
+
+<!-- Rating scale (likert only) -->
+<div class="field" data-mode-block="likert" style="border:none; padding:0; margin:0;">
+  <section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Rating scale type <span style="color:#B0654F; font-size:18px;">*</span></h2></div>
+    <p style="font-size:12px; color:var(--aura-text-faint); margin:0 0 18px;">How annotators record their judgement for each criterion.</p>
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      {% for t in scale_types %}
+        <label class="eval-card" style="display:flex; align-items:flex-start; gap:14px; padding:18px 20px; border:1px solid var(--aura-border); background:var(--aura-surface); border-radius:8px; cursor:pointer; transition:border-color .15s, background .15s;">
+          <input type="radio" name="scale_type" value="{{ t.id }}" {% if form_data.scale.type == t.id %}checked{% endif %} onchange="onScaleTypeChange()" style="display:none;">
+          <div class="eval-radio-dot" style="width:18px; height:18px; border-radius:999px; border:2px solid var(--aura-border); flex-shrink:0; margin-top:1px; display:flex; align-items:center; justify-content:center;">
+            <div class="eval-dot" style="width:8px; height:8px; border-radius:999px; display:none;"></div>
+          </div>
+          <div>
+            <span style="font-size:14px; font-weight:600; color:var(--aura-text);">{{ t.name }}</span> 
+            <span style="font-size:13px; color:var(--aura-text-muted); line-height:1.5;">{{ t.desc }}</span>
+          </div>
+        </label>
+      {% endfor %}
+    </div>
+
+    <!-- Likert panel -->
+    <div id="likert-config" style="margin-top:20px; background:var(--aura-bg); border:1px solid var(--aura-border); border-radius:8px; padding:24px;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+        <div>
+          <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Number of points</label>
+          <input type="number" id="scale_points" name="scale_points" min="2" max="11" class="ff-in" value="{{ form_data.scale.points or 5 }}" onchange="rebuildLikertLabels()" oninput="rebuildLikertLabels()">
+          <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">Between 2 and 11.</div>
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Appearance</label>
+          <select id="scale_design_likert" name="scale_design" class="ff-in">
+            {% for d in scale_designs.likert %}
+              <option value="{{ d.id }}" {% if form_data.scale.design == d.id %}selected{% endif %}>{{ d.name }}</option>
+            {% endfor %}
+          </select>
+          <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;" id="likert-design-desc"></div>
+        </div>
+      </div>
+      <div style="margin-top:22px;">
+        <div style="font-size:13px; font-weight:600; color:var(--aura-text);">Point labels <span style="color:var(--aura-text-faint); font-weight:400;">(optional)</span></div>
+        <div style="font-size:12px; color:var(--aura-text-faint); margin:5px 0 14px;">Short text per point, shown to annotators and in the legend. Leave blank for numbers only.</div>
+        <div id="likert-labels" class="likert-labels-grid"></div>
+      </div>
+    </div>
+
+    <!-- Continuous panel -->
+    <div id="continuous-config" style="margin-top:20px; background:var(--aura-bg); border:1px solid var(--aura-border); border-radius:8px; padding:24px;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+        <div>
+          <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Minimum value</label>
+          <input type="number" id="scale_min" name="scale_min" class="ff-in" value="{{ form_data.scale.min if form_data.scale.min is not none else 0 }}">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Maximum value</label>
+          <input type="number" id="scale_max" name="scale_max" class="ff-in" value="{{ form_data.scale.max if form_data.scale.max is not none else 100 }}">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Label at minimum <span style="color:var(--aura-text-faint); font-weight:400;">(optional)</span></label>
+          <input type="text" id="scale_min_label" name="scale_min_label" class="ff-in" value="{{ form_data.scale.labels.get('min', '') }}" placeholder="e.g. Worst">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Label at maximum <span style="color:var(--aura-text-faint); font-weight:400;">(optional)</span></label>
+          <input type="text" id="scale_max_label" name="scale_max_label" class="ff-in" value="{{ form_data.scale.labels.get('max', '') }}" placeholder="e.g. Perfect">
+        </div>
+      </div>
+      <div style="margin-top:22px;">
+        <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Appearance</label>
+        <select id="scale_design_continuous" name="scale_design" class="ff-in">
+          {% for d in scale_designs.continuous %}
+            <option value="{{ d.id }}" {% if form_data.scale.design == d.id %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+        <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px; line-height:1.5;">A slider lets annotators pick any value in the range (Direct-Assessment style).</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Segments & spans -->
+<section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Segments &amp; spans</h2></div>
+
+  <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Segments per page <span style="color:#B0654F;">*</span></label>
+  <input type="number" id="segments_per_page" name="segments_per_page" min="1" max="50" class="ff-in" value="{{ form_data.get('segments_per_page', 3) }}" style="max-width:200px;">
+  <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">How many segments an annotator sees on each page before “Save &amp; next page”. Between 1 and 50.</div>
+
+  <!-- Span annotation -->
+  <div class="field" data-mode-block="likert" id="span-enable-field" style="margin-top:24px; border:none; padding:0; margin-bottom:0;">
+    <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+      <input type="checkbox" name="enable_spans" id="enable_spans" {% if form_data.get('enable_spans', true) %}checked{% endif %} onchange="toggleSpanScope()" style="accent-color:var(--aura-accent); width:16px; height:16px; margin-top:1px; cursor:pointer;">
+      <span><span style="font-size:13px; font-weight:600; color:var(--aura-text);">Enable error span annotation</span> <span style="font-size:12px; color:var(--aura-text-faint);">— annotators select words in the text to mark error locations.</span></span>
+    </label>
+  </div>
+
+  <div id="span-scope-block" data-mode-block="likert span_only" style="margin-top:18px;">
+    <div style="font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:10px;">Where can spans be marked? <span style="color:#B0654F;">*</span><span id="span-scope-required-hint" style="color:#c44;display:none"> (required)</span></div>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <label class="eval-card" style="display:flex; align-items:center; gap:12px; padding:13px 16px; border:1px solid var(--aura-border); background:var(--aura-surface); border-radius:8px; cursor:pointer;">
+        <input type="radio" name="span_scope" value="target" id="span_target" {% if form_data.get('span_scope', 'target') == 'target' %}checked{% endif %} style="display:none;">
+        <div class="eval-radio-dot" style="width:16px; height:16px; border-radius:999px; border:2px solid var(--aura-border); flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+          <div class="eval-dot" style="width:7px; height:7px; border-radius:999px; display:none;"></div>
+        </div>
+        <div><span style="font-size:14px; font-weight:600; color:var(--aura-text);">Target text only</span> <span style="font-size:13px; color:var(--aura-text-muted);">— mark errors in the translation only</span></div>
+      </label>
+      <label class="eval-card" style="display:flex; align-items:center; gap:12px; padding:13px 16px; border:1px solid var(--aura-border); background:var(--aura-surface); border-radius:8px; cursor:pointer;">
+        <input type="radio" name="span_scope" value="both" {% if form_data.get('span_scope') == 'both' %}checked{% endif %} style="display:none;">
+        <div class="eval-radio-dot" style="width:16px; height:16px; border-radius:999px; border:2px solid var(--aura-border); flex-shrink:0; display:flex; align-items:center; justify-content:center;">
+          <div class="eval-dot" style="width:7px; height:7px; border-radius:999px; display:none;"></div>
+        </div>
+        <div><span style="font-size:14px; font-weight:600; color:var(--aura-text);">Both source and target</span> <span style="font-size:13px; color:var(--aura-text-muted);">— mark spans in either text</span></div>
+      </label>
+    </div>
+
+    <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin:20px 0 7px;">Span annotation instructions <span style="color:var(--aura-text-faint); font-weight:400;">(optional)</span></label>
+    <textarea id="span_instructions" name="span_instructions" class="ff-in" placeholder="Shown in the span annotation section on the rating page. Explain how to mark spans, what each error type means, examples, etc." style="min-height:96px;">{{ form_data.get('span_instructions', '') }}</textarea>
+    <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">Plain text, line breaks preserved. If left blank, a default explanation is shown.</div>
+  </div>
+
+  <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin:24px 0 7px;">Annotation instructions <span style="color:#B0654F;">*</span></label>
+  <textarea id="instructions" name="instructions" class="ff-in" required placeholder="Instructions shown to annotators on every rating page." style="min-height:128px;">{{ form_data.get('instructions', '') }}</textarea>
+  <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">Plain text. Line breaks are preserved. Shown in a collapsible panel on the rating screen.</div>
+</section>
+
+<!-- Segments file -->
+{% if mode == 'new' %}
+<section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Segments file <span style="color:#B0654F; font-size:18px;">*</span></h2></div>
+  <div style="display:flex; align-items:center; gap:20px;">
+    <label style="font-family:'Work Sans',sans-serif; font-weight:600; font-size:13px; padding:11px 18px; border-radius:6px; border:1px solid var(--aura-input-border); background:var(--aura-bg); color:var(--aura-text-muted); cursor:pointer; display:inline-block;">
+      Browse…
+      <input type="file" id="segments_file" name="segments_file" accept=".json,application/json" style="display:none;" onchange="document.getElementById('file-selected-name').textContent = this.files[0] ? this.files[0].name : 'No file selected.'">
+    </label>
+    <span id="file-selected-name" style="font-size:13px; color:var(--aura-text-faint);">No file selected.</span>
+  </div>
+  <div style="font-size:12px; color:var(--aura-text-faint); margin-top:14px; line-height:1.6;">A JSON array of objects. Likert / span only: each needs <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">id · source · target</span>. Pairwise: <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">id · source · target_a · target_b</span>. Optional: <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">reference · system · domain</span>.</div>
+  <button type="button" onclick="const p = document.getElementById('paste-toggle'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; return false;" style="margin-top:14px; font-family:'Work Sans',sans-serif; font-weight:600; font-size:13px; color:var(--aura-accent); background:transparent; border:none; padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:3px;">Paste JSON instead</button>
+  <div id="paste-toggle" style="margin-top:14px; display:none;">
+    <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Segments JSON</label>
+    <textarea id="segments_paste" name="segments_paste" class="ff-in" rows="8" placeholder='[{"id": "seg_001", "source": "...", "target": "..."}, ...]'>{{ form_data.get('segments_paste', '') }}</textarea>
+  </div>
+</section>
+{% endif %}
+
+<!-- AI assistant -->
+<section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
+  <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+    <input type="checkbox" name="ai_enabled" id="ai_enabled" {% if form_data.get('ai_enabled') %}checked{% endif %} onchange="onAiToggle()" style="accent-color:var(--aura-accent); width:16px; height:16px; margin-top:2px; cursor:pointer;">
+    <span><span style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:22px; color:var(--aura-text);">Enable the AI guideline assistant</span><br><span style="font-size:12px; color:var(--aura-text-faint); line-height:1.5;">Annotators can ask grounded questions about your guidelines after forming their own judgment; it never assigns scores or labels.</span></span>
+  </label>
+
+  <div id="ai-config" {% if not form_data.get('ai_enabled') %}style="display:none"{% endif %} style="margin-top:20px; background:var(--aura-bg); border:1px solid var(--aura-border); border-radius:8px; padding:24px;">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+      <div>
+        <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Model provider</label>
+        <select id="ai_provider" name="ai_provider" class="ff-in" onchange="onAiProvider()">
+          {% for p in ai_providers %}
+            <option value="{{ p.id }}" {% if form_data.get('ai_provider', 'anthropic') == p.id %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+        <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;" id="ai-provider-desc"></div>
+      </div>
+      <div>
+        <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Model</label>
+        <input type="text" id="ai_model" name="ai_model" class="ff-in" value="{{ form_data.get('ai_model', '') }}" placeholder="model name">
+        <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">Optional. Leave blank to use the provider's default.</div>
+      </div>
+    </div>
+    <div id="ai-base-url-field" style="margin-top:20px;">
+      <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Endpoint URL</label>
+      <input type="text" id="ai_base_url" name="ai_base_url" class="ff-in" value="{{ form_data.get('ai_base_url', '') }}" placeholder="http://localhost:11434/v1">
+      <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">For Ollama / OpenAI-compatible servers. Leave blank for the default.</div>
+    </div>
+    <div id="ai-key-field" style="margin-top:20px;">
+      <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">API key</label>
+      <input type="password" id="ai_api_key" name="ai_api_key" autocomplete="off" class="ff-in" placeholder="{% if form_data.get('ai_has_key') %}•••••••• (saved, leave blank to keep){% else %}paste your key{% endif %}">
+      <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">Stored encrypted; only the admin sets it. Annotators never see or send it.</div>
+    </div>
+    <div class="ai-test-row" style="margin-top:16px; display:flex; align-items:center; gap:16px;">
+      <button type="button" class="btn btn-ghost btn-small" onclick="testAiConnection()" style="font-family:'Work Sans',sans-serif; font-weight:600; font-size:13px; padding:10px 18px; border-radius:6px; border:1px solid var(--aura-input-border); background:#FFFFFF; color:var(--aura-text-muted); cursor:pointer;">Test connection</button>
+      <span id="ai-test-result" class="ai-test-result"></span>
+    </div>
+    <hr style="border:none; border-bottom:1px solid var(--aura-border-light); margin:20px 0;">
+    <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+      <input type="checkbox" id="ai_ab_enabled" name="ai_ab_enabled" value="1" {% if form_data.get('ai_ab_enabled') %}checked{% endif %} onchange="document.getElementById('ai-ab-frac').style.display=this.checked?'':'none'" style="accent-color:var(--aura-accent); width:16px; height:16px; margin-top:1px; cursor:pointer;">
+      <span><span style="font-size:13px; font-weight:600; color:var(--aura-text);">Run a randomised AI experiment (A/B)</span><br><span style="font-size:12px; color:var(--aura-text-faint); line-height:1.5;">Makes the assistant available on a random share of (annotator, segment) pairs instead of all of them. Use to estimate the causal effect of AI help on speed and agreement, not just a correlation.</span></span>
+    </label>
+    <div id="ai-ab-frac" style="{% if not form_data.get('ai_ab_enabled') %}display:none;{% endif %} max-width:260px; margin-top:14px;">
+      <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">% of pairs with AI available</label>
+      <input type="number" id="ai_ab_fraction" name="ai_ab_fraction" min="0" max="100" step="5" class="ff-in" value="{{ form_data.get('ai_ab_fraction', 50) }}">
+    </div>
+  </div>
+</section>
+
+<script>
+  window.SCALE_LABELS_PREFILL = {{ form_data.scale.labels | tojson }};
+  window.SCALE_DESIGN_PREFILL = {{ form_data.scale.design | tojson }};
+  window.SCALE_LIKERT_DESC_MAP = {
+    {% for d in scale_designs.likert %}{{ d.id | tojson }}: {{ d.desc | tojson }}{% if not loop.last %},{% endif %}{% endfor %}
+  };
+  window.AI_PROVIDERS = {
+    {% for p in ai_providers %}{{ p.id | tojson }}: {"needs_key": {{ p.needs_key|tojson }}, "needs_base_url": {{ p.needs_base_url|tojson }}, "default_model": {{ p.default_model|tojson }}, "default_base_url": {{ p.default_base_url|tojson }}, "desc": {{ p.desc|tojson }}}{% if not loop.last %},{% endif %}
+    {% endfor %}
+  };
+  window.AI_CAMPAIGN_ID = {{ (campaign.id if campaign is defined and campaign else '') | tojson }};
+  window.AI_TEST_URL = {{ url_for('admin_campaign.admin_ai_test') | tojson }};
+  window.TASK_PRESETS = {
+    {% for tid, t in task_types.items() %}{{ tid|tojson }}: {"input": {{ t.input|tojson }}, "output": {{ t.output|tojson }}, "bilingual": {{ t.bilingual|tojson }}, "criteria": [{% for n in t.criteria %}{"name": {{ n|tojson }}, "guide": {{ criterion_guides.get(n, '')|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]}{% if not loop.last %},{% endif %}
+    {% endfor %}
+  };
+  window.TASK_TYPE_INITIAL = {{ form_data.get('task_type', 'translation')|tojson }};
+</script>

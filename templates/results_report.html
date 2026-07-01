@@ -6,59 +6,68 @@
 <title>Results: {{ campaign.name }}</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-         color: #2c2c2a; max-width: 880px; margin: 0 auto; padding: 32px 20px 64px; line-height: 1.5; }
-  h1 { font-size: 26px; margin: 0 0 4px; }
-  .sub { color: #6b6b66; margin: 0 0 24px; font-size: 14px; }
-  .result-h3 { font-size: 15px; font-weight: 650; margin: 30px 0 12px; display: flex; align-items: baseline; gap: 8px; }
-  .result-h3::before { content: ""; width: 4px; height: 15px; background: #4a6fd6; border-radius: 2px; display: inline-block; }
+         color: #2A2A24; max-width: 1040px; margin: 0 auto; padding: 32px 20px 64px; line-height: 1.5; background: #F4F0E7; }
+  h1 { font-family: Georgia, serif; font-size: 38px; font-weight: 600; margin: 0 0 8px; color: #2A2A24; }
+  .sub { font-family: Georgia, serif; font-style: italic; font-size: 18px; color: #6E6A5F; margin: 0 0 24px; }
+  .result-h3 { font-family: Georgia, serif; font-size: 24px; font-weight: 600; margin: 30px 0 12px; display: flex; align-items: baseline; gap: 8px; }
+  .result-h3::before { content: ""; width: 4px; height: 16px; background: #34433A; border-radius: 2px; display: inline-block; }
   .result-summary-row { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 18px; }
-  .result-stat { background: #f6f5f1; border: 1px solid #e6e4df; border-radius: 10px;
-                 padding: 10px 16px; min-width: 110px; box-shadow: 0 1px 2px rgba(40,40,36,0.04); }
-  .result-stat-num { display: block; font-size: 22px; font-weight: 700; color: #2e4a9e; }
-  .result-stat-label { font-size: 12px; color: #6b6b66; }
+  .result-stat { background: #ffffff; border: 1px solid #E7E1D3; border-radius: 8px;
+                 padding: 18px 20px; min-width: 130px; box-shadow: none; }
+  .result-stat-num { display: block; font-family: Georgia, serif; font-size: 32px; font-weight: 600; color: #2A2A24; }
+  .result-stat-label { font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: #9A9486; margin-top: 4px; }
   .result-warn { background: #fff7ed; border: 1px solid #f0c896; border-radius: 8px;
-                 padding: 8px 14px; margin: 12px 0; font-size: 13px; color: #8a5a17; }
+                 padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #8a5a17; }
   .result-warn p { margin: 4px 0; }
   .result-figures { display: flex; flex-wrap: wrap; gap: 18px; margin: 6px 0 18px; }
-  .result-figure { margin: 0; background: #fff; border: 1px solid #e6e4df; border-radius: 12px;
-                   padding: 12px 12px 8px; box-shadow: 0 1px 3px rgba(40,40,36,0.05); max-width: 100%; }
+  .result-figure { margin: 0; background: #ffffff; border: 1px solid #E7E1D3; border-radius: 8px;
+                   padding: 16px; box-shadow: none; max-width: 100%; display: flex; flex-direction: column; }
   .result-figure .result-chart { display: block; max-width: 100%; border: none; border-radius: 6px; }
   .result-figure figcaption { display: flex; align-items: center; justify-content: space-between;
-                   gap: 12px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e6e4df;
-                   font-size: 12px; color: #6b6b66; }
-  .fig-dl { font-size: 12px; color: #2e4a9e; text-decoration: none; white-space: nowrap;
-            padding: 3px 10px; border: 1px solid #c9d6f5; border-radius: 999px; background: #f3f7ff; }
-  table.result-table { border-collapse: separate; border-spacing: 0; width: 100%; margin: 0 0 22px;
-                       font-size: 13px; border: 1px solid #e6e4df; border-radius: 10px; overflow: hidden; }
-  table.result-table th, table.result-table td { padding: 9px 14px; text-align: left;
-                       border-bottom: 1px solid #ececea; }
-  table.result-table thead th { background: #eef2fb; color: #2e4a9e; font-weight: 600; font-size: 11px;
-                       text-transform: uppercase; letter-spacing: 0.03em; }
-  table.result-table tbody tr:nth-child(even) { background: #faf9f6; }
+                   gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #E4DECF;
+                   font-size: 12px; color: #6E6A5F; }
+  .fig-dl { font-size: 11px; color: #6E6A5F; text-decoration: none; white-space: nowrap;
+            padding: 3px 10px; border: 1px solid #DDD7C8; border-radius: 999px; background: #FAF7F0; }
+  table.result-table { border-collapse: separate; border-spacing: 0; width: 100%; margin: 16px 0 22px;
+                       font-size: 13px; border: 1px solid #E7E1D3; border-radius: 8px; overflow: hidden; background: #ffffff; }
+  table.result-table th, table.result-table td { padding: 12px 18px; text-align: left;
+                       border-bottom: 1px solid #E4DECF; }
+  table.result-table thead th { background: #FAF7F0; color: #6E6A5F; font-weight: 600; font-size: 10px;
+                       text-transform: uppercase; letter-spacing: 1.2px; }
+  table.result-table tbody tr:hover td { background: rgba(52, 67, 58, 0.05); }
   table.result-table tbody tr:last-child td { border-bottom: none; }
   table.result-table .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .table-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 7px; }
-  .table-tool-tag { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.04em; }
-  .table-tool-btn { font-size: 12px; font-family: inherit; cursor: pointer; color: #555;
-                    background: #fff; border: 1px solid #e6e4df; border-radius: 6px; padding: 3px 10px; }
-  .table-tool-btn:hover { border-color: #4a6fd6; color: #2e4a9e; background: #f3f7ff; }
+  .table-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 20px 0 8px; }
+  .table-tool-tag { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: #9A9486; }
+  .table-tool-btn { font-size: 11px; font-family: inherit; cursor: pointer; color: #6E6A5F;
+                    background: #ffffff; border: 1px solid #DDD7C8; border-radius: 6px; padding: 4px 10px; }
+  .table-tool-btn:hover { border-color: #34433A; color: #2A2A24; background: rgba(52,67,58,0.05); }
   .table-tool-btn.copied { background: #e8f5ee; border-color: #93cbac; color: #2f7d4f; }
-  .result-note { font-size: 13px; color: #555; }
-  .result-h4 { font-size: 14px; font-weight: 600; margin: 16px 0 8px; color: #2b2a28; }
-  .perf-flag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px;
+  .result-note { font-size: 13px; color: #6E6A5F; margin: 0 0 14px; line-height: 1.55; }
+  .result-h4 { font-size: 14px; font-weight: 600; margin: 16px 0 8px; color: #2A2A24; }
+  .perf-flag { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px;
     border-radius: 999px; background: #fde7e7; color: #a83a3f; margin-right: 4px; }
   .perf-flag-very-fast { background: #fdf3e0; color: #9a6a16; }
-  .result-note-inline { font-weight: 400; color: #6b6b66; font-size: 13px; }
-  .result-glossary { margin-top: 28px; padding-top: 14px; border-top: 1px solid #e6e4df;
-                     font-size: 12px; color: #6b6b66; }
-  .report-foot { margin-top: 18px; font-size: 11px; color: #999; }
+  .result-note-inline { font-weight: 400; color: #9A9486; font-size: 13px; }
+  .result-glossary { margin-top: 28px; padding-top: 14px; border-top: 1px solid #E4DECF;
+                     font-size: 12px; color: #9A9486; line-height: 1.7; }
+  .report-foot { margin-top: 18px; font-size: 11px; color: #9A9486; }
+  .result-kpis { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 18px; }
+  .result-kpi { background: #ffffff; border: 1px solid #E7E1D3; border-radius: 8px;
+                padding: 16px 18px; min-width: 140px; box-shadow: none; }
+  .kpi-value { font-family: Georgia, serif; font-weight: 600; font-size: 26px; color: #2A2A24; }
+  .kpi-label { font-size: 10.5px; color: #9A9486; margin-top: 4px; }
+  .diff-tag { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .diff-tag.diff-easy   { color: #3F6B50; background: #E6EFE8; }
+  .diff-tag.diff-medium { color: #8A6A24; background: #F6EDD8; }
+  .diff-tag.diff-hard   { color: #8A3A2C; background: #F4E2DD; }
 </style>
 </head>
 <body>
   <h1>Results: {{ campaign.name }}</h1>
   <p class="sub">
     {{ campaign.source_language }} → {{ campaign.target_language }} ·
-    {% if results.mode == 'likert' %}Likert rating{% elif results.mode == 'pairwise' %}Pairwise preference{% else %}Span annotation{% endif %}
+    {% if results.mode == 'likert' %}Likert rating{% elif results.mode == 'pairwise' %}Pairwise preference{% elif results.mode == 'span_only' %}Span-only annotation{% else %}Post-editing{% endif %}
     {% if frozen %} · frozen snapshot (campaign closed){% else %} · live snapshot{% endif %}
     · generated {{ generated }}
   </p>

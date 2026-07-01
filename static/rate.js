@@ -1154,6 +1154,7 @@
 
     refreshNextEnabled();
     updateGlobalProgress();
+    updateSidebarNavigator();
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
@@ -1166,6 +1167,99 @@
     const { start, end } = pageBounds(state.currentPage);
     for (let idx = start; idx < end; idx++) {
       if (cards[idx]) { refreshSavedBadge(cards[idx], idx); }
+    }
+    updateSidebarNavigator();
+  }
+
+  function updateSidebarNavigator() {
+    const thisPageList = document.getElementById("sidebar-this-page-list");
+    if (thisPageList) {
+      thisPageList.innerHTML = "";
+      const { start, end } = pageBounds(state.currentPage);
+      for (let idx = start; idx < end; idx++) {
+        const seg = SEGMENTS[idx];
+        const r = state.ratings[idx];
+        const rated = isComplete(r);
+        const div = document.createElement("div");
+        div.className = "sidebar-segment-row";
+        
+        const accent = getComputedStyle(document.documentElement).getPropertyValue('--aura-accent').trim() || "#34433A";
+        const dotColor = rated ? accent : "transparent";
+        const dotBorder = rated ? accent : "#C7C1B2";
+        
+        div.innerHTML = 
+          '<span style="width:9px; height:9px; border-radius:999px; flex-shrink:0; background:' + dotColor + '; border:1.5px solid ' + dotBorder + ';"></span>' +
+          '<span style="font-size:13px; font-weight:500; color:#3A3A30; white-space:nowrap; margin-right:6px;">Segment ' + (idx + 1) + '</span>' +
+          '<span style="font-size:13px; color:#B3AE9F; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block; max-width:120px;">' + escapeHtml(seg.target || "") + '</span>';
+        
+        const globalIdx = idx;
+        div.addEventListener("click", () => {
+          const card = cards[globalIdx];
+          if (card) {
+            const y = card.getBoundingClientRect().top + window.scrollY - 90;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+          }
+        });
+        thisPageList.appendChild(div);
+      }
+    }
+
+    const pagesGrid = document.getElementById("sidebar-pages-grid");
+    if (pagesGrid) {
+      pagesGrid.innerHTML = "";
+      const accent = getComputedStyle(document.documentElement).getPropertyValue('--aura-accent').trim() || "#34433A";
+      const pillBg = getComputedStyle(document.documentElement).getPropertyValue('--aura-accent-pill').trim() || "rgba(52, 67, 58, 0.08)";
+      for (let p = 0; p < NUM_PAGES; p++) {
+        const div = document.createElement("div");
+        div.className = "sidebar-page-square";
+        div.textContent = p + 1;
+        div.style.aspectRatio = "1";
+        div.style.display = "flex";
+        div.style.alignItems = "center";
+        div.style.justifyContent = "center";
+        div.style.fontSize = "12px";
+        div.style.fontWeight = "600";
+        div.style.borderRadius = "6px";
+        div.style.cursor = "pointer";
+        div.style.border = "1px solid";
+        
+        const isCurrent = p === state.currentPage;
+        const { start: pStart, end: pEnd } = pageBounds(p);
+        let pComplete = true;
+        for (let i = pStart; i < pEnd; i++) {
+          if (!isComplete(state.ratings[i])) { pComplete = false; break; }
+        }
+        
+        if (isCurrent) {
+          div.style.background = accent;
+          div.style.color = "#F4F0E7";
+          div.style.borderColor = accent;
+        } else if (pComplete) {
+          div.style.background = pillBg;
+          div.style.color = accent;
+          div.style.borderColor = "transparent";
+        } else {
+          div.style.background = "#FFFFFF";
+          div.style.color = "#A39E90";
+          div.style.borderColor = "#E7E1D3";
+        }
+        
+        div.addEventListener("click", async () => {
+          const allow = state.reviewMode || p < state.currentPage || currentPageComplete();
+          if (allow) {
+            await saveCurrentPage(true);
+            renderPage(p);
+          } else {
+            const status = $("save-status");
+            if (status) {
+              status.textContent = "Please rate every segment on this page before moving to another page.";
+              status.className = "save-status error";
+              setTimeout(() => { status.className = "save-status"; }, 3000);
+            }
+          }
+        });
+        pagesGrid.appendChild(div);
+      }
     }
   }
 

@@ -1,102 +1,733 @@
-{% extends "base.html" %}
-{% block title %}Aura 💫{% endblock %}
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Aura | Human Evaluation for Language &amp; Translation Models</title>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600&amp;family=Libre+Caslon+Text:wght@400;700&amp;family=Playfair+Display:ital,wght@0,400..900;1,400..900&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background: #fcf9f8;
+    --on-background: #1c1b1b;
+    --on-surface-variant: #424845;
+    --primary: #33453d;
+    --primary-container: #4a5d54;
+    --on-primary: #ffffff;
+    --secondary: #476273;
+    --surface: #fcf9f8;
+    --surface-container-low: #f6f3f2;
+    --surface-container-highest: #e5e2e1;
+    --outline-variant: #c2c8c3;
+    --primary-fixed: #d2e7dc;
+    --on-primary-fixed: #0d1f18;
+    --section-gap: 120px;
+    --margin-desktop: 80px;
+    --margin-mobile: 20px;
+    --gutter: 24px;
+    --font-body: "Hanken Grotesk", sans-serif;
+    --font-headline: "Libre Caslon Text", serif;
+    --font-playfair: "Playfair Display", serif;
+  }
 
-{% block content %}
-<section class="landing-hero-wrap">
-  <div class="aura-glow" aria-hidden="true"></div>
-  <div class="landing-hero">
-    <span class="landing-eyebrow">Human evaluation for language &amp; translation models</span>
-    <h1 class="landing-title"><span class="brand-word">Aura</span>&nbsp;💫</h1>
-    <p class="lede">
-      Run rigorous human-evaluation studies of language-model and translation outputs.
-      Create annotation campaigns, share a link, and Aura turns annotators' judgments into
-      agreement statistics, disagreement analysis, and charts, all live.
-    </p>
+  * {
+    box-sizing: border-box;
+  }
 
-    <div class="landing-actions">
-      {% if is_admin %}
-        <a href="{{ url_for('admin_campaign.admin_dashboard') }}" class="btn btn-primary btn-large">
-          Go to admin dashboard <span class="btn-arrow" aria-hidden="true">&rarr;</span>
-        </a>
-      {% else %}
-        {% if signup_enabled %}
-        <a href="{{ url_for('admin_auth.admin_signup') }}" class="btn btn-primary btn-large">Create admin account</a>
-        <a href="{{ url_for('admin_auth.admin_login_view') }}" class="btn btn-large">Admin sign in</a>
+  html,
+  body {
+    margin: 0;
+    min-height: 100%;
+    background-color: var(--background);
+    color: var(--on-background);
+  }
+
+  body {
+    position: relative;
+    overflow-x: hidden;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: var(--primary-fixed);
+    color: var(--on-primary-fixed);
+  }
+
+  main {
+    position: relative;
+    z-index: 10;
+  }
+
+  a,
+  button {
+    font: inherit;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  .section {
+    position: relative;
+    overflow: hidden;
+    padding-left: var(--margin-mobile);
+    padding-right: var(--margin-mobile);
+  }
+
+  .hero-section {
+    min-height: 70vh;
+    padding-top: 96px;
+    padding-bottom: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hero-bg,
+  .section-bg,
+  .feature-bg {
+    position: absolute;
+    pointer-events: none;
+    background-size: cover;
+    background-position: center;
+  }
+
+  .hero-bg {
+    inset: 0;
+    z-index: 0;
+    opacity: 0.4;
+    background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAk05v2fAyVVoy_F_Rtlyz_504afS_HyRKWY2NTHNnXsTbCZQGZ4GQb6c4yV-UXsZpsgMxRsn2S9s7rZk46CrB1y1crwiT1H7vp6aV0VvH4bAeOT78a5vQ4PqzRMkLUQCFDxftpLjdav-vyfWf1I1O6JFEioriKSGgFuR-4bmR0ApUkBoNEchSclns2PSI_OAGvLlo35OB6X8JBL5UIpL3sGjBsdCYVDBnQaZU-adwwvgJYiZ3lJPqk4EyuhvSVfQC3Nv0F_N7s1ZC_");
+  }
+
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: rgba(252, 249, 248, 0.9);
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 10;
+    width: min(100%, 896px);
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .corner {
+    display: none;
+    position: absolute;
+    width: 96px;
+    height: 96px;
+  }
+
+  .corner-top {
+    top: -48px;
+    left: -48px;
+    border-top: 1px solid rgba(194, 200, 195, 0.3);
+    border-left: 1px solid rgba(194, 200, 195, 0.3);
+  }
+
+  .corner-bottom {
+    right: -48px;
+    bottom: -48px;
+    border-right: 1px solid rgba(194, 200, 195, 0.3);
+    border-bottom: 1px solid rgba(194, 200, 195, 0.3);
+  }
+
+  .hero-title {
+    margin: 0 0 16px;
+    color: var(--on-background);
+    font-family: var(--font-playfair);
+    font-size: 64px;
+    font-weight: 400;
+    line-height: 1.1;
+  }
+
+  .hero-subtitle,
+  .section-title,
+  .step-title,
+  .feature-title,
+  .footer-brand {
+    font-family: var(--font-headline);
+    font-weight: 400;
+  }
+
+  .hero-subtitle {
+    margin: 0 0 40px;
+    color: var(--on-background);
+    font-size: 32px;
+    line-height: 1.3;
+  }
+
+  .hero-copy {
+    width: min(100%, 672px);
+    margin: 0 auto 64px;
+    color: var(--on-surface-variant);
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hero-button {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 40px;
+    border: 0;
+    border-radius: 0;
+    background: var(--primary);
+    color: var(--on-primary);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: background-color 0.5s ease, box-shadow 0.5s ease;
+  }
+
+  .hero-button:hover {
+    background: var(--primary-container);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    color: var(--on-primary);
+  }
+
+  .hero-button-outline {
+    border: 1px solid var(--primary);
+    background: transparent;
+    color: var(--primary);
+  }
+
+  .hero-button-outline:hover {
+    background: #f0eded;
+    color: var(--primary);
+  }
+
+  .flow-section {
+    padding-top: var(--section-gap);
+    padding-bottom: var(--section-gap);
+  }
+
+  .section-bg {
+    inset: 0;
+    z-index: 0;
+    opacity: 0.03;
+    background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDdw-O8XiLKwPfADywGBaOpN3afeqTSS__ZVyPmMWZmepOWJrcHWw6XS8Hn_9KKjJj6M75f5n1vZQeiFRcd3MOVtfcaxcJhUWZN7J7_mzOdW6YqO97w53OogGhoGZsbJFHRfEEiBDLjAjJ_EpatFQS_tD4hBPD0rIk8ziEnD5sAErABXTnTsyc9nF_TKLD8k86Zdg0ppDBioqcad4x9bPwAL3RGU3nbh7juSq0YOv0qwzHMWAhDC1eP01ZleHaPmIfDsO9WRlkF3uR8");
+  }
+
+  .vertical-line {
+    display: none;
+    position: absolute;
+    z-index: 10;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    background: rgba(194, 200, 195, 0.2);
+    transform: translateX(-50%);
+  }
+
+  .section-content {
+    position: relative;
+    z-index: 10;
+  }
+
+  .section-title {
+    margin: 0 auto 80px;
+    color: var(--on-background);
+    text-align: center;
+    font-size: 32px;
+    line-height: 1.2;
+  }
+
+  .steps {
+    width: min(100%, 1152px);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 64px;
+  }
+
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+  }
+
+  .step-copy-wrap {
+    position: relative;
+    display: flex;
+  }
+
+  .step-copy-wrap.left {
+    justify-content: flex-end;
+  }
+
+  .step-copy {
+    position: relative;
+    max-width: 448px;
+  }
+
+  .step-num {
+    position: absolute;
+    z-index: -1;
+    top: -64px;
+    left: -32px;
+    color: var(--surface-container-highest);
+    font-family: var(--font-headline);
+    font-size: 120px;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .step-title {
+    margin: 0 0 24px;
+    color: var(--on-background);
+    font-size: 32px;
+    line-height: 1.3;
+  }
+
+  .step-text,
+  .feature-text {
+    margin: 0;
+    color: var(--on-surface-variant);
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  .step-rule {
+    display: none;
+    position: relative;
+    height: 1px;
+    background: rgba(194, 200, 195, 0.3);
+  }
+
+  .step-dot {
+    display: none;
+    position: absolute;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background: var(--primary);
+    transform: translateY(-50%);
+  }
+
+  .features-section {
+    padding-top: var(--section-gap);
+    padding-bottom: var(--section-gap);
+    border-top: 0.5px solid rgba(28, 27, 27, 0.15);
+    border-bottom: 0.5px solid rgba(28, 27, 27, 0.15);
+    background: var(--surface-container-low);
+  }
+
+  .feature-bg {
+    left: 0;
+    bottom: 0;
+    z-index: 0;
+    width: 33.333333%;
+    height: 600px;
+    opacity: 0.04;
+    mix-blend-mode: multiply;
+    transform: rotate(180deg);
+    background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAJIPu3kMO8T8ClwZHcQvWS1J3mJg-RusRSnCOhrBAWo3sH4zOdl9Tb3Z-45JXR434adiBLiA7NWvTgKFwmaEVUggWELK38LxaDkBl1RnKy3YbILwRtfrCiBFdw8M2kr55ANpPrW5RHI_QyrHP4LmqsSCyMCLUKbB8w_GKkq20YDTtpxEum_4BOy1rCveYZ06ZsFJJt1SioMwTuDBdapRch14cUiwW8JVf4xDarY9aqnwuAgOmyMLN_AZqU-q4vxA9JuR8ePRZ0RtDW");
+  }
+
+  .features-inner {
+    position: relative;
+    z-index: 10;
+    width: min(100%, 1280px);
+    margin: 0 auto;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    column-gap: var(--gutter);
+    row-gap: 64px;
+  }
+
+  .feature {
+    cursor: default;
+  }
+
+  .feature-icon {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0.5px solid rgba(28, 27, 27, 0.15);
+    border-radius: 9999px;
+    background: var(--surface);
+    color: var(--primary);
+    transition: background-color 0.5s ease, border-color 0.5s ease, color 0.5s ease;
+  }
+
+  .feature-icon .material-symbols-outlined {
+    font-size: 32px;
+    font-variation-settings: "FILL" 0;
+  }
+
+  .feature:hover .feature-icon {
+    border-color: var(--primary-container);
+    background: var(--primary-container);
+    color: var(--on-primary);
+  }
+
+  .feature-title {
+    margin: 0 0 16px;
+    color: var(--on-background);
+    font-size: 24px;
+    line-height: 1.3;
+  }
+
+  .feature-line {
+    width: 0;
+    height: 1px;
+    margin-top: 32px;
+    background: var(--primary);
+    transition: width 0.7s ease-in-out;
+  }
+
+  .feature:hover .feature-line {
+    width: 100%;
+  }
+
+  .footer {
+    width: 100%;
+    padding: var(--section-gap) var(--margin-mobile);
+    background: var(--background);
+  }
+
+  .footer-inner {
+    display: grid;
+    max-width: 100%;
+    margin: 0 auto;
+    grid-template-columns: 1fr;
+    gap: var(--gutter);
+  }
+
+  .footer-brand {
+    display: block;
+    margin-bottom: 24px;
+    color: var(--primary);
+    font-size: 32px;
+    line-height: 1.3;
+    text-decoration: none;
+  }
+
+  .footer-text {
+    max-width: 384px;
+    margin: 0;
+    color: var(--on-surface-variant);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  .footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .footer-links a {
+    color: var(--secondary);
+    font-size: 16px;
+    line-height: 1.6;
+    text-decoration: none;
+    text-underline-offset: 8px;
+    transition: color 0.2s ease;
+  }
+
+  .footer-links a:hover {
+    color: var(--primary);
+    text-decoration: underline;
+  }
+
+  @media (min-width: 640px) {
+    .hero-actions {
+      flex-direction: row;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .section {
+      padding-left: var(--margin-desktop);
+      padding-right: var(--margin-desktop);
+    }
+
+    .corner {
+      display: block;
+    }
+
+    .section-title {
+      font-size: 48px;
+    }
+
+    .step {
+      flex-direction: row;
+    }
+
+    .step.reverse {
+      flex-direction: row-reverse;
+    }
+
+    .step-copy-wrap,
+    .step-rule {
+      width: 50%;
+    }
+
+    .step-copy-wrap.left {
+      text-align: right;
+    }
+
+    .step-copy-wrap.left .step-num {
+      right: -32px;
+      left: auto;
+    }
+
+    .step-copy-wrap.left .step-text {
+      margin-left: auto;
+    }
+
+    .step-rule {
+      display: block;
+    }
+
+    .footer {
+      padding-left: var(--margin-desktop);
+      padding-right: var(--margin-desktop);
+    }
+
+    .footer-inner {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .footer-links {
+      align-items: flex-end;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .vertical-line {
+      display: block;
+    }
+
+    .step-dot {
+      display: block;
+    }
+
+    .step-dot.left {
+      left: 0;
+      transform: translate(-5px, -50%);
+    }
+
+    .step-dot.right {
+      right: 0;
+      transform: translate(5px, -50%);
+    }
+
+    .features-grid {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+
+    .feature-1 {
+      grid-column: 2 / span 5;
+    }
+
+    .feature-2 {
+      grid-column: 8 / span 5;
+      margin-top: 64px;
+    }
+
+    .feature-3 {
+      grid-column: 1 / span 5;
+    }
+
+    .feature-4 {
+      grid-column: 7 / span 5;
+      margin-top: 64px;
+    }
+
+    .feature-5 {
+      grid-column: 3 / span 5;
+    }
+
+    .feature-6 {
+      grid-column: 9 / span 4;
+      margin-top: 64px;
+    }
+  }
+</style>
+</head>
+<body>
+<main>
+  <section class="section hero-section">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="hero-overlay" aria-hidden="true"></div>
+    <div class="hero-content">
+      <div class="corner corner-top" aria-hidden="true"></div>
+      <div class="corner corner-bottom" aria-hidden="true"></div>
+      <h1 class="hero-title">A.U.R.A</h1>
+      <h2 class="hero-subtitle">Annotation Utility for Reliable Assessment</h2>
+      <p class="hero-copy">
+        Run rigorous human-evaluation studies. Create campaigns, share a link, and get live agreement statistics. Minimal friction, maximum clarity.
+      </p>
+      <div class="hero-actions">
+        {% if is_admin %}
+          <a class="hero-button" href="{{ url_for('admin_campaign.admin_dashboard') }}">Go to admin dashboard</a>
         {% else %}
-        <a href="{{ url_for('admin_auth.admin_login_view') }}" class="btn btn-primary btn-large">Admin sign in</a>
+          {% if signup_enabled %}
+            <a class="hero-button" href="{{ url_for('admin_auth.admin_signup') }}">Create admin account</a>
+            <a class="hero-button hero-button-outline" href="{{ url_for('admin_auth.admin_login_view') }}">Admin sign in</a>
+          {% else %}
+            <a class="hero-button" href="{{ url_for('admin_auth.admin_login_view') }}">Admin sign in</a>
+          {% endif %}
         {% endif %}
-      {% endif %}
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="card landing-steps-card">
-  <h2 class="landing-h2">How it works</h2>
-  <div class="landing-steps">
-    <div class="landing-step">
-      <div class="landing-step-num">1</div>
-      <h3>Create a campaign</h3>
-      <p>Pick an evaluation mode, define criteria and a scale, upload your segments. Or load the
-        demo to explore in one click.</p>
-    </div>
-    <div class="landing-step-arrow" aria-hidden="true">&rarr;</div>
-    <div class="landing-step">
-      <div class="landing-step-num">2</div>
-      <h3>Share the link</h3>
-      <p>Annotators register and score, compare, mark error spans, or post-edit, on any device,
-        with progress saved as they go.</p>
-    </div>
-    <div class="landing-step-arrow" aria-hidden="true">&rarr;</div>
-    <div class="landing-step">
-      <div class="landing-step-num">3</div>
-      <h3>Read the results</h3>
-      <p>Agreement stats, per-annotator quality, disagreement hot-spots and charts update live,
-        and a full results pack is emailed when you close.</p>
-    </div>
-  </div>
-</section>
+  <section class="section flow-section">
+    <div class="section-bg" aria-hidden="true"></div>
+    <div class="vertical-line" aria-hidden="true"></div>
+    <div class="section-content">
+      <h2 class="section-title">How it works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-copy-wrap left">
+            <div class="step-copy">
+              <div class="step-num" aria-hidden="true">01</div>
+              <h3 class="step-title">Create a campaign</h3>
+              <p class="step-text">Define your evaluation criteria and upload your model outputs. Configure tasks in seconds.</p>
+            </div>
+          </div>
+          <div class="step-rule" aria-hidden="true">
+            <span class="step-dot left"></span>
+          </div>
+        </div>
 
-<section class="card landing-features">
-  <h2 class="landing-h2">What you can do with Aura</h2>
-  <div class="feature-grid">
-    <div class="feature">
-      <div class="feature-ico" aria-hidden="true">&#9733;</div>
-      <h3>Four evaluation modes</h3>
-      <p>Rate on a Likert scale, compare two outputs side-by-side (A/B preference), mark and type
-        error spans (MQM), or post-edit the output directly &mdash; whichever fits your study.</p>
-    </div>
-    <div class="feature">
-      <div class="feature-ico" aria-hidden="true">&#9703;</div>
-      <h3>Built for any task</h3>
-      <p>Machine translation, summarization, simplification, dialogue, question answering,
-        factuality/hallucination checking, or general LLM output &mdash; labels and criteria adapt to the task.</p>
-    </div>
-    <div class="feature">
-      <div class="feature-ico" aria-hidden="true">&#128202;</div>
-      <h3>Agreement &amp; disagreement</h3>
-      <p>Krippendorff's &alpha;, Fleiss'/Cohen's &kappa;, percent agreement, span F1 (character and token),
-        post-edit distance, plus the most-contested segments &mdash; with interactive charts and exports.</p>
-    </div>
-    <div class="feature">
-      <div class="feature-ico" aria-hidden="true">&#128100;</div>
-      <h3>Quality monitoring</h3>
-      <p>Per-annotator agreement, timing and flags, expertise-based routing of easy/medium/hard items,
-        and a randomised A/B mode to measure whether the AI assistant actually helps.</p>
-    </div>
-    <div class="feature">
-      <div class="feature-ico" aria-hidden="true">&#9881;</div>
-      <h3>Flexible setup</h3>
-      <p>Custom criteria and scales, optional reference text, difficulty grouping, light/dark and
-        colour-blind-friendly visuals, and one-click demo data to explore it all.</p>
-    </div>
-    <div class="feature">
-      <div class="feature-ico" aria-hidden="true">&#9993;</div>
-      <h3>Results by email</h3>
-      <p>Close a campaign and Aura emails a complete pack &mdash; per-rating CSV, summary tables,
-        charts, raw JSON, and a self-contained HTML report.</p>
-    </div>
-  </div>
-</section>
+        <div class="step reverse">
+          <div class="step-copy-wrap">
+            <div class="step-copy">
+              <div class="step-num" aria-hidden="true">02</div>
+              <h3 class="step-title">Share the link</h3>
+              <p class="step-text">Distribute a simple URL to your annotators. No login required for reviewers.</p>
+            </div>
+          </div>
+          <div class="step-rule" aria-hidden="true">
+            <span class="step-dot right"></span>
+          </div>
+        </div>
 
-<p class="landing-footer">Aura · a space for careful human evaluation.</p>
-{% endblock %}
+        <div class="step">
+          <div class="step-copy-wrap left">
+            <div class="step-copy">
+              <div class="step-num" aria-hidden="true">03</div>
+              <h3 class="step-title">Read the results</h3>
+              <p class="step-text">Monitor agreement live as evaluations come in. Export clear, structured data.</p>
+            </div>
+          </div>
+          <div class="step-rule" aria-hidden="true">
+            <span class="step-dot left"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section features-section">
+    <div class="feature-bg" aria-hidden="true"></div>
+    <div class="features-inner">
+      <h2 class="section-title">What you can do with Aura</h2>
+      <div class="features-grid">
+        <div class="feature feature-1">
+          <div class="feature-icon" aria-hidden="true">
+            <span class="material-symbols-outlined">category</span>
+          </div>
+          <h3 class="feature-title">Four evaluation modes</h3>
+          <p class="feature-text">Choose from ranking, rating, side-by-side comparison, or qualitative feedback.</p>
+          <div class="feature-line" aria-hidden="true"></div>
+        </div>
+
+        <div class="feature feature-2">
+          <div class="feature-icon" aria-hidden="true">
+            <span class="material-symbols-outlined">build</span>
+          </div>
+          <h3 class="feature-title">Built for any task</h3>
+          <p class="feature-text">Adaptable to translation quality, factual accuracy, tone, or style evaluations.</p>
+          <div class="feature-line" aria-hidden="true"></div>
+        </div>
+
+        <div class="feature feature-3">
+          <div class="feature-icon" aria-hidden="true">
+            <span class="material-symbols-outlined">handshake</span>
+          </div>
+          <h3 class="feature-title">Agreement &amp; disagreement</h3>
+          <p class="feature-text">Automatically calculate inter-annotator agreement metrics like Cohen's Kappa.</p>
+          <div class="feature-line" aria-hidden="true"></div>
+        </div>
+
+        <div class="feature feature-4">
+          <div class="feature-icon" aria-hidden="true">
+            <span class="material-symbols-outlined">monitoring</span>
+          </div>
+          <h3 class="feature-title">Quality monitoring</h3>
+          <p class="feature-text">Identify outlier annotators and ensure high-quality data collection.</p>
+          <div class="feature-line" aria-hidden="true"></div>
+        </div>
+
+        <div class="feature feature-5">
+          <div class="feature-icon" aria-hidden="true">
+            <span class="material-symbols-outlined">tune</span>
+          </div>
+          <h3 class="feature-title">Flexible setup</h3>
+          <p class="feature-text">Customize UI elements, instructions, and schemas for your specific use case.</p>
+          <div class="feature-line" aria-hidden="true"></div>
+        </div>
+
+        <div class="feature feature-6">
+          <div class="feature-icon" aria-hidden="true">
+            <span class="material-symbols-outlined">mail</span>
+          </div>
+          <h3 class="feature-title">Results by email</h3>
+          <p class="feature-text">Receive automated daily or weekly digests of evaluation progress.</p>
+          <div class="feature-line" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <a class="footer-brand" href="{{ url_for('public.landing') }}">Aura</a>
+      <p class="footer-text">&copy; 2024 Aura Evaluation Systems. Designed in the spirit of Lagom.</p>
+    </div>
+    <nav class="footer-links" aria-label="Footer">
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+      <a href="#">Security</a>
+      <a href="#">Contact</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

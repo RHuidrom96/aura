@@ -46,12 +46,13 @@
     const container = document.getElementById('criteria-rows');
     const row = document.createElement('div');
     row.className = 'criterion-row';
+    row.setAttribute('style', 'border:1px solid var(--aura-border); border-radius:8px; padding:18px; background:var(--aura-bg);');
     row.innerHTML =
-      '<div class="criterion-row-fields">' +
-        '<input type="text" name="crit_name" placeholder="Name (e.g. Accuracy)" class="crit-name-input">' +
-        '<textarea name="crit_desc" rows="2" placeholder="Definition shown to annotators" class="crit-desc-input"></textarea>' +
+      '<div class="criterion-row-fields" style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">' +
+        '<input type="text" name="crit_name" placeholder="Criterion name (e.g. Accuracy)" class="ff-in crit-name-input" style="font-weight:600;">' +
+        '<button type="button" class="btn-remove-row" title="Remove criterion" onclick="removeCriterionRow(this)" style="flex-shrink:0; width:36px; height:36px; border-radius:6px; border:1px solid #E2D6D1; background:#FFFFFF; color:#B07A6E; font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;">×</button>' +
       '</div>' +
-      '<button type="button" class="btn-remove-row" title="Remove" onclick="removeCriterionRow(this)">×</button>';
+      '<textarea name="crit_desc" placeholder="Describe what this criterion measures and how annotators should judge it…" class="ff-in crit-desc-input" style="min-height:128px;"></textarea>';
     container.appendChild(row);
     if (name) row.querySelector('.crit-name-input').value = name;
     if (desc) row.querySelector('.crit-desc-input').value = desc;
@@ -67,11 +68,10 @@
     const container = document.getElementById('preference-rows');
     const row = document.createElement('div');
     row.className = 'criterion-row';
+    row.setAttribute('style', 'display:flex; align-items:center; gap:12px;');
     row.innerHTML =
-      '<div class="criterion-row-fields">' +
-        '<input type="text" name="pref_label" placeholder="e.g. A is better" class="pref-label-input">' +
-      '</div>' +
-      '<button type="button" class="btn-remove-row" title="Remove" onclick="removePreferenceRow(this)">×</button>';
+      '<input type="text" name="pref_label" placeholder="e.g. A is better" class="ff-in pref-label-input" style="font-weight:600;">' +
+      '<button type="button" class="btn-remove-row" title="Remove" onclick="removePreferenceRow(this)" style="flex-shrink:0; width:36px; height:36px; border-radius:6px; border:1px solid #E2D6D1; background:#FFFFFF; color:#B07A6E; font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;">×</button>';
     container.appendChild(row);
     if (label) row.querySelector('.pref-label-input').value = label;
   };
@@ -134,7 +134,7 @@
       wrap.innerHTML =
         '<span class="likert-label-num">' + v + '</span>' +
         '<input type="text" name="scale_label_' + v + '" data-point="' + v + '" ' +
-        'value="' + String(val).replace(/"/g, '&quot;') + '" placeholder="Label for ' + v + '">';
+        'value="' + String(val).replace(/"/g, '&quot;') + '" placeholder="Label for ' + v + '" class="ff-in">';
       grid.appendChild(wrap);
     }
   };
