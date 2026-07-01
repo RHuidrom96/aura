@@ -39,11 +39,11 @@
 
     {% if not c.is_closed %}
       {% if row.completed == row.total %}
-        <a href="{{ url_for('rate_view', campaign_id=c.id) }}" class="btn btn-ghost">
+        <a href="{{ url_for('annotator_rating.rate_view', campaign_id=c.id) }}" class="btn btn-ghost">
           Review my ratings
         </a>
       {% else %}
-        <a href="{{ url_for('rate_view', campaign_id=c.id) }}" class="btn btn-primary">
+        <a href="{{ url_for('annotator_rating.rate_view', campaign_id=c.id) }}" class="btn btn-primary">
           Continue rating →
         </a>
       {% endif %}

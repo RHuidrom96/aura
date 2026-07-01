@@ -15,7 +15,7 @@
         </p>
 
         <p class="hint" style="margin-top: 18px; text-align: center;">
-            <a href="{{ url_for('admin_login_view') }}">
+            <a href="{{ url_for('admin_auth.admin_login_view') }}">
                 ← Back to sign in
             </a>
         </p>
@@ -38,7 +38,7 @@
 
         <form
             method="post"
-            action="{{ url_for('admin_signup_view') }}"
+            action="{{ url_for('admin_auth.admin_signup') }}"
             class="register-form"
         >
 
@@ -147,7 +147,7 @@
         </form>
 
         <a
-            href="{{ url_for('admin_login_view') }}"
+            href="{{ url_for('admin_auth.admin_login_view') }}"
             class="btn btn-secondary btn-large btn-block"
         >
             Already have an account? Sign in

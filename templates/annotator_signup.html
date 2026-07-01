@@ -23,7 +23,7 @@
 
     <form
         method="post"
-        action="{{ url_for('annotator_register', campaign_id=campaign.id) }}"
+        action="{{ url_for('annotator_campaign.annotator_register', campaign_id=campaign.id) }}"
         class="register-form"
     >
 
@@ -241,7 +241,7 @@
     </form>
 
     <div class="form-actions">
-        <a href="{{ url_for('annotator_login_view', campaign_id=campaign.id) }}"
+        <a href="{{ url_for('annotator_campaign.annotator_login_view', campaign_id=campaign.id) }}"
            class="btn btn-secondary btn-large btn-block">
             Already have an account? Sign In
         </a>

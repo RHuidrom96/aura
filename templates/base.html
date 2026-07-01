@@ -23,25 +23,25 @@
   {# Brand link: matches the page you're on, not just which sessions exist #}
   {% if page_role == 'admin' and session.get('is_admin') %}
 
-    <a href="{{ url_for('admin_dashboard') }}" class="brand">
+    <a href="{{ url_for('admin_campaign.admin_dashboard') }}" class="brand">
         <span class="brand-word">Aura</span> 💫
     </a>
 
 {% elif page_role == 'annotator' %}
 
     {% if campaign is defined %}
-        <a href="{{ url_for('annotator_landing_view', campaign_id=campaign.id) }}" class="brand">
+        <a href="{{ url_for('annotator_campaign.annotator_login_view', campaign_id=campaign.id) }}" class="brand">
             <span class="brand-word">Aura</span> 💫
         </a>
     {% else %}
-        <a href="{{ url_for('annotator_dashboard') }}" class="brand">
+        <a href="{{ url_for('annotator_dashboard.annotator_dashboard') }}" class="brand">
             <span class="brand-word">Aura</span> 💫
         </a>
     {% endif %}
 
 {% else %}
 
-    <a href="{{ url_for('landing') }}" class="brand">
+    <a href="{{ url_for('public.landing') }}" class="brand">
         <span class="brand-word">Aura</span> 💫
     </a>
 
@@ -65,16 +65,16 @@
             <span class="muted">{{ session['admin_email'] }}</span>
           </div>
           <div class="avatar-dropdown-divider"></div>
-          <a href="{{ url_for('admin_dashboard') }}" class="avatar-dropdown-item">
+          <a href="{{ url_for('admin_campaign.admin_dashboard') }}" class="avatar-dropdown-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
             My campaigns
           </a>
-          <a href="{{ url_for('admin_update_password') }}" class="avatar-dropdown-item">
+          <a href="{{ url_for('admin_auth.admin_update_password') }}" class="avatar-dropdown-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             Update password
           </a>
           <div class="avatar-dropdown-divider"></div>
-          <form action="{{ url_for('admin_logout') }}" method="post">
+          <form action="{{ url_for('admin_auth.admin_logout') }}" method="post">
             <button type="submit" class="avatar-dropdown-item avatar-dropdown-signout">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               Sign out
@@ -99,16 +99,16 @@
               <span class="muted">{{ ann.email }}</span>
             </div>
             <div class="avatar-dropdown-divider"></div>
-            <a href="{{ url_for('annotator_dashboard') }}" class="avatar-dropdown-item">
+            <a href="{{ url_for('annotator_dashboard.annotator_dashboard') }}" class="avatar-dropdown-item">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
               My campaigns
             </a>
-            <a href="{{ url_for('annotator_update_password') }}" class="avatar-dropdown-item">
+            <a href="{{ url_for('annotator_auth.annotator_update_password') }}" class="avatar-dropdown-item">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               Update password
             </a>
             <div class="avatar-dropdown-divider"></div>
-            <form action="{{ url_for('annotator_logout') }}" method="post">
+            <form action="{{ url_for('annotator_auth.annotator_logout') }}" method="post">
               <button type="submit" class="avatar-dropdown-item avatar-dropdown-signout">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 Sign out

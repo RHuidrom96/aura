@@ -15,15 +15,15 @@
 
     <div class="landing-actions">
       {% if is_admin %}
-        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary btn-large">
+        <a href="{{ url_for('admin_campaign.admin_dashboard') }}" class="btn btn-primary btn-large">
           Go to admin dashboard <span class="btn-arrow" aria-hidden="true">&rarr;</span>
         </a>
       {% else %}
         {% if signup_enabled %}
-        <a href="{{ url_for('admin_signup_view') }}" class="btn btn-primary btn-large">Create admin account</a>
-        <a href="{{ url_for('admin_login_view') }}" class="btn btn-large">Admin sign in</a>
+        <a href="{{ url_for('admin_auth.admin_signup') }}" class="btn btn-primary btn-large">Create admin account</a>
+        <a href="{{ url_for('admin_auth.admin_login_view') }}" class="btn btn-large">Admin sign in</a>
         {% else %}
-        <a href="{{ url_for('admin_login_view') }}" class="btn btn-primary btn-large">Admin sign in</a>
+        <a href="{{ url_for('admin_auth.admin_login_view') }}" class="btn btn-primary btn-large">Admin sign in</a>
         {% endif %}
       {% endif %}
     </div>

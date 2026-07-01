@@ -5,15 +5,15 @@
 {% set mode = 'new' %}
 <div class="page-header">
   <h1>New campaign</h1>
-  <a href="{{ url_for('admin_dashboard') }}" class="link-btn">← back to dashboard</a>
+  <a href="{{ url_for('admin_campaign.admin_dashboard') }}" class="link-btn">← back to dashboard</a>
 </div>
 
 <section class="card">
-  <form method="post" action="{{ url_for('admin_campaign_new') }}" enctype="multipart/form-data" class="register-form">
+  <form method="post" action="{{ url_for('admin_campaign.admin_campaign_new') }}" enctype="multipart/form-data" class="register-form">
     {% include "_campaign_form_fields.html" %}
 
     <div class="form-actions">
-      <a href="{{ url_for('admin_dashboard') }}" class="btn">Cancel</a>
+      <a href="{{ url_for('admin_campaign.admin_dashboard') }}" class="btn">Cancel</a>
       <button type="submit" class="btn btn-primary">Create campaign</button>
     </div>
   </form>
