@@ -2,7 +2,7 @@
 {% block title %}Results · {{ campaign.name }} · Aura{% endblock %}
 {% block content %}
 <div class="container">
-  <a href="{{ url_for('admin_campaign_detail', campaign_id=campaign.id) }}" class="link-btn">← back to campaign</a>
+  <a href="{{ url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id) }}" class="link-btn">← back to campaign</a>
 
   <div class="results-head">
     <div>
@@ -15,8 +15,8 @@
       </p>
     </div>
     <div class="results-actions">
-      <a href="{{ url_for('admin_campaign_results_report', campaign_id=campaign.id) }}" class="btn btn-primary">Download report (HTML)</a>
-      <a href="{{ url_for('admin_campaign_results_json', campaign_id=campaign.id) }}" class="btn btn-ghost">Download data (JSON)</a>
+      <a href="{{ url_for('admin_results.admin_campaign_results_report', campaign_id=campaign.id) }}" class="btn btn-primary">Download report (HTML)</a>
+      <a href="{{ url_for('admin_results.admin_campaign_results_json', campaign_id=campaign.id) }}" class="btn btn-ghost">Download data (JSON)</a>
     </div>
   </div>
 
@@ -32,8 +32,8 @@
 // Live results: poll a cheap version; when it changes, swap in a freshly-computed body.
 (function () {
   var VERSION = {{ results_version|tojson }};
-  var VURL = {{ url_for('admin_campaign_results_version', campaign_id=campaign.id)|tojson }};
-  var FURL = {{ url_for('admin_campaign_results_fragment', campaign_id=campaign.id)|tojson }};
+  var VURL = {{ url_for('admin_results.admin_campaign_results_version', campaign_id=campaign.id)|tojson }};
+  var FURL = {{ url_for('admin_results.admin_campaign_results_fragment', campaign_id=campaign.id)|tojson }};
   var card = document.querySelector('.results-card');
   var busy = false;
   async function refresh() {

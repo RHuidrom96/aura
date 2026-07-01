@@ -10,7 +10,7 @@
       · created {{ campaign.created_at.strftime('%Y-%m-%d %H:%M UTC') }}
     </p>
   </div>
-  <a href="{{ url_for('admin_dashboard') }}" class="link-btn">← back to dashboard</a>
+  <a href="{{ url_for('admin_campaign.admin_dashboard') }}" class="link-btn">← back to dashboard</a>
 </div>
 
 {% if campaign.is_closed %}
@@ -24,7 +24,7 @@
   <div class="page-header" style="margin-bottom:8px;">
     <h3 style="margin:0;">Configuration</h3>
     {% if not campaign.is_closed %}
-    <a href="{{ url_for('admin_campaign_edit', campaign_id=campaign.id) }}" class="btn btn-primary btn-small">Edit configuration</a>
+    <a href="{{ url_for('admin_campaign.admin_campaign_edit', campaign_id=campaign.id) }}" class="btn btn-primary btn-small">Edit configuration</a>
     {% endif %}
   </div>
   <table class="annotator-table">
@@ -116,7 +116,7 @@
 {% if not campaign.is_closed %}
 <script>
 (function () {
-  var url = {{ url_for('admin_campaign_progress', campaign_id=campaign.id) | tojson }};
+  var url = {{ url_for('admin_campaign.admin_campaign_progress', campaign_id=campaign.id) | tojson }};
   var tbody = document.getElementById("progress-tbody");
   var table = document.getElementById("progress-table");
   var empty = document.getElementById("progress-empty");
@@ -150,12 +150,12 @@
 <section class="card">
   <h3>Results &amp; statistics</h3>
   <p class="hint" style="margin-top:0;">Agreement, correlation, and per-system statistics for this campaign, with charts and downloadable reports. {% if campaign.is_closed %}Frozen at close.{% else %}Updates live as ratings come in.{% endif %}</p>
-  <a href="{{ url_for('admin_campaign_results', campaign_id=campaign.id) }}" class="btn btn-primary">View results dashboard</a>
+  <a href="{{ url_for('admin_results.admin_campaign_results', campaign_id=campaign.id) }}" class="btn btn-primary">View results dashboard</a>
 </section>
 
 <section class="card">
   <h3>Data export</h3>
-  <a href="{{ url_for('admin_campaign_download_csv', campaign_id=campaign.id) }}" class="btn">
+  <a href="{{ url_for('admin_campaign.admin_campaign_download_csv', campaign_id=campaign.id) }}" class="btn">
     Download master CSV
   </a>
   <p class="hint" style="margin-top:10px;">
@@ -173,7 +173,7 @@
     {% if campaign.owner_email %}<code class="code-inline">{{ campaign.owner_email }}</code>{% else %}the campaign owner{% endif %}.
     This action cannot be undone.
   </p>
-  <form method="post" action="{{ url_for('admin_campaign_close', campaign_id=campaign.id) }}"
+  <form method="post" action="{{ url_for('admin_campaign.admin_campaign_close', campaign_id=campaign.id) }}"
         onsubmit="return confirm('Close this campaign permanently? Annotators will no longer be able to edit.');">
     <button type="submit" class="btn btn-danger">Close campaign</button>
   </form>
@@ -186,7 +186,7 @@
     Permanently delete this campaign and <strong>all {{ rows|length }} annotators' ratings</strong> for it.
     This cannot be undone. Type the campaign name <code class="code-inline">{{ campaign.name }}</code> to confirm.
   </p>
-  <form method="post" action="{{ url_for('admin_campaign_delete', campaign_id=campaign.id) }}"
+  <form method="post" action="{{ url_for('admin_campaign.admin_campaign_delete', campaign_id=campaign.id) }}"
         onsubmit="return confirm('Delete this campaign and all its ratings permanently?');"
         class="delete-form">
     <input type="text" name="confirm_name" placeholder="Type the campaign name to confirm" autocomplete="off">

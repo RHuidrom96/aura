@@ -107,14 +107,14 @@
     <div class="landing-actions">
 
         <a
-            href="{{ url_for('annotator_login_view', campaign_id=campaign.id) }}"
+            href="{{ url_for('annotator_campaign.annotator_login_view', campaign_id=campaign.id) }}"
             class="btn btn-primary btn-large btn-block"
         >
             Sign In
         </a>
 
         <a
-            href="{{ url_for('annotator_signup_view', campaign_id=campaign.id) }}"
+            href="{{ url_for('annotator_campaign.annotator_signup_view', campaign_id=campaign.id) }}"
             class="btn btn-secondary btn-large btn-block"
         >
             Create Account

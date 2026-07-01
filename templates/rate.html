@@ -4,11 +4,11 @@
 {% block content %}
 
 <!-- ============== RATING SCREEN ============== -->
-<section id="screen-rate" class="screen active">
+<section id="screen-rate" class="screen active"> 
 
   <div class="topbar">
     <div class="topbar-left">
-      <a href="{{ url_for('annotator_dashboard') }}"
+      <a href="{{ url_for('annotator_dashboard.annotator_dashboard') }}"
          class="link-btn">← {{ campaign.name }}</a>
     </div>
     <div class="topbar-right">
@@ -265,7 +265,7 @@
     </p>
     <div class="done-actions">
       <button type="button" class="btn" id="btn-review">Review my ratings</button>
-      <a href="{{ url_for('annotator_dashboard') }}" class="btn btn-ghost">Done</a>
+      <a href="{{ url_for('annotator_dashboard.annotator_dashboard') }}" class="btn btn-ghost">Done</a>
     </div>
   </div>
 </section>
@@ -290,8 +290,8 @@
   window.IO_LABELS    = {input: {{ input_label|tojson }}, output: {{ output_label|tojson }}};
   window.PREFERENCES  = {{ preferences|tojson }};
   window.EXISTING     = {{ existing|tojson }};
-  window.SUBMIT_URL   = {{ url_for('api_submit', campaign_id=campaign.id)|tojson }};
-  window.CONFIG_URL   = {{ url_for('api_config', campaign_id=campaign.id)|tojson }};
+  window.SUBMIT_URL   = {{ url_for('annotator_rating.api_submit', campaign_id=campaign.id)|tojson }};
+  window.CONFIG_URL   = {{ url_for('annotator_rating.api_config', campaign_id=campaign.id)|tojson }};
   window.CONFIG_VERSION = {{ campaign.config_fingerprint()|tojson }};
   window.SPAN_SCOPE   = {{ span_scope|tojson }};
   window.ENABLE_SPANS = {{ enable_spans|tojson }};
@@ -302,8 +302,8 @@
   window.AI_AVAILABLE = {{ ai_available|tojson }};
   window.AI_AB_ENABLED = {{ ai_ab_enabled|tojson }};
   window.AI_AB_ELIGIBLE = {{ ai_ab_eligible|tojson }};
-  window.ASSIST_URL   = {{ url_for('api_assist', campaign_id=campaign.id)|tojson }};
-  window.ASSIST_FEEDBACK_URL = {{ url_for('api_assist_feedback', campaign_id=campaign.id)|tojson }};
+  window.ASSIST_URL   = {{ url_for('annotator_rating.api_assist', campaign_id=campaign.id)|tojson }};
+  window.ASSIST_FEEDBACK_URL = {{ url_for('annotator_rating.api_assist_feedback', campaign_id=campaign.id)|tojson }};
 </script>
 <script src="{{ url_for('static', filename='rate.js') }}"></script>
 

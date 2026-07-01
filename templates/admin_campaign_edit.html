@@ -8,7 +8,7 @@
     <h1>Edit campaign</h1>
     <p class="hint">{{ campaign.name }} · {{ campaign.num_segments }} segments</p>
   </div>
-  <a href="{{ url_for('admin_campaign_detail', campaign_id=campaign.id) }}" class="link-btn">← back to campaign</a>
+  <a href="{{ url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id) }}" class="link-btn">← back to campaign</a>
 </div>
 
 <div class="info-box" style="margin-bottom:16px;">
@@ -22,11 +22,11 @@
 </div>
 
 <section class="card">
-  <form method="post" action="{{ url_for('admin_campaign_edit', campaign_id=campaign.id) }}" class="register-form">
+  <form method="post" action="{{ url_for('admin_campaign.admin_campaign_edit', campaign_id=campaign.id) }}" class="register-form">
     {% include "_campaign_form_fields.html" %}
 
     <div class="form-actions">
-      <a href="{{ url_for('admin_campaign_detail', campaign_id=campaign.id) }}" class="btn">Cancel</a>
+      <a href="{{ url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id) }}" class="btn">Cancel</a>
       <button type="submit" class="btn btn-primary">Save changes</button>
     </div>
   </form>

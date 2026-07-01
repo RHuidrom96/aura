@@ -479,7 +479,7 @@
     {% endfor %}
   };
   window.AI_CAMPAIGN_ID = {{ (campaign.id if campaign is defined and campaign else '') | tojson }};
-  window.AI_TEST_URL = {{ url_for('admin_ai_test') | tojson }};
+  window.AI_TEST_URL = {{ url_for('admin_campaign.admin_ai_test') | tojson }};
   window.TASK_PRESETS = {
     {% for tid, t in task_types.items() %}{{ tid|tojson }}: {"input": {{ t.input|tojson }}, "output": {{ t.output|tojson }}, "bilingual": {{ t.bilingual|tojson }}, "criteria": [{% for n in t.criteria %}{"name": {{ n|tojson }}, "guide": {{ criterion_guides.get(n, '')|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]}{% if not loop.last %},{% endif %}
     {% endfor %}

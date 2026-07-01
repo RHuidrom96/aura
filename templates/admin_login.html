@@ -6,7 +6,7 @@
   <h1>Admin sign in</h1>
   <p class="lede">Enter the admin credentials configured by your system administrator.</p>
 
-  <form method="post" action="{{ url_for('admin_login_view') }}" class="register-form">
+  <form method="post" action="{{ url_for('admin_auth.admin_login_view') }}" class="register-form">
     <div class="field">
       <label for="email">Email <span class="req">*</span></label>
       <input type="email" id="email" name="email" required autocomplete="email" autofocus>
@@ -17,12 +17,12 @@
     </div>
     <button type="submit" class="btn btn-primary btn-large" style="margin-bottom: 5px; text-align: center; padding: 10px;" > 
       Sign in</button>
-      <a href="{{ url_for('admin_forgot_password') }}">
+      <a href="{{ url_for('admin_auth.admin_forgot_password') }}">
         Forgot password?
     </a>
   </form>
 
-  <form method="get" action="{{ url_for('admin_signup_view') }}" >
+  <form method="get" action="{{ url_for('admin_auth.admin_signup') }}" >
     <button type="submit" class="btn btn-primary btn-large" style="margin-top: 5px; text-align: center; padding: 10px;">
         Create an admin account
     </button>

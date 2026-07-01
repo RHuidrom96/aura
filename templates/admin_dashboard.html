@@ -6,17 +6,17 @@
   <h1>Campaigns</h1>
   <div style="display:flex; gap:8px;">
     {% if has_demo %}
-    <form method="post" action="{{ url_for('admin_unload_demo') }}" style="display:inline;"
+    <form method="post" action="{{ url_for('admin_campaign.admin_unload_demo') }}" style="display:inline;"
           onsubmit="return confirm('Remove all demo campaigns, demo annotators, and their ratings? Your own campaigns are not affected.');">
       <button type="submit" class="btn btn-ghost">Remove demo data</button>
     </form>
     {% else %}
-    <form method="post" action="{{ url_for('admin_seed_demo') }}" style="display:inline;"
+    <form method="post" action="{{ url_for('admin_campaign.admin_seed_demo') }}" style="display:inline;"
           onsubmit="return confirm('Load the demo campaigns (9 Northeast India languages) plus demo annotators and synthetic ratings?');">
       <button type="submit" class="btn btn-ghost">Load demo data</button>
     </form>
     {% endif %}
-    <a href="{{ url_for('admin_campaign_new') }}" class="btn btn-primary">+ New campaign</a>
+    <a href="{{ url_for('admin_campaign.admin_campaign_new') }}" class="btn btn-primary">+ New campaign</a>
   </div>
 </div>
 
@@ -24,7 +24,7 @@
 <div class="campaign-grid">
   {% for c in campaigns %}
     {% set s = stats[c.id] %}
-    <a href="{{ url_for('admin_campaign_detail', campaign_id=c.id) }}" class="campaign-card" data-cid="{{ c.id }}">
+    <a href="{{ url_for('admin_campaign.admin_campaign_detail', campaign_id=c.id) }}" class="campaign-card" data-cid="{{ c.id }}">
       <div class="campaign-card-head">
         <h3>{{ c.name }}</h3>
         <span class="status-pill {{ 'status-closed' if c.is_closed else 'status-open' }}" data-status>{{ 'Closed' if c.is_closed else 'Open' }}</span>
@@ -43,8 +43,8 @@
 <div class="card empty-state">
   <p>No campaigns yet.</p>
   <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-    <a href="{{ url_for('admin_campaign_new') }}" class="btn btn-primary">Create your first campaign</a>
-    <form method="post" action="{{ url_for('admin_seed_demo') }}" style="display:inline;">
+    <a href="{{ url_for('admin_campaign.admin_campaign_new') }}" class="btn btn-primary">Create your first campaign</a>
+    <form method="post" action="{{ url_for('admin_campaign.admin_seed_demo') }}" style="display:inline;">
       <button type="submit" class="btn btn-ghost">Load demo campaigns (Northeast India languages)</button>
     </form>
   </div>
@@ -55,7 +55,7 @@
 <script>
 // Live dashboard: refresh per-campaign counts/status without a manual reload.
 (function () {
-  var URL = {{ url_for('admin_dashboard_json')|tojson }};
+  var URL = {{ url_for('admin_campaign.admin_dashboard_json')|tojson }};
   async function poll() {
     try {
       var r = await fetch(URL, { headers: { 'Accept': 'application/json' } });
