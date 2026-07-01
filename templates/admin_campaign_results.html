@@ -1,29 +1,518 @@
 {% extends "base.html" %}
 {% block title %}Results · {{ campaign.name }} · Aura{% endblock %}
-{% block content %}
-<div class="container">
-  <a href="{{ url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id) }}" class="link-btn">← back to campaign</a>
 
-  <div class="results-head">
-    <div>
-      <h1 class="page-title">Results: {{ campaign.name }}</h1>
-      <p class="page-sub">
-        {{ campaign.source_language }} → {{ campaign.target_language }} ·
-        {% if results.mode == 'likert' %}Likert rating{% elif results.mode == 'pairwise' %}Pairwise preference{% else %}Span annotation{% endif %}
-        {% if frozen %}· <span class="badge badge-closed">frozen snapshot (campaign closed)</span>
-        {% else %}· <span class="badge">live (updates as ratings arrive)</span>{% endif %}
-      </p>
-    </div>
-    <div class="results-actions">
-      <a href="{{ url_for('admin_results.admin_campaign_results_report', campaign_id=campaign.id) }}" class="btn btn-primary">Download report (HTML)</a>
-      <a href="{{ url_for('admin_results.admin_campaign_results_json', campaign_id=campaign.id) }}" class="btn btn-ghost">Download data (JSON)</a>
+{% block head_extra %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=JetBrains+Mono&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --aura-bg: #F4F0E7;
+  --aura-surface: #FFFFFF;
+  --aura-surface-2: #FAF7F0;
+  --aura-border: #E7E1D3;
+  --aura-border-light: #E4DECF;
+  --aura-input-border: #DDD7C8;
+  --aura-text: #2A2A24;
+  --aura-text-muted: #6E6A5F;
+  --aura-text-faint: #9A9486;
+  --aura-accent: #34433A;
+  --aura-accent-pill: rgba(52, 67, 58, 0.08);
+  --aura-accent-pill-hover: rgba(52, 67, 58, 0.15);
+  --aura-hero-pattern-color: #2A2A24;
+}
+
+[data-theme="dark"] {
+  --aura-bg: #15171c;
+  --aura-surface: #1e2128;
+  --aura-surface-2: #262a33;
+  --aura-border: rgba(255, 255, 255, 0.10);
+  --aura-border-light: rgba(255, 255, 255, 0.08);
+  --aura-input-border: rgba(255, 255, 255, 0.15);
+  --aura-text: #e6e7ea;
+  --aura-text-muted: #a7a9b0;
+  --aura-text-faint: #7e8089;
+  --aura-accent: #8e9e94;
+  --aura-accent-pill: rgba(142, 158, 148, 0.12);
+  --aura-accent-pill-hover: rgba(142, 158, 148, 0.20);
+  --aura-hero-pattern-color: #ffffff;
+}
+
+/* Base override for #app to stretch full-screen */
+#app {
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: var(--aura-bg) !important;
+  min-height: calc(100vh - 83px);
+}
+
+/* Header style mapping */
+.site-header {
+  background: var(--aura-bg) !important;
+  border-bottom: 1px solid var(--aura-border-light) !important;
+  padding: 22px 48px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+.site-header .brand {
+  font-family: 'Cormorant Garamond', serif !important;
+  font-weight: 600 !important;
+  font-size: 24px !important;
+  letter-spacing: 3px !important;
+  color: var(--aura-text) !important;
+  text-decoration: none !important;
+}
+.site-header .brand-word {
+  font-family: 'Cormorant Garamond', serif !important;
+}
+.site-nav {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+}
+.theme-toggle {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--aura-border-light) !important;
+  background: transparent !important;
+  color: var(--aura-text-muted) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: background 0.15s !important;
+}
+.theme-toggle:hover {
+  background: var(--aura-border-light) !important;
+}
+.avatar-btn {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 999px !important;
+  background: var(--aura-accent) !important;
+  color: var(--aura-bg) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: 'Cormorant Garamond', serif !important;
+  font-weight: 600 !important;
+  font-size: 18px !important;
+  border: none !important;
+  cursor: pointer !important;
+}
+
+/* Selection and fonts */
+::selection {
+  background: var(--aura-accent);
+  color: var(--aura-bg);
+}
+
+/* Document font override */
+.results-card {
+  font-family: 'Work Sans', sans-serif;
+  color: var(--aura-text);
+}
+
+/* Section headings overrides */
+.result-h3 {
+  font-family: 'Cormorant Garamond', serif !important;
+  font-weight: 600 !important;
+  font-size: 26px !important;
+  color: var(--aura-text) !important;
+  margin: 34px 0 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  border: none !important;
+}
+.result-h3::before {
+  content: "" !important;
+  width: 4px !important;
+  height: 22px !important;
+  background: var(--aura-accent) !important;
+  border-radius: 2px !important;
+  display: inline-block !important;
+}
+
+.result-h4 {
+  font-family: 'Work Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  color: var(--aura-text) !important;
+  margin: 20px 0 10px !important;
+}
+
+/* Summary tiles */
+.result-summary-row {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  gap: 16px !important;
+  margin: 16px 0 24px !important;
+}
+.result-stat {
+  background: var(--aura-surface) !important;
+  border: 1px solid var(--aura-border) !important;
+  border-radius: 8px !important;
+  padding: 22px 24px !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+}
+.result-stat-num {
+  font-family: 'Cormorant Garamond', serif !important;
+  font-weight: 500 !important;
+  font-size: 40px !important;
+  line-height: 1 !important;
+  color: var(--aura-text) !important;
+}
+.result-stat-label {
+  font-size: 10px !important;
+  letter-spacing: 1.8px !important;
+  text-transform: uppercase !important;
+  color: var(--aura-text-faint) !important;
+  margin-top: 8px !important;
+  display: block !important;
+}
+
+/* Post editing KPIs */
+.result-kpis {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+  gap: 16px !important;
+  margin: 16px 0 24px !important;
+}
+.result-kpi {
+  background: var(--aura-surface) !important;
+  border: 1px solid var(--aura-border) !important;
+  border-radius: 8px !important;
+  padding: 20px !important;
+  min-width: 0 !important;
+  box-shadow: none !important;
+}
+.kpi-value {
+  font-family: 'Cormorant Garamond', serif !important;
+  font-weight: 600 !important;
+  font-size: 32px !important;
+  line-height: 1 !important;
+  color: var(--aura-text) !important;
+}
+.kpi-label {
+  font-size: 11px !important;
+  color: var(--aura-text-faint) !important;
+  margin-top: 8px !important;
+  line-height: 1.4 !important;
+}
+
+/* Refined tables */
+table.result-table {
+  width: 100% !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border: 1px solid var(--aura-border) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  background: var(--aura-surface) !important;
+  margin: 16px 0 24px !important;
+}
+table.result-table thead tr {
+  background: var(--aura-surface-2) !important;
+}
+table.result-table th {
+  padding: 14px 24px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 1.4px !important;
+  text-transform: uppercase !important;
+  color: var(--aura-text-muted) !important;
+  border-bottom: 1px solid var(--aura-border-light) !important;
+  text-align: left;
+}
+table.result-table td {
+  padding: 15px 24px !important;
+  font-size: 14px !important;
+  color: var(--aura-text) !important;
+  border-bottom: 1px solid var(--aura-border-light) !important;
+  background: var(--aura-surface) !important;
+}
+table.result-table tbody tr:hover td {
+  background: var(--aura-accent-pill) !important;
+}
+table.result-table tr:last-child td {
+  border-bottom: none !important;
+}
+table.result-table td.num,
+table.result-table th.num {
+  text-align: right !important;
+}
+table.result-table tbody td:first-child {
+  font-weight: 500;
+}
+table.result-table td.muted {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 12px !important;
+  color: var(--aura-text-faint) !important;
+}
+
+/* Charts & Figures */
+.result-figures {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)) !important;
+  gap: 22px !important;
+  margin: 16px 0 24px !important;
+}
+.result-figure {
+  background: var(--aura-surface) !important;
+  border: 1px solid var(--aura-border) !important;
+  border-radius: 8px !important;
+  padding: 24px !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  max-width: 100% !important;
+}
+.result-figure figcaption {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin-top: 14px !important;
+  padding-top: 12px !important;
+  border-top: 1px solid var(--aura-border-light) !important;
+  font-size: 12px !important;
+  color: var(--aura-text-muted) !important;
+}
+.result-canvas-wrap {
+  position: relative !important;
+  height: 280px !important;
+  width: 100% !important;
+}
+.fig-dl {
+  font-family: 'Work Sans', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: var(--aura-text-muted) !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  padding: 4px 10px !important;
+  border: 1px solid var(--aura-input-border) !important;
+  border-radius: 999px !important;
+  background: var(--aura-surface-2) !important;
+  transition: all 0.12s;
+}
+.fig-dl:hover {
+  background: var(--aura-accent-pill) !important;
+  border-color: var(--aura-accent) !important;
+  color: var(--aura-text) !important;
+}
+
+/* Warnings and Notes */
+.result-warn {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  background: #FBF4E9 !important;
+  border: 1px solid #ECDDC2 !important;
+  border-radius: 8px !important;
+  padding: 14px 18px !important;
+  font-size: 13px !important;
+  color: #8A6D3B !important;
+  line-height: 1.5 !important;
+  margin: 16px 0 !important;
+}
+.result-warn p {
+  margin: 0 !important;
+}
+
+.result-note {
+  font-size: 13px !important;
+  color: var(--aura-text-muted) !important;
+  margin: 0 0 14px !important;
+  line-height: 1.55 !important;
+  max-width: 760px !important;
+}
+
+.result-glossary {
+  border-top: 1px solid var(--aura-border-light) !important;
+  padding-top: 24px !important;
+  font-size: 12.5px !important;
+  color: var(--aura-text-faint) !important;
+  line-height: 1.7 !important;
+  margin: 16px 0 0 !important;
+  max-width: 980px !important;
+}
+.result-glossary strong {
+  font-weight: 600 !important;
+  color: var(--aura-text-muted) !important;
+}
+
+/* Difficulty & flag tags */
+.diff-tag {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  display: inline-block !important;
+}
+.diff-tag.diff-easy {
+  color: #3F6B50 !important;
+  background: #E6EFE8 !important;
+}
+.diff-tag.diff-medium {
+  color: #8A6A24 !important;
+  background: #F6EDD8 !important;
+}
+.diff-tag.diff-hard {
+  color: #8A3A2C !important;
+  background: #F4E2DD !important;
+}
+
+[data-theme="dark"] .diff-tag.diff-easy {
+  background: #16382e !important;
+  color: #6fd6a8 !important;
+}
+[data-theme="dark"] .diff-tag.diff-medium {
+  background: #3a2e16 !important;
+  color: #e0b65a !important;
+}
+[data-theme="dark"] .diff-tag.diff-hard {
+  background: #3a1d1d !important;
+  color: #e88 !important;
+}
+
+.perf-flag {
+  display: inline-block !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  margin-right: 4px !important;
+}
+
+/* Table Toolbar Buttons */
+.table-toolbar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-wrap: wrap !important;
+  margin: 20px 0 8px !important;
+}
+.table-tool-tag {
+  font-family: 'Work Sans', sans-serif !important;
+  font-size: 10px !important;
+  letter-spacing: 1.2px !important;
+  text-transform: uppercase !important;
+  color: var(--aura-text-faint) !important;
+  margin-right: 2px !important;
+}
+.table-tool-btn {
+  font-family: 'Work Sans', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: var(--aura-text-muted) !important;
+  background: var(--aura-surface) !important;
+  border: 1px solid var(--aura-input-border) !important;
+  border-radius: 6px !important;
+  padding: 4px 10px !important;
+  cursor: pointer !important;
+  transition: all 0.12s !important;
+}
+.table-tool-btn:hover {
+  border-color: var(--aura-accent) !important;
+  color: var(--aura-text) !important;
+  background: var(--aura-accent-pill) !important;
+}
+.table-tool-btn.copied {
+  background: #e8f5ee !important;
+  border-color: #93cbac !important;
+  color: #2f7d4f !important;
+}
+
+/* Button style hovers */
+a.btn-aura-ghost {
+  text-decoration: none;
+  font-family: 'Work Sans', sans-serif;
+  font-size: 13px;
+  padding: 12px 18px;
+  border-radius: 6px;
+  border: 1px solid var(--aura-input-border);
+  background: transparent;
+  color: var(--aura-text-muted);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+a.btn-aura-ghost:hover {
+  background: var(--aura-accent-pill) !important;
+}
+a.btn-aura-primary {
+  text-decoration: none;
+  font-family: 'Work Sans', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  border: 1px solid var(--aura-accent);
+  background: var(--aura-accent);
+  color: var(--aura-bg);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+a.btn-aura-primary:hover {
+  opacity: 0.9 !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- hero -->
+<section style="position:relative; overflow:hidden; border-bottom:1px solid var(--aura-border-light);">
+  <div style="position:absolute; inset:0; pointer-events:none;">
+    {% set glyphs = [
+      {'ch': 'অ', 'top': '-20px', 'left': '8%', 'size': '140px'},
+      {'ch': '字', 'top': '40px', 'left': '34%', 'size': '100px'},
+      {'ch': 'ক', 'top': '-10px', 'left': '66%', 'size': '120px'},
+      {'ch': 'ω', 'top': '70px', 'left': '88%', 'size': '90px'},
+      {'ch': 'র', 'top': '90px', 'left': '50%', 'size': '80px'},
+      {'ch': 'ñ', 'top': '10px', 'left': '22%', 'size': '90px'}
+    ] %}
+    {% for g in glyphs %}
+      <span style="position:absolute; top:{{ g.top }}; left:{{ g.left }}; font-family:'Cormorant Garamond', serif; font-size:{{ g.size }}; color:var(--aura-hero-pattern-color); opacity:0.04; user-select:none;">{{ g.ch }}</span>
+    {% endfor %}
+  </div>
+  <div style="position:relative; max-width:1240px; margin:0 auto; padding:38px 48px 36px;">
+    <a href="{{ url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id) }}" style="display:inline-flex; align-items:center; gap:7px; font-size:12px; letter-spacing:0.4px; color:var(--aura-text-muted); text-decoration:none; margin-bottom:20px;" style-hover="color:var(--aura-text);">← Back to campaign</a>
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:28px; flex-wrap:wrap;">
+      <div>
+        <div style="font-size:11px; letter-spacing:2.5px; text-transform:uppercase; color:var(--aura-text-faint); margin-bottom:10px;">Results &amp; statistics</div>
+        <h1 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:48px; line-height:1.04; margin:0; color:var(--aura-text);">{{ campaign.name }}</h1>
+        <p style="font-family:'Cormorant Garamond', serif; font-style:italic; font-size:21px; color:var(--aura-text-muted); margin:8px 0 0;">
+          {{ campaign.source_language }} → {{ campaign.target_language }} ·
+          {% if campaign.mode == 'likert' %}Likert rating{% elif campaign.mode == 'pairwise' %}Pairwise preference{% elif campaign.mode == 'span_only' %}Span-only annotation{% else %}Post-editing{% endif %}
+        </p>
+        {% if frozen %}
+          <div style="display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:var(--aura-text-muted); background:var(--aura-accent-pill); padding:4px 11px; border-radius:999px; margin-top:14px;"><span style="width:6px; height:6px; border-radius:999px; background:var(--aura-text-faint);"></span>Frozen snapshot (campaign closed)</div>
+        {% else %}
+          <div style="display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; color:var(--aura-accent); background:var(--aura-accent-pill); padding:4px 11px; border-radius:999px; margin-top:14px;"><span style="width:6px; height:6px; border-radius:999px; background:var(--aura-accent);"></span>Live · updates as ratings arrive</div>
+        {% endif %}
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <a href="{{ url_for('admin_results.admin_campaign_results_json', campaign_id=campaign.id) }}" class="btn-aura-ghost">Download data (JSON)</a>
+        <a href="{{ url_for('admin_results.admin_campaign_results_report', campaign_id=campaign.id) }}" class="btn-aura-primary">Download report (HTML)</a>
+      </div>
     </div>
   </div>
+</section>
 
+<main style="max-width:1240px; margin:0 auto; padding:34px 48px 80px;">
   <div class="results-card">
     {% include "_results_body.html" %}
   </div>
-</div>
+</main>
+
 <script>window.RESULTS = {{ results|tojson }};</script>
 <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='results.js') }}"></script>
