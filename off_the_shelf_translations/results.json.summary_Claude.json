@@ -1,0 +1,9 @@
+{
+  "claude": {
+    "calls": 90,
+    "total_seconds": 503.888,
+    "avg_seconds": 5.599,
+    "total_cost_usd": 0.280878,
+    "cost_known_for_calls": 90
+  }
+}
