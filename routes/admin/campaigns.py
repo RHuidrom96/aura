@@ -316,6 +316,30 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
             if not (ai_model or meta["default_model"]):
                 errors.append("Please specify a model name for the AI assistant.")
 
+    # Incentives parsing
+    incentive_co_authorship = form.get("incentive_co_authorship") == "on"
+    incentive_money = form.get("incentive_money") == "on"
+    try:
+        incentive_min_wage = float(form.get("incentive_min_wage") or 0.0)
+    except (TypeError, ValueError):
+        incentive_min_wage = 0.0
+    try:
+        incentive_target_tasks = int(form.get("incentive_target_tasks") or 0)
+    except (TypeError, ValueError):
+        incentive_target_tasks = 0
+    try:
+        incentive_level = float(form.get("incentive_level") or 1.0)
+    except (TypeError, ValueError):
+        incentive_level = 1.0
+    try:
+        incentive_intensity = float(form.get("incentive_intensity") or 1.0)
+    except (TypeError, ValueError):
+        incentive_intensity = 1.0
+    try:
+        incentive_bonus_amount = float(form.get("incentive_bonus_amount") or 0.0)
+    except (TypeError, ValueError):
+        incentive_bonus_amount = 0.0
+
     config = {
         "name": name,
         "task_type": task_type,
@@ -346,6 +370,13 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
         "ai_model": ai_model,
         "ai_base_url": ai_base_url,
         "ai_api_key_enc": ai_api_key_enc,
+        "incentive_co_authorship": incentive_co_authorship,
+        "incentive_money": incentive_money,
+        "incentive_min_wage": incentive_min_wage,
+        "incentive_target_tasks": incentive_target_tasks,
+        "incentive_level": incentive_level,
+        "incentive_intensity": incentive_intensity,
+        "incentive_bonus_amount": incentive_bonus_amount,
         **scale_kwargs,
     }
     form_view = {
@@ -369,6 +400,13 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
         "ai_enabled": ai_enabled, "ai_ab_enabled": ai_ab_enabled, "ai_ab_fraction": ai_ab_fraction,
         "ai_provider": ai_provider, "ai_model": ai_model,
         "ai_base_url": ai_base_url, "ai_has_key": has_key,
+        "incentive_co_authorship": incentive_co_authorship,
+        "incentive_money": incentive_money,
+        "incentive_min_wage": incentive_min_wage,
+        "incentive_target_tasks": incentive_target_tasks,
+        "incentive_level": incentive_level,
+        "incentive_intensity": incentive_intensity,
+        "incentive_bonus_amount": incentive_bonus_amount,
     }
     return config, segments, errors, form_view
 
@@ -435,6 +473,15 @@ def _render_new_campaign_form(form_data=None):
     fd.setdefault("ai_model", "")
     fd.setdefault("ai_base_url", "")
     fd.setdefault("ai_has_key", False)
+    if "incentive_co_authorship" not in fd:
+        fd["incentive_co_authorship"] = False
+    if "incentive_money" not in fd:
+        fd["incentive_money"] = False
+    fd.setdefault("incentive_min_wage", 0.0)
+    fd.setdefault("incentive_target_tasks", 10)
+    fd.setdefault("incentive_level", 1.0)
+    fd.setdefault("incentive_intensity", 1.0)
+    fd.setdefault("incentive_bonus_amount", 0.0)
     return render_template("admin_campaign_new.html",
                         scripts=SCRIPT_OPTIONS,
                         scale_types=SCALE_TYPES,
@@ -501,6 +548,13 @@ def admin_campaign_edit(campaign_id):
         "ai_model": c.ai_model or "",
         "ai_base_url": c.ai_base_url or "",
         "ai_has_key": bool(c.ai_api_key_enc),
+        "incentive_co_authorship": bool(c.incentive_co_authorship),
+        "incentive_money": bool(c.incentive_money),
+        "incentive_min_wage": c.incentive_min_wage or 0.0,
+        "incentive_target_tasks": c.incentive_target_tasks or 0,
+        "incentive_level": c.incentive_level or 1.0,
+        "incentive_intensity": c.incentive_intensity or 1.0,
+        "incentive_bonus_amount": c.incentive_bonus_amount or 0.0,
         "scale": {
             "type": c.scale_type or "likert",
             "design": c.scale_design or "circles",
@@ -529,6 +583,7 @@ def _render_edit_campaign_form(campaign, form_data):
 @admin_campaign_bp.route("/campaign/<campaign_id>")
 @require_admin
 def admin_campaign_detail(campaign_id):
+    from models import CampaignAnnotator
     c = Campaign.query.get_or_404(campaign_id)
     crit_ids = [cr["id"] for cr in get_criteria_for(c)]
     # Gather per-annotator progress
@@ -538,6 +593,11 @@ def admin_campaign_detail(campaign_id):
         ann = Annotator.query.get(aid)
         if not ann:
             continue
+        link = CampaignAnnotator.query.filter_by(campaign_id=c.id, annotator_id=aid).first()
+        if not link:
+            link = CampaignAnnotator(campaign_id=c.id, annotator_id=aid)
+            db.session.add(link)
+            db.session.commit()
         rs = [r for r in c.ratings if r.annotator_id == aid]
         completed = sum(1 for r in rs if c.rating_is_complete(r, get_criteria_for(c)))
         last_update = max((r.updated_at for r in rs), default=None)
@@ -546,6 +606,7 @@ def admin_campaign_detail(campaign_id):
             "completed": completed,
             "total": c.num_segments,
             "last_update": last_update,
+            "link": link,
         })
     rows.sort(key=lambda r: (-r["completed"], r["annotator"].email))
 
@@ -566,6 +627,7 @@ def admin_campaign_detail(campaign_id):
 @admin_campaign_bp.route("/campaign/<campaign_id>/progress.json")
 @require_admin
 def admin_campaign_progress(campaign_id):
+    from models import CampaignAnnotator
     c = Campaign.query.get_or_404(campaign_id)
     crit = get_criteria_for(c)
     rows = []
@@ -574,6 +636,11 @@ def admin_campaign_progress(campaign_id):
         ann = db.session.get(Annotator, aid)
         if not ann:
             continue
+        link = CampaignAnnotator.query.filter_by(campaign_id=c.id, annotator_id=aid).first()
+        if not link:
+            link = CampaignAnnotator(campaign_id=c.id, annotator_id=aid)
+            db.session.add(link)
+            db.session.commit()
         rs = [r for r in c.ratings if r.annotator_id == aid]
         completed = sum(1 for r in rs if c.rating_is_complete(r, crit))
         last = max((r.updated_at for r in rs), default=None)
@@ -582,8 +649,38 @@ def admin_campaign_progress(campaign_id):
             "expertise": ann.expertise or "",
             "completed": completed, "total": c.num_segments,
             "last_update": last.strftime("%Y-%m-%d %H:%M UTC") if last else None,
+            "annotator_id": ann.id,
+            "has_star": bool(link.has_star),
+            "quality_score": float(link.quality_score),
+            "form_submitted": bool(link.form_submitted),
+            "location": link.location or "",
+            "parents_language": link.parents_language or "",
+            "stayed_outside": bool(link.stayed_outside),
+            "stayed_outside_duration": link.stayed_outside_duration or "",
+            "stayed_outside_purpose": link.stayed_outside_purpose or "",
+            "exposure": link.exposure or "",
         })
     rows.sort(key=lambda r: (-r["completed"], r["email"]))
+    return jsonify({"ok": True, "rows": rows})
+
+
+@admin_campaign_bp.route("/campaign/<campaign_id>/annotator/<annotator_id>/evaluate", methods=["POST"])
+@require_admin
+def admin_evaluate_annotator(campaign_id, annotator_id):
+    from models import CampaignAnnotator
+    c = Campaign.query.get_or_404(campaign_id)
+    link = CampaignAnnotator.query.filter_by(campaign_id=c.id, annotator_id=annotator_id).first()
+    if not link:
+        link = CampaignAnnotator(campaign_id=c.id, annotator_id=annotator_id)
+        db.session.add(link)
+    try:
+        link.quality_score = float(request.form.get("quality_score") or 100.0)
+    except (TypeError, ValueError):
+        pass
+    link.has_star = request.form.get("has_star") == "1"
+    db.session.commit()
+    flash("Annotator evaluation updated.", "success")
+    return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
     return jsonify({"rows": rows, "n_annotators": len(rows)})
 
 

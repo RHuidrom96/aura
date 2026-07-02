@@ -6,6 +6,7 @@
   <div>
     <h1>{{ campaign.name }}</h1>
     <p class="hint">
+      ID: <code>{{ campaign.id }}</code> ·
       {{ campaign.source_language }} → {{ campaign.target_language }}{% if campaign.script %} · {{ campaign.script }}{% endif %}
       · created {{ campaign.created_at.strftime('%Y-%m-%d %H:%M UTC') }}
     </p>
@@ -65,6 +66,22 @@
       {% if campaign.difficulty_method != 'none' and campaign.served_difficulties %}
       <tr><td class="muted">Levels served</td><td>{{ campaign.served_difficulties.split(',') | map('capitalize') | join(', ') }} <span class="muted">(others hidden from annotators)</span></td></tr>
       {% endif %}
+      {% if campaign.incentive_co_authorship or campaign.incentive_money %}
+      <tr>
+        <td class="muted">Incentives</td>
+        <td>
+          {% if campaign.incentive_co_authorship %}
+            <span class="aura-status-pill" style="background:#e8f5e9; color:#2e7d32; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:600; display:inline-flex; align-items:center;">Co-authorship</span>
+          {% endif %}
+          {% if campaign.incentive_money %}
+            <span class="aura-status-pill" style="background:#e3f2fd; color:#1565c0; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:600; display:inline-flex; align-items:center;">Monetary Reward</span>
+            <div style="margin-top:6px; font-size:12px; line-height:1.4;" class="muted">
+              Base payout: <strong>{{ campaign.incentive_min_wage }}</strong> per segment · Target: <strong>{{ campaign.incentive_target_tasks }} tasks</strong> · Multipliers: Level {{ campaign.incentive_level }} x Intensity {{ campaign.incentive_intensity }} · Star Bonus: <strong>{{ campaign.incentive_bonus_amount }}</strong>
+            </div>
+          {% endif %}
+        </td>
+      </tr>
+      {% endif %}
     </tbody>
   </table>
 </section>
@@ -90,6 +107,10 @@
         <th>Expertise</th>
         <th>Completed</th>
         <th>Last update</th>
+        {% if campaign.incentive_money or campaign.incentive_co_authorship %}
+        <th>Form B</th>
+        <th>Evaluation</th>
+        {% endif %}
       </tr>
     </thead>
     <tbody id="progress-tbody">
@@ -106,6 +127,20 @@
           <span class="muted">{{ r.completed }} / {{ r.total }}</span>
         </td>
         <td class="muted">{{ r.last_update.strftime('%Y-%m-%d %H:%M UTC') if r.last_update else '—' }}</td>
+        {% if campaign.incentive_money or campaign.incentive_co_authorship %}
+        <td>
+          {% if r.link and r.link.form_submitted %}
+            <button class="btn btn-small" onclick="showDetailsModal('{{ r.annotator.id }}', '{{ r.annotator.name|escape }}', '{{ r.link.location|escape }}', '{{ r.link.parents_language|escape }}', {{ 'true' if r.link.stayed_outside else 'false' }}, '{{ r.link.stayed_outside_duration|escape }}', '{{ r.link.stayed_outside_purpose|escape }}', '{{ r.link.exposure|escape }}')">View Form B</button>
+          {% else %}
+            <span class="muted">Pending</span>
+          {% endif %}
+        </td>
+        <td>
+          <button class="btn btn-small" onclick="showEvalModal('{{ r.annotator.id }}', '{{ r.annotator.name|escape }}', {{ r.link.quality_score if r.link else 100.0 }}, {{ 'true' if r.link and r.link.has_star else 'false' }}, {{ r.completed }}, {{ campaign.incentive_target_tasks }}, {{ campaign.incentive_level }}, {{ campaign.incentive_intensity }})">
+            {% if r.link and r.link.has_star %}⭐ Starred (Bonus){% else %}Evaluate{% endif %}
+          </button>
+        </td>
+        {% endif %}
       </tr>
       {% endfor %}
     </tbody>
@@ -122,16 +157,27 @@
   var empty = document.getElementById("progress-empty");
   function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
   var EXP_LABEL = { easy: "Beginner", medium: "Intermediate", hard: "Advanced" };
+  var hasIncentives = {{ 'true' if campaign.incentive_money or campaign.incentive_co_authorship else 'false' }};
   function render(rows) {
     if (!rows.length) { table.hidden = true; empty.hidden = false; return; }
     table.hidden = false; empty.hidden = true;
     tbody.innerHTML = rows.map(function (r) {
       var pct = r.total ? Math.round(r.completed / r.total * 100) : 0;
+      var incCols = '';
+      if (hasIncentives) {
+        var formB = r.form_submitted ? 
+          '<button class="btn btn-small" onclick="showDetailsModal(\'' + r.annotator_id + '\', \'' + esc(r.name) + '\', \'' + esc(r.location) + '\', \'' + esc(r.parents_language) + '\', ' + r.stayed_outside + ', \'' + esc(r.stayed_outside_duration) + '\', \'' + esc(r.stayed_outside_purpose) + '\', \'' + esc(r.exposure) + '\')">View Form B</button>' :
+          '<span class="muted">Pending</span>';
+        var starText = r.has_star ? '⭐ Starred (Bonus)' : 'Evaluate';
+        var evalBtn = '<button class="btn btn-small" onclick="showEvalModal(\'' + r.annotator_id + '\', \'' + esc(r.name) + '\', ' + r.quality_score + ', ' + r.has_star + ', ' + r.completed + ', ' + {{ campaign.incentive_target_tasks }} + ', ' + {{ campaign.incentive_level }} + ', ' + {{ campaign.incentive_intensity }} + ')">' + starText + '</button>';
+        incCols = '<td>' + formB + '</td><td>' + evalBtn + '</td>';
+      }
       return '<tr><td>' + esc(r.name) + '</td><td class="muted">' + esc(r.email) + '</td>' +
         '<td>' + (EXP_LABEL[r.expertise] || '—') + '</td>' +
         '<td><div class="mini-progress"><div class="mini-progress-fill" style="width:' + pct + '%;"></div></div>' +
         '<span class="muted">' + r.completed + ' / ' + r.total + '</span></td>' +
-        '<td class="muted">' + (r.last_update ? esc(r.last_update) : '—') + '</td></tr>';
+        '<td class="muted">' + (r.last_update ? esc(r.last_update) : '—') + '</td>' +
+        incCols + '</tr>';
     }).join("");
   }
   function poll() {
@@ -194,11 +240,156 @@
   </form>
 </section>
 
+<!-- Form B Details Modal -->
+<div id="details-modal-backdrop" class="modal-backdrop" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="details-title">Annotator Background Details</h3>
+      <button class="link-btn" onclick="hideDetailsModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <table class="annotator-table">
+        <tbody>
+          <tr><td class="muted" style="width: 40%;">Location</td><td id="det-location"></td></tr>
+          <tr><td class="muted">Parents' language</td><td id="det-lang"></td></tr>
+          <tr><td class="muted">Stayed outside city/village</td><td id="det-stayed"></td></tr>
+          <tr><td class="muted">Duration stayed outside</td><td id="det-duration"></td></tr>
+          <tr><td class="muted">Purpose of stay</td><td id="det-purpose"></td></tr>
+          <tr><td class="muted">Exposure</td><td id="det-exposure" style="white-space: pre-wrap;"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Evaluation & Star Modal -->
+<div id="eval-modal-backdrop" class="modal-backdrop" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Evaluate Annotator: <span id="eval-ann-name"></span></h3>
+      <button class="link-btn" onclick="hideEvalModal()">✕</button>
+    </div>
+    <form id="eval-form" method="post" action="">
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+        <div>
+          <strong>Progress Information:</strong>
+          <div style="font-size:12px; margin-top:6px;" class="muted">
+            Completed tasks: <span id="eval-completed"></span> / <span id="eval-target"></span> (Target: <span id="eval-target-2"></span>)
+          </div>
+        </div>
+        
+        <div class="field">
+          <label for="quality_score">Quality Score (0 - 100)</label>
+          <input type="number" id="quality_score" name="quality_score" min="0" max="100" step="1" required class="ff-in" oninput="recalcComposite()">
+        </div>
+        
+        <div style="background:var(--surface-2); padding:12px; border-radius:6px; font-size:13px;">
+          <strong>AURA Star Pathway calculation:</strong>
+          <div style="margin-top:6px;">
+            Formula: <code>Quality Score * Level * Intensity</code>
+          </div>
+          <div style="margin-top:6px;" class="muted">
+            Multipliers: Level <span id="eval-lvl"></span> · Intensity <span id="eval-int"></span>
+          </div>
+          <div style="margin-top:8px; font-weight:600; font-size:14px; color:var(--accent);">
+            Calculated score: <span id="eval-composite"></span>
+          </div>
+          <div style="margin-top:6px; font-size:12px; color:#c44444;" id="eval-threshold-hint">
+            To unlock the star automatically, annotator needs to complete the target tasks and hit a composite score of 70+.
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="toggle-row">
+            <input type="checkbox" id="has_star_cb" onchange="document.getElementById('has_star_val').value = this.checked ? '1' : '0'">
+            <input type="hidden" id="has_star_val" name="has_star" value="0">
+            <span class="toggle-label">
+              ⭐ Award Star &amp; Bonus
+              <span class="hint-inline">(makes the annotator eligible for the bonus and acknowledgement)</span>
+            </span>
+          </label>
+        </div>
+        
+        <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; margin-top:10px;">
+          <button type="button" class="btn" onclick="hideEvalModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Evaluation</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 function copyShareUrl() {
   const el = document.getElementById('share-url');
   el.select();
   document.execCommand('copy');
+}
+
+var currentLvl = 1.0;
+var currentInt = 1.0;
+var currentCompleted = 0;
+var currentTarget = 10;
+
+function showDetailsModal(id, name, location, lang, stayed, duration, purpose, exposure) {
+  document.getElementById("det-location").textContent = location;
+  document.getElementById("det-lang").textContent = lang;
+  document.getElementById("det-stayed").textContent = stayed ? "Yes" : "No";
+  document.getElementById("det-duration").textContent = duration || "—";
+  document.getElementById("det-purpose").textContent = purpose || "—";
+  document.getElementById("det-exposure").textContent = exposure || "—";
+  document.getElementById("details-modal-backdrop").style.display = "flex";
+}
+function hideDetailsModal() {
+  document.getElementById("details-modal-backdrop").style.display = "none";
+}
+
+function showEvalModal(annId, name, quality, hasStar, completed, target, lvl, intensity) {
+  document.getElementById("eval-ann-name").textContent = name;
+  document.getElementById("eval-completed").textContent = completed;
+  document.getElementById("eval-target").textContent = target;
+  document.getElementById("eval-target-2").textContent = target;
+  document.getElementById("eval-lvl").textContent = lvl;
+  document.getElementById("eval-int").textContent = intensity;
+  
+  currentCompleted = completed;
+  currentTarget = target;
+  currentLvl = lvl;
+  currentInt = intensity;
+  
+  document.getElementById("quality_score").value = quality;
+  document.getElementById("has_star_cb").checked = hasStar;
+  document.getElementById("has_star_val").value = hasStar ? "1" : "0";
+  
+  // Set action URL
+  var actionUrl = "/admin/campaign/" + {{ campaign.id|tojson }} + "/annotator/" + annId + "/evaluate";
+  document.getElementById("eval-form").action = actionUrl;
+  
+  recalcComposite();
+  
+  document.getElementById("eval-modal-backdrop").style.display = "flex";
+}
+function hideEvalModal() {
+  document.getElementById("eval-modal-backdrop").style.display = "none";
+}
+
+function recalcComposite() {
+  var quality = parseFloat(document.getElementById("quality_score").value || 0.0);
+  var score = Math.round(quality * currentLvl * currentInt);
+  document.getElementById("eval-composite").textContent = score;
+  
+  var autoEligible = (currentCompleted >= currentTarget) && (score >= 70);
+  var hintEl = document.getElementById("eval-threshold-hint");
+  if (autoEligible) {
+    hintEl.innerHTML = "✅ Annotator has reached the target and quality threshold for a Star!";
+    hintEl.style.color = "#2e7d32";
+  } else {
+    var reasons = [];
+    if (currentCompleted < currentTarget) reasons.push("needs " + (currentTarget - currentCompleted) + " more tasks");
+    if (score < 70) reasons.push("composite score " + score + " is under 70");
+    hintEl.innerHTML = "⚠️ Special Pathway criteria not fully met: " + reasons.join(", ") + ". You can still manually award the star using the checkbox below.";
+    hintEl.style.color = "#c44444";
+  }
 }
 </script>
 {% endblock %}

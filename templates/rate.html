@@ -1089,6 +1089,31 @@
           <button type="button" id="toggle-instructions" aria-expanded="true">Hide</button>
         </div>
         <div class="instructions-body" id="instructions-body">
+          {% if campaign.incentive_money or campaign.incentive_co_authorship %}
+          <div class="incentives-banner" style="background:var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 14px; margin-bottom: 16px; font-size: 13px;">
+            <strong style="color:var(--aura-text);">🎁 Campaign Incentives:</strong>
+            <ul style="margin: 6px 0; padding-left: 20px; line-height: 1.45; color:var(--aura-text-muted);">
+              {% if campaign.incentive_co_authorship %}
+              <li><strong>Co-authorship</strong>: Highly productive and reliable annotators will receive co-authorship on publications.</li>
+              {% endif %}
+              {% if campaign.incentive_money %}
+              <li><strong>Base Wage</strong>: {{ campaign.incentive_min_wage }} per completed segment.</li>
+              <li><strong>AURA Pathway Bonus</strong>: Earn a bonus of <strong>{{ campaign.incentive_bonus_amount }}</strong> and a ⭐ **Star** for high quality and productivity (compulsory pathway after {{ campaign.incentive_target_tasks }} tasks).</li>
+              {% endif %}
+            </ul>
+            {% if campaign.incentive_money %}
+              <div style="margin-top: 8px;" id="form-b-status-box">
+                {% if link and link.form_submitted %}
+                  <span style="color:#2e7d32; font-weight:600;">✓ Background Details (Form B) submitted!</span>
+                {% else %}
+                  <span style="color:#c44444; font-weight:600;">⚠️ Background Details (Form B) required to unlock your bonus.</span>
+                  <button type="button" class="btn btn-small" onclick="showFormBModal()" style="margin-left: 8px; font-size: 11px; padding: 4px 8px; border-radius: 4px; cursor:pointer;">Fill in Details</button>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+          {% endif %}
+
           {% if instructions %}
           <div class="admin-instructions" style="white-space: pre-line;">{{ instructions }}</div>
           {% else %}
@@ -1354,5 +1379,97 @@
   window.ASSIST_FEEDBACK_URL = {{ url_for('annotator_rating.api_assist_feedback', campaign_id=campaign.id)|tojson }};
 </script>
 <script src="{{ url_for('static', filename='rate.js') }}"></script>
+
+{% if campaign.incentive_money %}
+<!-- Form B Modal -->
+<div id="form-b-modal-backdrop" class="modal-backdrop" style="display:none;">
+  <div class="modal" style="max-width: 500px;">
+    <div class="modal-header">
+      <h3>Annotator Background Details (Form B)</h3>
+      <button type="button" class="link-btn" onclick="hideFormBModal()">✕</button>
+    </div>
+    <form id="form-b-form" onsubmit="submitFormB(event)">
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+        <p class="hint" style="margin:0 0 10px;">Please provide the following information to confirm your profile authenticity and unlock monetary rewards / bonuses.</p>
+        
+        <div class="field">
+          <label for="location">Location (City, Village, State)</label>
+          <input type="text" id="location" name="location" class="ff-in" required value="{{ link.location or '' }}">
+        </div>
+
+        <div class="field">
+          <label for="parents_language">Parents' Native Language(s)</label>
+          <input type="text" id="parents_language" name="parents_language" class="ff-in" required value="{{ link.parents_language or '' }}">
+        </div>
+
+        <div class="field">
+          <label class="toggle-row">
+            <input type="checkbox" id="stayed_outside_cb" {% if link.stayed_outside %}checked{% endif %} onchange="toggleStayedOutside(this.checked)">
+            <input type="hidden" id="stayed_outside_val" name="stayed_outside" value="{{ '1' if link.stayed_outside else '0' }}">
+            <span class="toggle-label">Have you stayed outside your city / village?</span>
+          </label>
+        </div>
+
+        <div id="stayed-outside-details" style="{% if not link.stayed_outside %}display:none;{% endif %} display:flex; flex-direction:column; gap:14px;">
+          <div class="field">
+            <label for="stayed_outside_duration">If so, how many months / years?</label>
+            <input type="text" id="stayed_outside_duration" name="stayed_outside_duration" class="ff-in" value="{{ link.stayed_outside_duration or '' }}">
+          </div>
+
+          <div class="field">
+            <label for="stayed_outside_purpose">For what purpose?</label>
+            <input type="text" id="stayed_outside_purpose" name="stayed_outside_purpose" class="ff-in" value="{{ link.stayed_outside_purpose or '' }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="exposure">Exposure to other languages/environments</label>
+          <textarea id="exposure" name="exposure" class="ff-in" rows="3" placeholder="Describe any relevant linguistic or cultural exposure...">{{ link.exposure or '' }}</textarea>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; margin-top:10px;">
+          <button type="button" class="btn" onclick="hideFormBModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit Details</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function showFormBModal() {
+  document.getElementById("form-b-modal-backdrop").style.display = "flex";
+}
+function hideFormBModal() {
+  document.getElementById("form-b-modal-backdrop").style.display = "none";
+}
+function toggleStayedOutside(checked) {
+  document.getElementById("stayed_outside_val").value = checked ? "1" : "0";
+  document.getElementById("stayed-outside-details").style.display = checked ? "flex" : "none";
+}
+function submitFormB(event) {
+  event.preventDefault();
+  var form = document.getElementById("form-b-form");
+  var formData = new FormData(form);
+  
+  fetch("{{ url_for('annotator_rating.submit_form_b', campaign_id=campaign.id) }}", {
+    method: "POST",
+    body: formData
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      hideFormBModal();
+      document.getElementById("form-b-status-box").innerHTML = '<span style="color:#2e7d32; font-weight:600;">✓ Background Details (Form B) submitted!</span>';
+    } else {
+      alert("Error: " + data.error);
+    }
+  })
+  .catch(function(err) {
+    alert("Connection error: " + err);
+  });
+}
+</script>
+{% endif %}
 
 {% endblock %}

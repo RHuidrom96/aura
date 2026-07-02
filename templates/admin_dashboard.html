@@ -280,8 +280,15 @@
     line-height: 1.18;
   }
 
-  .aura-languages {
+  .aura-campaign-id {
     margin-top: 6px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #8c887b;
+  }
+
+  .aura-languages {
+    margin-top: 4px;
     color: #8c887b;
     font-size: 13px;
   }
@@ -498,6 +505,7 @@
           </div>
 
           <h2 class="aura-card-title aura-serif">{{ display_name }}</h2>
+          <div class="aura-campaign-id">ID: <code>{{ c.id }}</code></div>
           <div class="aura-languages">
             {{ c.source_language }} → {{ c.target_language }}{% if c.script %} · {{ c.script }}{% endif %}
           </div>

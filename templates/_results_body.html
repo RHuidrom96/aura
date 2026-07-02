@@ -26,14 +26,41 @@
 {% if s.annotators %}
 <h3 class="result-h3">Annotators</h3>
 <table class="result-table" data-table-name="annotators">
-  <thead><tr><th>Name</th><th>Email</th><th>Expertise</th><th class="num">Complete ratings</th></tr></thead>
+  <thead><tr><th>Name</th><th>Email</th><th>Expertise</th><th class="num">Complete ratings</th>{% if campaign is defined and (campaign.incentive_money or campaign.incentive_co_authorship) %}<th>Reward / Acknowledgement</th>{% endif %}</tr></thead>
   <tbody>
     {% set _exp_label = {'easy':'Beginner','medium':'Intermediate','hard':'Advanced'} %}
     {% for a in s.annotators %}
-    <tr><td>{{ a.name }}</td><td>{{ a.email }}</td><td>{{ _exp_label.get(a.expertise, '—') }}</td><td class="num">{{ a.n_complete }}</td></tr>
+    <tr>
+      <td>{{ a.name }}{% if a.has_star %} ⭐{% endif %}</td>
+      <td>{{ a.email }}</td>
+      <td>{{ _exp_label.get(a.expertise, '—') }}</td>
+      <td class="num">{{ a.n_complete }}</td>
+      {% if campaign is defined and (campaign.incentive_money or campaign.incentive_co_authorship) %}
+      <td>
+        {% if a.has_star %}
+          <span style="font-weight:600; color:#34433A;">⭐ Star &amp; Acknowledgement</span>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+      {% endif %}
+    </tr>
     {% endfor %}
   </tbody>
 </table>
+
+{% set starred_annotators = s.annotators | selectattr('has_star', 'equalto', True) | list %}
+{% if starred_annotators %}
+<div style="background:var(--aura-surface-2); border: 1px solid var(--aura-border); border-radius: 8px; padding: 20px; margin-top: 14px; margin-bottom: 22px;">
+  <strong style="font-size: 15px; color: var(--aura-text);">🎓 Scientific Acknowledgements</strong>
+  <p class="muted" style="margin: 6px 0 12px; font-size: 13px;">Special recognition is given to the following annotators for their exceptional productivity, reliability, and high-quality contributions to this research study:</p>
+  <div style="display:flex; flex-wrap:wrap; gap:10px;">
+    {% for a in starred_annotators %}
+      <span style="background:var(--aura-surface); border:1px solid var(--aura-border); padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--aura-text);">⭐ {{ a.name }}</span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 {% endif %}
 
 {# ===================== ANNOTATOR PERFORMANCE & AI ===================== #}

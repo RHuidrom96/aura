@@ -99,8 +99,21 @@
                 Your progress is saved automatically. You may leave and return at any time
                 until the campaign is closed by the administrator.
             </li>
-    
         </ol>
+    
+        {% if campaign.incentive_money or campaign.incentive_co_authorship %}
+        <h3>🎁 Incentives</h3>
+        <p>This campaign offers incentives to annotators who provide complete and high-quality work:</p>
+        <ul>
+            {% if campaign.incentive_co_authorship %}
+            <li><strong>Co-authorship</strong>: Highly productive and reliable annotators will receive co-authorship on publications.</li>
+            {% endif %}
+            {% if campaign.incentive_money %}
+            <li><strong>Base wage</strong>: {{ campaign.incentive_min_wage }} per completed segment.</li>
+            <li><strong>AURA Pathway Bonus</strong>: Earn a bonus of <strong>{{ campaign.incentive_bonus_amount }}</strong> and a ⭐ **Star** for high quality and productivity (compulsory pathway after {{ campaign.incentive_target_tasks }} tasks). Note: You will be asked to fill in background details (Form B) to unlock the bonus.</li>
+            {% endif %}
+        </ul>
+        {% endif %}
     
     </div>
 

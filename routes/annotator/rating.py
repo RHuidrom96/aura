@@ -18,6 +18,7 @@ annotator_rating_bp = Blueprint(
 @annotator_rating_bp.route("/campaign/<campaign_id>/rate")
 @require_annotator
 def rate_view(campaign_id):
+    from models import CampaignAnnotator
     c = Campaign.query.get_or_404(campaign_id)
     if c.is_closed:
         return render_template("campaign_closed.html", campaign=c)
@@ -25,6 +26,11 @@ def rate_view(campaign_id):
     ann = current_annotator()
     criteria = get_criteria_for(c)
     mode = c.mode
+    link = CampaignAnnotator.query.filter_by(campaign_id=c.id, annotator_id=ann.id).first()
+    if not link:
+        link = CampaignAnnotator(campaign_id=c.id, annotator_id=ann.id)
+        db.session.add(link)
+        db.session.commit()
     # Load existing ratings for this (campaign, annotator)
     existing = {r.segment_id: r for r in
                 Rating.query.filter_by(campaign_id=c.id, annotator_id=ann.id).all()}
@@ -81,6 +87,7 @@ def rate_view(campaign_id):
         ai_available=llm.is_configured(llm.effective_config(c, current_app.config["SECRET_KEY"])),
         ai_ab_enabled=bool(c.ai_ab_enabled),
         ai_ab_eligible={s["id"]: c.ai_ab_eligible(ann.id, s["id"]) for s in segments},
+        link=link,
     )
 
 
@@ -318,3 +325,26 @@ def api_assist_feedback(campaign_id):
         log.action = action
         db.session.commit()
     return jsonify({"ok": True})
+
+
+@annotator_rating_bp.route("/campaign/<campaign_id>/api/submit_form_b", methods=["POST"])
+@require_annotator
+def submit_form_b(campaign_id):
+    from models import CampaignAnnotator
+    c = Campaign.query.get_or_404(campaign_id)
+    ann = current_annotator()
+    link = CampaignAnnotator.query.filter_by(campaign_id=c.id, annotator_id=ann.id).first()
+    if not link:
+        link = CampaignAnnotator(campaign_id=c.id, annotator_id=ann.id)
+        db.session.add(link)
+    
+    link.location = request.form.get("location", "").strip()
+    link.parents_language = request.form.get("parents_language", "").strip()
+    link.stayed_outside = request.form.get("stayed_outside") == "1"
+    link.stayed_outside_duration = request.form.get("stayed_outside_duration", "").strip()
+    link.stayed_outside_purpose = request.form.get("stayed_outside_purpose", "").strip()
+    link.exposure = request.form.get("exposure", "").strip()
+    link.form_submitted = True
+    
+    db.session.commit()
+    return jsonify({"ok": True, "message": "Background details submitted successfully!"})
