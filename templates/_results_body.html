@@ -118,10 +118,13 @@
 {# ===================== DISAGREEMENT ===================== #}
 {% if results.disagreement and results.disagreement.contested_segments %}
 {% set D = results.disagreement %}
-<h3 class="result-h3">Disagreement</h3>
+<h3 class="result-h3">Linguistic diagnosis</h3>
 <p class="result-note">
-  Where annotators diverge most. Disagreement metric: {{ D.metric }}. Use this to spot ambiguous
-  source items, unclear guidelines, or criteria that need tightening.
+  Where annotators diverge most, with linguistic context to help explain why. Disagreement metric:
+  {{ D.metric }}. The readability proxy (0–100, higher = easier; language-agnostic heuristic from
+  sentence and word length) flags unusually long or dense items; annotator comments and a link to
+  each segment let you inspect the source of confusion. Use this to spot ambiguous items, unclear
+  guidelines, or criteria that need tightening.
 </p>
 {% if D.by_criterion %}
 <table class="result-table" data-table-name="disagreement_by_criterion">
@@ -135,19 +138,29 @@
 {% endif %}
 <h4 class="result-h4">Most contested segments</h4>
 <table class="result-table" data-table-name="contested_segments">
-  <thead><tr><th>Segment</th><th>Source</th><th class="num">Raters</th><th class="num">Disagreement</th><th>Breakdown</th></tr></thead>
+  <thead><tr><th>Segment</th><th>Source</th><th class="num">Raters</th><th class="num">Disagreement</th><th class="num">Readability</th><th>Comments</th><th>Breakdown</th></tr></thead>
   <tbody>
     {% for seg in D.contested_segments %}
     <tr>
-      <td class="muted">{{ seg.segment_id }}</td>
+      <td class="muted">
+        {% if results.campaign_id %}<a href="{{ url_for('admin_results.admin_campaign_segment', campaign_id=results.campaign_id, segment_id=seg.segment_id) }}">{{ seg.segment_id }}</a>{% else %}{{ seg.segment_id }}{% endif %}
+      </td>
       <td>{{ seg.source }}{% if seg.source and seg.source|length >= 140 %}…{% endif %}</td>
       <td class="num">{{ seg.n_raters }}</td>
       <td class="num">{{ seg.disagreement }}</td>
+      <td class="num">{% if seg.readability %}{{ seg.readability.reading_ease }}{% else %}—{% endif %}</td>
+      <td>
+        {% if seg.comments %}
+          {% for cm in seg.comments[:3] %}<div style="margin-bottom:3px; font-size:12px;"><span class="muted">{{ cm.annotator }}:</span> “{{ cm.text[:120] }}{% if cm.text|length > 120 %}…{% endif %}”</div>{% endfor %}
+          {% if seg.n_comments > 3 %}<div class="muted">+{{ seg.n_comments - 3 }} more</div>{% endif %}
+        {% else %}<span class="muted">—</span>{% endif %}
+      </td>
       <td class="muted">{{ seg.detail }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+{% if results.campaign_id %}<p class="result-note">Tip: click a segment id to inspect its text, every annotator's scores, the exact spans they marked, and their comments.</p>{% endif %}
 {% endif %}
 
 {# ===================== LIKERT ===================== #}
@@ -211,13 +224,14 @@
   {% if charts.likert_span_agreement_token %}{{ figure(charts.likert_span_agreement_token, "Span agreement (token F1)", "span_agreement_token") }}{% endif %}
 </div>
 <table class="result-table" data-table-name="error_spans">
-  <thead><tr><th>Criterion</th><th class="num">Spans marked</th><th class="num">Characters</th><th class="num">Marked instances</th></tr></thead>
+  <thead><tr><th>Criterion</th><th class="num">Spans marked</th><th class="num">Characters</th><th class="num">Mean span (chars)</th><th class="num">Mean span (words)</th><th class="num">% text flagged</th><th class="num">Marked instances</th></tr></thead>
   <tbody>
     {% for c in SP.criteria %}
-    <tr><td>{{ c.name }}</td><td class="num">{{ c.n_spans }}</td><td class="num">{{ c.char_count }}</td><td class="num">{{ c.marked_instances }}</td></tr>
+    <tr><td>{{ c.name }}</td><td class="num">{{ c.n_spans }}</td><td class="num">{{ c.char_count }}</td><td class="num">{{ num(c.mean_span_chars) }}</td><td class="num">{{ num(c.mean_span_words) }}</td><td class="num">{% if c.char_density is not none %}{{ c.char_density }}%{% else %}—{% endif %}</td><td class="num">{{ c.marked_instances }}</td></tr>
     {% endfor %}
   </tbody>
 </table>
+<p class="result-note">Span <em>density</em> distinguishes a one-word slip from a whole-clause error: “Mean span” is the average length of a single marked span, and “% text flagged” is the share of reviewed characters covered by spans of that criterion.</p>
 {% if SP.pairwise_f1 %}
 <p class="result-note">Mean inter-annotator span F1, character: {{ num(SP.mean_span_f1) }} · token: {{ num(SP.mean_span_f1_token) }}.</p>
 <table class="result-table" data-table-name="span_agreement">
@@ -280,13 +294,14 @@
   {% if charts.spans_per_type %}{{ figure(charts.spans_per_type, "Error spans by type", "error_spans", "spans_per_type") }}{% endif %}
 </div>
 <table class="result-table" data-table-name="error_spans">
-  <thead><tr><th>Error type</th><th class="num">Spans marked</th><th class="num">Characters</th><th class="num">Marked instances</th></tr></thead>
+  <thead><tr><th>Error type</th><th class="num">Spans marked</th><th class="num">Characters</th><th class="num">Mean span (chars)</th><th class="num">Mean span (words)</th><th class="num">% text flagged</th><th class="num">Marked instances</th></tr></thead>
   <tbody>
     {% for c in S.criteria %}
-    <tr><td>{{ c.name }}</td><td class="num">{{ c.n_spans }}</td><td class="num">{{ c.char_count }}</td><td class="num">{{ c.marked_instances }}</td></tr>
+    <tr><td>{{ c.name }}</td><td class="num">{{ c.n_spans }}</td><td class="num">{{ c.char_count }}</td><td class="num">{{ num(c.mean_span_chars) }}</td><td class="num">{{ num(c.mean_span_words) }}</td><td class="num">{% if c.char_density is not none %}{{ c.char_density }}%{% else %}—{% endif %}</td><td class="num">{{ c.marked_instances }}</td></tr>
     {% endfor %}
   </tbody>
 </table>
+<p class="result-note">Span <em>density</em> distinguishes a one-word slip from a whole-clause error: “Mean span” is the average length of a single marked span, and “% text flagged” is the share of reviewed characters covered by spans of that error type.</p>
 
 {% if S.f1_matrix.labels|length >= 2 %}
 <h3 class="result-h3">Inter-annotator span agreement <span class="result-note-inline">(mean F1: character {{ num(S.mean_span_f1) }} · token {{ num(S.mean_span_f1_token) }})</span></h3>
@@ -309,10 +324,10 @@
 {% if S.systems %}
 <h3 class="result-h3">Errors by system</h3>
 <table class="result-table" data-table-name="errors_by_system">
-  <thead><tr><th>System</th><th class="num">Spans</th><th class="num">Characters</th><th class="num">Instances</th><th class="num">Spans / segment</th></tr></thead>
+  <thead><tr><th>System</th><th class="num">Spans</th><th class="num">Characters</th><th class="num">Instances</th><th class="num">Spans / segment</th><th class="num">Mean span (chars)</th><th class="num">% text flagged</th></tr></thead>
   <tbody>
     {% for r in S.systems %}
-    <tr><td>{{ r.system }}</td><td class="num">{{ r.spans }}</td><td class="num">{{ r.chars }}</td><td class="num">{{ r.n }}</td><td class="num">{{ num(r.spans_per_segment) }}</td></tr>
+    <tr><td>{{ r.system }}</td><td class="num">{{ r.spans }}</td><td class="num">{{ r.chars }}</td><td class="num">{{ r.n }}</td><td class="num">{{ num(r.spans_per_segment) }}</td><td class="num">{{ num(r.mean_span_chars) }}</td><td class="num">{% if r.char_density is not none %}{{ r.char_density }}%{% else %}—{% endif %}</td></tr>
     {% endfor %}
   </tbody>
 </table>

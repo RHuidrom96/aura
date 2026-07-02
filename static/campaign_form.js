@@ -184,6 +184,129 @@
     }).catch(() => { out.textContent = '✗ Request failed'; out.className = 'ai-test-result err'; });
   };
 
+  // --- Scripts: per-language options, labels, legacy sync, validation -------
+  function currentTaskPreset() {
+    var sel = document.getElementById('task_type');
+    var presets = window.TASK_PRESETS || {};
+    return (sel && presets[sel.value]) || presets['translation'] || null;
+  }
+
+  function getLanguageScripts() {
+    if (window.__LANG_SCRIPTS) return window.__LANG_SCRIPTS;
+    var el = document.getElementById('language-scripts-data');
+    var data = {};
+    if (el) { try { data = JSON.parse(el.textContent || '{}'); } catch (e) { data = {}; } }
+    var norm = {};
+    Object.keys(data).forEach(function (k) { norm[k.toLowerCase()] = data[k]; });
+    window.__LANG_SCRIPTS = norm;
+    return norm;
+  }
+
+  function allowedScriptsFor(language) {
+    var map = getLanguageScripts();
+    var key = (language || '').trim().toLowerCase();
+    if (!key) return null;                        // no language -> unrestricted
+    if (map[key]) return map[key];
+    var base = key.replace(/\(.*?\)/g, '').trim();
+    if (base && map[base]) return map[base];
+    return null;                                  // unknown language -> unrestricted
+  }
+
+  function filterScriptSelect(select, language) {
+    if (!select) return;
+    var allowed = allowedScriptsFor(language);    // null = all allowed
+    Array.prototype.forEach.call(select.options, function (opt) {
+      if (opt.value === '') { opt.hidden = false; opt.disabled = false; return; }
+      var ok = (allowed === null) || allowed.indexOf(opt.value) !== -1;
+      opt.hidden = !ok;
+      opt.disabled = !ok;
+    });
+    if (select.value && allowed !== null && allowed.indexOf(select.value) === -1) {
+      select.value = '';
+    }
+  }
+
+  function syncLegacyScript() {
+    var hidden = document.getElementById('script');
+    if (!hidden) return;
+    var t = (document.getElementById('target_script') || {}).value || '';
+    var s = (document.getElementById('source_script') || {}).value || '';
+    hidden.value = t || s || '';
+  }
+
+  function checkSameLangScript() {
+    var warn = document.getElementById('script-warning');
+    if (!warn) return;
+    var preset = currentTaskPreset();
+    // Only inherently bilingual tasks (MT) forbid identical source/target.
+    if (!preset || preset.cross_lingual !== 'required') { warn.style.display = 'none'; return; }
+    var srcLang = ((document.getElementById('source_language') || {}).value || '').trim().toLowerCase();
+    var tgtLang = ((document.getElementById('target_language') || {}).value || '').trim().toLowerCase();
+    var srcScript = (document.getElementById('source_script') || {}).value || '';
+    var tgtScript = (document.getElementById('target_script') || {}).value || '';
+    if (srcLang && tgtLang && srcLang === tgtLang && srcScript === tgtScript) {
+      warn.textContent = 'Source and target are identical (same language and script). '
+        + 'Use two different languages, or the same language with two different scripts '
+        + '(for a transliteration / script-conversion task).';
+      warn.style.display = '';
+    } else {
+      warn.style.display = 'none';
+    }
+  }
+
+  window.updateScriptUI = function () {
+    var srcLang = (document.getElementById('source_language') || {}).value || '';
+    var tgtLang = (document.getElementById('target_language') || {}).value || '';
+    var srcSel = document.getElementById('source_script');
+    var tgtSel = document.getElementById('target_script');
+    filterScriptSelect(srcSel, srcLang);
+    filterScriptSelect(tgtSel, tgtLang);
+
+    var preset = currentTaskPreset();
+    var mono = !!(preset && preset.cross_lingual === 'none');
+    var srcField = document.getElementById('source-script-field');
+    if (srcField) srcField.style.display = mono ? 'none' : '';
+    if (mono && srcSel) srcSel.value = '';
+
+    var srcLabel = document.getElementById('source-script-label');
+    var tgtLabel = document.getElementById('target-script-label');
+    if (srcLabel) srcLabel.textContent = srcLang.trim() ? (srcLang.trim() + ' script') : 'Source language script';
+    if (tgtLabel) {
+      if (mono) tgtLabel.textContent = tgtLang.trim() ? (tgtLang.trim() + ' script') : 'Script';
+      else tgtLabel.textContent = tgtLang.trim() ? (tgtLang.trim() + ' script') : 'Target language script';
+    }
+    syncLegacyScript();
+    checkSameLangScript();
+  };
+
+  // --- Pairwise wording: reflect the task's output noun (translations/summaries/…) ---
+  var OUTPUT_PLURALS = {
+    translation: 'translations', summarization: 'summaries', qa: 'answers',
+    dialogue: 'responses', simplification: 'simplifications', factuality: 'outputs',
+    general: 'outputs', custom: 'outputs',
+  };
+  function outputNounPlural() {
+    var sel = document.getElementById('task_type');
+    var tid = sel ? sel.value : 'translation';
+    if (OUTPUT_PLURALS[tid]) return OUTPUT_PLURALS[tid];
+    var preset = currentTaskPreset();
+    var out = (preset && preset.output ? preset.output : 'output').trim().toLowerCase();
+    return out ? out + 's' : 'outputs';
+  }
+  window.updatePairwiseWording = function () {
+    var noun = outputNounPlural();
+    var desc = document.getElementById('pairwise-mode-desc');
+    if (desc) {
+      desc.textContent = 'Annotators compare two candidate ' + noun
+        + ' and choose which is better, using preference options you define.';
+    }
+    var hint = document.getElementById('pairwise-pref-hint');
+    if (hint) {
+      hint.innerHTML = 'The choices an annotator picks from when comparing candidate '
+        + '<strong>A</strong> vs <strong>B</strong>. Order them as you want them shown. At least two.';
+    }
+  };
+
   // --- init -----------------------------------------------------------------
   // ---- Task type: relabel input/output + suggest criteria, toggle languages ----
   window.onTaskTypeChange = function (prefill) {
@@ -206,21 +329,9 @@
       if (tl) { tl.closest('.field').querySelector('label').firstChild.textContent =
         p.bilingual ? 'Target language ' : 'Target language (optional) '; }
     }
-    // When asked (user-initiated change), pre-fill empty criteria with the task's suggestions.
-    if (prefill && Array.isArray(p.criteria) && p.criteria.length) {
-      const rows = document.querySelectorAll('#criteria-rows .criterion-row');
-      const allEmpty = Array.from(rows).every(function (r) {
-        return !r.querySelector('.crit-name-input').value.trim();
-      });
-      if (allEmpty) {
-        const container = document.getElementById('criteria-rows');
-        if (container) container.innerHTML = '';
-        p.criteria.forEach(function (c) {
-          if (typeof c === 'string') addCriterionRow(c, '');
-          else addCriterionRow(c.name, c.guide || '');
-        });
-      }
-    }
+    // Keep the per-side script fields and pairwise wording in sync with the task type.
+    if (typeof window.updateScriptUI === 'function') window.updateScriptUI();
+    if (typeof window.updatePairwiseWording === 'function') window.updatePairwiseWording();
   };
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -256,6 +367,18 @@
 
     const ld = document.getElementById('scale_design_likert');
     if (ld) ld.addEventListener('change', updateLikertDesignDesc);
+
+    // Per-side script fields: react to language typing and script selection.
+    ['source_language', 'target_language'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', function () { window.updateScriptUI(); });
+    });
+    ['source_script', 'target_script'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', function () { syncLegacyScript(); checkSameLangScript(); });
+    });
+    if (typeof window.updateScriptUI === 'function') window.updateScriptUI();
+    if (typeof window.updatePairwiseWording === 'function') window.updatePairwiseWording();
 
     const form = document.querySelector('form.register-form');
     if (form) {

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Segment {{ seg.id }} · {{ campaign.name }} · Aura{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Segment <code>{{ seg.id }}</code></h1>
+    <p class="hint">
+      {{ campaign.name }} · {{ campaign.lang_pair_label }} ·
+      rated by {{ n_ratings }} annotator{{ '' if n_ratings == 1 else 's' }}
+    </p>
+  </div>
+  <a href="{{ url_for('admin_results.admin_campaign_results', campaign_id=campaign.id) }}" class="link-btn">← back to results</a>
+</div>
+
+<section class="card">
+  <h3 style="margin-top:0;">Text</h3>
+  <table class="annotator-table">
+    <tbody>
+      <tr><td class="muted" style="width:130px; vertical-align:top;">{{ campaign.io_labels()[0] }}{% if campaign.source_script_label %} ({{ campaign.source_script_label }}){% endif %}</td>
+          <td style="white-space:pre-wrap;">{{ seg.source or '—' }}</td></tr>
+      <tr><td class="muted" style="vertical-align:top;">{{ campaign.io_labels()[1] }}{% if campaign.target_script_label %} ({{ campaign.target_script_label }}){% endif %}</td>
+          <td style="white-space:pre-wrap;">{{ seg.target or '—' }}</td></tr>
+      {% if seg.target_a or seg.target_b %}
+      <tr><td class="muted">Candidate A</td><td style="white-space:pre-wrap;">{{ seg.target_a or '—' }}</td></tr>
+      <tr><td class="muted">Candidate B</td><td style="white-space:pre-wrap;">{{ seg.target_b or '—' }}</td></tr>
+      {% endif %}
+      {% if seg.reference %}
+      <tr><td class="muted">Reference</td><td style="white-space:pre-wrap;">{{ seg.reference }}</td></tr>
+      {% endif %}
+      {% if seg.system %}<tr><td class="muted">System</td><td>{{ seg.system }}</td></tr>{% endif %}
+      {% if seg.domain %}<tr><td class="muted">Domain</td><td>{{ seg.domain }}</td></tr>{% endif %}
+      {% if readability %}
+      <tr><td class="muted" style="vertical-align:top;">Readability<br><span style="font-size:11px;">(proxy)</span></td>
+          <td>Reading ease {{ readability.reading_ease }}/100 ·
+              {{ readability.words }} words · {{ readability.sentences }} sentence{{ '' if readability.sentences == 1 else 's' }} ·
+              mean word {{ readability.mean_word_len }} chars · mean sentence {{ readability.mean_sentence_len }} words</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h3 style="margin-top:0;">Ratings for this segment</h3>
+  {% if not rows %}
+  <p class="hint" style="margin:0;">No ratings submitted for this segment yet.</p>
+  {% else %}
+  {% for r in rows %}
+  <div style="border:1px solid #e7e1d3; border-radius:8px; padding:16px 18px; margin-bottom:14px;">
+    <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:8px;">
+      <strong>{{ r.annotator }}</strong>
+      <span class="muted" style="font-size:12px;">
+        <code>{{ r.annotator_id }}</code>
+        {% if not r.complete %} · <span style="color:#B0654F;">incomplete</span>{% endif %}
+        {% if r.updated %} · {{ r.updated }}{% endif %}
+      </span>
+    </div>
+
+    {% if campaign.mode == 'pairwise' %}
+      <p style="margin:6px 0;">Preference: <strong>{{ pref_labels.get(r.preference, r.preference) or '—' }}</strong></p>
+    {% endif %}
+
+    {% if r.criteria %}
+    <table class="result-table" style="margin:8px 0;">
+      <thead><tr><th>Criterion</th>{% if campaign.mode == 'likert' %}<th class="num">Score</th>{% endif %}<th>Marked spans</th></tr></thead>
+      <tbody>
+        {% for cr in r.criteria %}
+        <tr>
+          <td>{{ cr.criterion }}</td>
+          {% if campaign.mode == 'likert' %}<td class="num">{{ cr.score if cr.score is not none else '—' }}</td>{% endif %}
+          <td>
+            {% if cr.spans %}
+              {% for sp in cr.spans %}<span style="background:#F4E2DD; border-radius:3px; padding:1px 5px; margin:0 3px 3px 0; display:inline-block;">“{{ sp.text }}” <span class="muted" style="font-size:11px;">({{ sp.chars }} ch)</span></span>{% endfor %}
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% if r.edited_text %}
+    <p class="muted" style="margin:6px 0 2px; font-size:12px;">Post-edited output</p>
+    <p style="white-space:pre-wrap; margin:0;">{{ r.edited_text }}</p>
+    {% endif %}
+
+    {% if r.comment %}
+    <p class="muted" style="margin:8px 0 2px; font-size:12px;">Comment</p>
+    <p style="white-space:pre-wrap; margin:0;">{{ r.comment }}</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+</section>
+{% endblock %}

@@ -78,17 +78,34 @@
   <option value="Santali"></option><option value="Maithili"></option>
 </datalist>
 
-<div class="field">
-  <label for="script">Script (optional)</label>
-  <select id="script" name="script">
-    <option value="">(not applicable)</option>
-    {% for s in scripts %}
-    <option value="{{ s.id }}" {% if form_data.get('script') == s.id %}selected{% endif %}>{{ s.name }}</option>
-    {% endfor %}
-  </select>
-  <p class="hint">Set this when the language has multiple scripts (e.g. Assamese/Manipuri in
-    Eastern Nagari vs. Meitei Mayek, Bodo in Devanagari, or a Roman transliteration).</p>
+<div class="form-row" id="script-row">
+  <div class="field" id="source-script-field">
+    <label for="source_script"><span id="source-script-label">Source language script</span> (optional)</label>
+    <select id="source_script" name="source_script" data-selected="{{ form_data.get('source_script', '') }}">
+      <option value="">(not applicable)</option>
+      {% for s in scripts %}
+      <option value="{{ s.id }}" {% if form_data.get('source_script') == s.id %}selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field" id="target-script-field">
+    <label for="target_script"><span id="target-script-label">Target language script</span> (optional)</label>
+    <select id="target_script" name="target_script" data-selected="{{ form_data.get('target_script', '') }}">
+      <option value="">(not applicable)</option>
+      {% for s in scripts %}
+      <option value="{{ s.id }}" {% if form_data.get('target_script') == s.id %}selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
 </div>
+<p class="hint" id="script-hint">Set a script per side when a language has more than one writing system.
+  For machine translation you can specify the input (source) script, the output (target) script, or both
+  (e.g. Assamese/Manipuri in Eastern Nagari vs. Meitei Mayek, Bodo in Devanagari, or a Roman transliteration).
+  The dropdowns list only scripts valid for the chosen language. The same language on both sides is allowed
+  only with two different scripts (a transliteration / script-conversion task).</p>
+<p class="hint" id="script-warning" role="alert" style="display:none; color:#B0654F;"></p>
+<input type="hidden" id="script" name="script" value="{{ form_data.get('script', '') }}">
+<script type="application/json" id="language-scripts-data">{{ language_scripts | tojson }}</script>
 
 <div class="field">
   <label for="difficulty_method">Difficulty grouping</label>
@@ -181,7 +198,7 @@
       <input type="radio" name="eval_mode" value="{{ m.id }}"
              {% if form_data.get('eval_mode', 'likert') == m.id %}checked{% endif %}
              onchange="onEvalModeChange()">
-      <span><strong>{{ m.name }}</strong> <span class="hint-inline">{{ m.desc }}</span></span>
+      <span><strong>{{ m.name }}</strong> <span class="hint-inline"{% if m.id == 'pairwise' %} id="pairwise-mode-desc" data-default="{{ m.desc }}"{% endif %}>{{ m.desc }}</span></span>
     </label>
     {% endfor %}
   </div>
@@ -212,7 +229,7 @@
 {# ----------------------- Preferences (pairwise) ----------------------- #}
 <div class="field" data-mode-block="pairwise">
   <label>Preference options <span class="req">*</span></label>
-  <p class="hint">The choices an annotator picks from when comparing translation <strong>A</strong> vs <strong>B</strong>. Order them as you want them shown. At least two.</p>
+  <p class="hint" id="pairwise-pref-hint">The choices an annotator picks from when comparing candidate <strong>A</strong> vs <strong>B</strong>. Order them as you want them shown. At least two.</p>
   <div id="preference-rows">
     {% for p in form_data.get('preferences', []) %}
     <div class="criterion-row">
@@ -481,7 +498,7 @@
   window.AI_CAMPAIGN_ID = {{ (campaign.id if campaign is defined and campaign else '') | tojson }};
   window.AI_TEST_URL = {{ url_for('admin_campaign.admin_ai_test') | tojson }};
   window.TASK_PRESETS = {
-    {% for tid, t in task_types.items() %}{{ tid|tojson }}: {"input": {{ t.input|tojson }}, "output": {{ t.output|tojson }}, "bilingual": {{ t.bilingual|tojson }}, "criteria": [{% for n in t.criteria %}{"name": {{ n|tojson }}, "guide": {{ criterion_guides.get(n, '')|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]}{% if not loop.last %},{% endif %}
+    {% for tid, t in task_types.items() %}{{ tid|tojson }}: {"input": {{ t.input|tojson }}, "output": {{ t.output|tojson }}, "bilingual": {{ t.bilingual|tojson }}, "cross_lingual": {{ t.get('cross_lingual', 'none')|tojson }}, "criteria": [{% for n in t.criteria %}{"name": {{ n|tojson }}, "guide": {{ criterion_guides.get(n, '')|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]}{% if not loop.last %},{% endif %}
     {% endfor %}
   };
   window.TASK_TYPE_INITIAL = {{ form_data.get('task_type', 'translation')|tojson }};

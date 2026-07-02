@@ -163,6 +163,64 @@
 
         </div>
 
+        {% if campaign.is_cross_lingual %}
+
+        <!-- Language fluency (cross-lingual tasks) -->
+
+        <div class="field">
+
+            <label for="reg-source-fluency">
+                Your fluency in {{ campaign.source_language or 'the source language' }}
+                <span class="req">*</span>
+            </label>
+
+            <select
+                id="reg-source-fluency"
+                name="source_fluency"
+                required
+            >
+                <option value="" disabled selected>
+                    Select your level…
+                </option>
+                {% for lvl in fluency_levels %}
+                <option value="{{ lvl.id }}">{{ lvl.label }}</option>
+                {% endfor %}
+            </select>
+
+            <p class="hint">
+                How well you read/understand {{ campaign.source_language or 'the source language' }}.
+            </p>
+
+        </div>
+
+        <div class="field">
+
+            <label for="reg-target-fluency">
+                Your fluency in {{ campaign.target_language or 'the target language' }}
+                <span class="req">*</span>
+            </label>
+
+            <select
+                id="reg-target-fluency"
+                name="target_fluency"
+                required
+            >
+                <option value="" disabled selected>
+                    Select your level…
+                </option>
+                {% for lvl in fluency_levels %}
+                <option value="{{ lvl.id }}">{{ lvl.label }}</option>
+                {% endfor %}
+            </select>
+
+            <p class="hint">
+                How well you read/write {{ campaign.target_language or 'the target language' }}.
+            </p>
+
+        </div>
+
+        {% endif %}
+
         {% if campaign.difficulty_method != 'none' %}
 
         <div class="field">

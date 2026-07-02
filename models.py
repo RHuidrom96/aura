@@ -58,24 +58,41 @@ def criterion_guide(name):
 # Supported evaluation task types. Each maps to default input/output panel labels and a
 # set of example criteria the admin form can pre-fill. "translation" preserves the original
 # MT behaviour; the rest let the same modes serve other tasks.
+#
+# ``cross_lingual`` records how many languages the task involves, which drives whether the
+# source/target language fields are required and whether annotators are asked for their
+# fluency in *both* the source and target languages:
+#   "required" -> the task is inherently bilingual; source and target differ (e.g. MT).
+#   "optional" -> usually monolingual but sometimes cross-lingual (e.g. cross-lingual
+#                 summarization or QA); collect both-language fluency only when the admin
+#                 has actually set two different languages.
+#   "none"     -> strictly single-language; only one language matters (e.g. text
+#                 simplification, dialogue/response).
+# ``bilingual`` (kept for backwards compatibility) is True exactly when cross_lingual is
+# "required".
 TASK_TYPES = {
     "translation":   {"name": "Machine translation",   "input": "Source",        "output": "Translation",
-                      "criteria": ["Adequacy", "Fluency"], "bilingual": True},
+                      "criteria": ["Adequacy", "Fluency"], "bilingual": True,  "cross_lingual": "required"},
     "summarization": {"name": "Summarization",          "input": "Document",      "output": "Summary",
-                      "criteria": ["Coherence", "Consistency", "Fluency", "Relevance"], "bilingual": False},
+                      "criteria": ["Coherence", "Consistency", "Fluency", "Relevance"],
+                      "bilingual": False, "cross_lingual": "optional"},
     "simplification": {"name": "Text simplification",   "input": "Original text", "output": "Simplified text",
-                      "criteria": ["Meaning preservation", "Simplicity", "Fluency"], "bilingual": False},
+                      "criteria": ["Meaning preservation", "Simplicity", "Fluency"],
+                      "bilingual": False, "cross_lingual": "none"},
     "dialogue":      {"name": "Dialogue / response",    "input": "Conversation",  "output": "Response",
-                      "criteria": ["Helpfulness", "Coherence", "Safety"], "bilingual": False},
+                      "criteria": ["Helpfulness", "Coherence", "Safety"],
+                      "bilingual": False, "cross_lingual": "none"},
     "qa":            {"name": "Question answering",     "input": "Question",      "output": "Answer",
-                      "criteria": ["Correctness", "Completeness", "Fluency"], "bilingual": False},
+                      "criteria": ["Correctness", "Completeness", "Fluency"],
+                      "bilingual": False, "cross_lingual": "optional"},
     "factuality":    {"name": "Factuality / hallucination", "input": "Source / context", "output": "Output",
                       "criteria": ["Unsupported (hallucination)", "Contradicts source",
-                                   "Misattribution", "Incorrect fact", "Fabricated detail"], "bilingual": False},
+                                   "Misattribution", "Incorrect fact", "Fabricated detail"],
+                      "bilingual": False, "cross_lingual": "optional"},
     "general":       {"name": "General LLM output",     "input": "Input",         "output": "Output",
-                      "criteria": ["Overall quality"], "bilingual": False},
+                      "criteria": ["Overall quality"], "bilingual": False, "cross_lingual": "optional"},
     "custom":        {"name": "Custom",                 "input": "Input",         "output": "Output",
-                      "criteria": [], "bilingual": False},
+                      "criteria": [], "bilingual": False, "cross_lingual": "optional"},
 }
 
 
@@ -97,6 +114,31 @@ def task_criteria(task_type):
             for n in task_defaults(task_type).get("criteria", [])]
 
 
+# Self-rated language proficiency levels, collected at registration for the source and/or
+# target language of a cross-lingual task. Ordered from most to least proficient. Stored on
+# the annotator by id ("" = not provided).
+FLUENCY_LEVELS = [
+    {"id": "native",       "label": "Native speaker"},
+    {"id": "fluent",       "label": "Fluent"},
+    {"id": "advanced",     "label": "Advanced"},
+    {"id": "intermediate", "label": "Intermediate"},
+    {"id": "beginner",     "label": "Beginner"},
+]
+FLUENCY_IDS = {lvl["id"] for lvl in FLUENCY_LEVELS}
+_FLUENCY_LABELS = {lvl["id"]: lvl["label"] for lvl in FLUENCY_LEVELS}
+
+
+def normalize_fluency(value):
+    """Return a valid fluency id or "" for anything unrecognised."""
+    v = (value or "").strip().lower()
+    return v if v in FLUENCY_IDS else ""
+
+
+def fluency_label(value):
+    """Human-readable label for a stored fluency id (empty string if unset/unknown)."""
+    return _FLUENCY_LABELS.get((value or "").strip().lower(), "")
+
+
 class Annotator(db.Model):
     """Global annotator account. Same login works for any campaign they join."""
     __tablename__ = "annotators"
@@ -112,9 +154,22 @@ class Annotator(db.Model):
 
     native_language = db.Column(db.String(100), default="")
     expertise = db.Column(db.String(20), default="")   # "" | "easy" | "medium" | "hard"
+    # Self-rated proficiency in the source and target languages of a cross-lingual task.
+    # One of FLUENCY_IDS or "" (not provided). Collected once at registration for bilingual
+    # tasks; carried on the global account like native_language / expertise.
+    source_fluency = db.Column(db.String(20), default="")
+    target_fluency = db.Column(db.String(20), default="")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     ratings = db.relationship("Rating", backref="annotator", lazy="dynamic")
+
+    @property
+    def source_fluency_label(self):
+        return fluency_label(self.source_fluency)
+
+    @property
+    def target_fluency_label(self):
+        return fluency_label(self.target_fluency)
 
     def set_password(self, raw):
         self.password_hash = bcrypt.hashpw(raw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -202,6 +257,30 @@ class Admin(db.Model):
         self.otp_expires_at = None
         self.otp_attempts = 0
 
+class CampaignGroup(db.Model):
+    """A named collection of related campaigns (e.g. easy / medium / hard variants of one
+    study, or several systems evaluated separately). Lets an admin view and export the
+    campaigns' results together. Deleting a group never deletes its campaigns -- they are
+    simply un-grouped (group_id set back to NULL)."""
+    __tablename__ = "campaign_groups"
+
+    id = db.Column(db.String(32), primary_key=True, default=_uuid)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, default="")
+    owner_email = db.Column(db.String(200), default="")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    campaigns = db.relationship(
+        "Campaign", backref="group", lazy="dynamic",
+        # On group delete, detach campaigns rather than cascading the delete.
+        passive_deletes=True,
+    )
+
+    def ordered_campaigns(self):
+        """Campaigns in this group, oldest first (stable display order)."""
+        return list(self.campaigns.order_by(Campaign.created_at.asc()))
+
+
 class Campaign(db.Model):
     """One evaluation campaign created by the admin."""
     __tablename__ = "campaigns"
@@ -235,8 +314,18 @@ class Campaign(db.Model):
     rating_position = db.Column(db.String(10), default="side")   # "side" | "below"
     span_position = db.Column(db.String(10), default="below")    # "below" | "beside"
     owner_email = db.Column(db.String(200), default="")          # who created it (results email)
-    # For Manipuri: "bengali" or "meetei" -- otherwise None.
+    # Optional grouping: campaigns that belong together (e.g. easy/medium/hard variants of
+    # the same study) share a group so their results can be viewed and exported together.
+    group_id = db.Column(db.String(32), db.ForeignKey("campaign_groups.id"),
+                         nullable=True, index=True, default=None)
+    # Writing system(s). `script` is the legacy single field (kept for backward
+    # compatibility and as a fallback); source_script / target_script record the script of
+    # the input (source) and output (target) language separately, so e.g. a script-
+    # conversion campaign can have the same language on both sides in different scripts.
+    # Each is a SCRIPT_OPTIONS id or None.
     script = db.Column(db.String(50), default=None)
+    source_script = db.Column(db.String(50), default=None)
+    target_script = db.Column(db.String(50), default=None)
     # Segments as a JSON-encoded list of dicts {id, source, target, reference?, system?, domain?}
     segments_json = db.Column(db.Text, nullable=False)
     # Criteria as a JSON-encoded list of dicts {id, name, color, desc, guide}
@@ -314,9 +403,69 @@ class Campaign(db.Model):
         return (self.input_label or d["input"], self.output_label or d["output"])
 
     @property
+    def source_script_label(self):
+        from utils.constants import script_label
+        return script_label(self.source_script or self.script)
+
+    @property
+    def target_script_label(self):
+        from utils.constants import script_label
+        return script_label(self.target_script or self.script)
+
+    @property
+    def scripts_summary(self):
+        """Short human string for the campaign's script(s), or '' if none set.
+
+        Examples: 'Bengali–Assamese → Latin', 'Latin' (monolingual/one side),
+        'Meitei Mayek → Bengali–Assamese' (same language, different scripts)."""
+        src = self.source_script_label
+        tgt = self.target_script_label
+        if src and tgt:
+            return src if src == tgt else f"{src} → {tgt}"
+        return src or tgt
+
+    @property
+    def lang_pair_label(self):
+        """Language pair with per-side script in parentheses where set, e.g.
+        'English (Latin) → Assamese (Bengali–Assamese)'. Falls back gracefully when a
+        script or a side is missing."""
+        def side(lang, script):
+            lang = (lang or "").strip()
+            if lang and script:
+                return f"{lang} ({script})"
+            return lang
+        src = side(self.source_language, self.source_script_label)
+        tgt = side(self.target_language, self.target_script_label)
+        if src and tgt:
+            return f"{src} → {tgt}"
+        return src or tgt
+
+    @property
     def is_bilingual(self):
         """True for tasks with distinct source/target languages (e.g. translation)."""
         return bool(task_defaults(self.task_type).get("bilingual"))
+
+    @property
+    def cross_lingual_mode(self):
+        """"required" | "optional" | "none" -- how many languages the task type involves."""
+        return task_defaults(self.task_type).get("cross_lingual", "none")
+
+    @property
+    def is_cross_lingual(self):
+        """True when this specific campaign actually spans two languages.
+
+        Always true for inherently bilingual tasks (MT). For "optional" tasks (e.g.
+        cross-lingual summarization / QA) it's true only when the admin set two distinct
+        source and target languages. Never true for strictly monolingual tasks.
+        """
+        mode = self.cross_lingual_mode
+        if mode == "required":
+            return True
+        if mode == "none":
+            return False
+        src = (self.source_language or "").strip()
+        tgt = (self.target_language or "").strip()
+        return bool(src and tgt and src.casefold() != tgt.casefold())
 
     def has_explicit_difficulty(self):
         return any(_DIFF_NORM.get(str(s.get("difficulty", "")).strip().lower())

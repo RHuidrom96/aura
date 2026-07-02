@@ -6,7 +6,7 @@ from flask import Blueprint, current_app, render_template, jsonify, Response
 
 import results
 import exporter
-from models import Campaign, Rating
+from models import Campaign, Rating, CampaignGroup
 from utils.constants import get_criteria_for
 from services.auth_service import require_admin
 
@@ -85,6 +85,104 @@ def admin_campaign_results(campaign_id):
 def admin_campaign_results_version(campaign_id):
     c = Campaign.query.get_or_404(campaign_id)
     return jsonify({"ok": True, "version": _results_signature(c), "frozen": c.is_closed})
+
+
+@admin_results_bp.route("/groups/<group_id>/results")
+@require_admin
+def admin_group_results(group_id):
+    group = CampaignGroup.query.get_or_404(group_id)
+    campaigns = group.ordered_campaigns()
+    items = []
+    for c in campaigns:
+        res, _ = _campaign_results(c)
+        items.append({"id": c.id, "name": c.name, "mode": c.mode, "results": res})
+    combined = results.combine_group_results(items)
+    # Map campaign id -> campaign object for links in the template.
+    campaign_by_id = {c.id: c for c in campaigns}
+    return render_template("admin_group_results.html",
+                        group=group, campaigns=campaigns, combined=combined,
+                        campaign_by_id=campaign_by_id)
+
+
+@admin_results_bp.route("/groups/<group_id>/download_csv")
+@require_admin
+def admin_group_download_csv(group_id):
+    """Combined master CSV across every campaign in the group (completed ratings only)."""
+    group = CampaignGroup.query.get_or_404(group_id)
+    items = []
+    for c in group.ordered_campaigns():
+        crit = get_criteria_for(c)
+        all_ratings = Rating.query.filter_by(campaign_id=c.id).all()
+        completed = [r for r in all_ratings if c.rating_is_complete(r, crit)]
+        items.append((c, completed, crit))
+    data = exporter.build_group_master_csv(items)
+    filename = exporter._safe_filename(group.name) + "_group_master.csv"
+    return Response(
+        data, mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@admin_results_bp.route("/campaign/<campaign_id>/segment/<segment_id>")
+@require_admin
+def admin_campaign_segment(campaign_id, segment_id):
+    """Inspect a single segment: its source/target and every annotator's rating for it
+    (scores, marked error spans with the exact substrings, comments, and any post-edit).
+    Linked from the 'Linguistic diagnosis' section so admins can jump straight to the
+    segments annotators disagree on most."""
+    c = Campaign.query.get_or_404(campaign_id)
+    seg = c.segment_by_id(segment_id)
+    if not seg:
+        from flask import abort
+        abort(404)
+    crit = get_criteria_for(c)
+    crit_names = {cr["id"]: cr["name"] for cr in crit}
+    target = seg.get("target", "") or ""
+    ratings = (Rating.query.filter_by(campaign_id=c.id, segment_id=segment_id)
+               .all())
+
+    rows = []
+    for r in ratings:
+        if not c.rating_is_complete(r, crit):
+            # Still show partial ratings, but mark them.
+            pass
+        ann = r.annotator
+        scores = r.scores_dict()
+        spans = r.spans_dict()
+        span_view = []
+        for cr in crit:
+            cid = cr["id"]
+            marked = []
+            for sp in spans.get(cid, []):
+                if len(sp) >= 2:
+                    a, b = sp[0], sp[1]
+                    txt = target[a:b] if 0 <= a <= b <= len(target) else ""
+                    marked.append({"start": a, "end": b, "text": txt,
+                                   "chars": max(0, b - a)})
+            if marked or cid in scores:
+                span_view.append({
+                    "criterion": crit_names.get(cid, cid),
+                    "score": scores.get(cid),
+                    "spans": marked,
+                })
+        rows.append({
+            "annotator": (ann.name if ann else r.annotator_id),
+            "annotator_id": r.annotator_id,
+            "email": (ann.email if ann else ""),
+            "preference": (r.preference or ""),
+            "criteria": span_view,
+            "comment": (r.comments or "").strip(),
+            "edited_text": (r.edited_text or "").strip(),
+            "complete": c.rating_is_complete(r, crit),
+            "updated": r.updated_at.strftime("%Y-%m-%d %H:%M UTC") if r.updated_at else "",
+        })
+
+    pref_labels = {p["id"]: p["label"] for p in c.preferences}
+    readability = results._readability(seg.get("source", "") or target)
+    return render_template("admin_segment_detail.html",
+                        campaign=c, seg=seg, rows=rows,
+                        pref_labels=pref_labels, readability=readability,
+                        n_ratings=len(rows))
 
 
 @admin_results_bp.route("/campaign/<campaign_id>/results-fragment")

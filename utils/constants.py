@@ -1,4 +1,6 @@
 # -- Evaluation rubric (shared with the rating template + JS) -----------------
+import re
+
 CRITERIA_DEFAULTS = [
     {"id": "adequacy", "name": "Adequacy",
      "color": "#0072B2",
@@ -53,7 +55,7 @@ EVAL_MODES = [
     {"id": "likert", "name": "Likert scale rating",
      "desc": "Annotators score each criterion on a scale. Optionally also mark error spans (target only, or both source and target)."},
     {"id": "pairwise", "name": "Pairwise preference",
-     "desc": "Annotators compare two candidate translations and choose which is better, using preference options you define."},
+     "desc": "Annotators compare two candidate outputs and choose which is better, using preference options you define."},
     {"id": "span_only", "name": "Span annotation only",
      "desc": "Annotators only mark error spans (no scoring). Your criteria become the error-type categories."},
     {"id": "post_edit", "name": "Post-editing",
@@ -80,3 +82,106 @@ SCRIPT_OPTIONS = [
     {"id": "wancho",      "name": "Wancho",                             "short": "Wancho"},
     {"id": "other",       "name": "Other",                              "short": "Other"},
 ]
+
+_SCRIPT_IDS = {s["id"] for s in SCRIPT_OPTIONS}
+_SCRIPT_SHORT = {s["id"]: s["short"] for s in SCRIPT_OPTIONS}
+
+
+def script_label(script_id):
+    """Human-readable short name for a stored script id ("" if unset/unknown)."""
+    return _SCRIPT_SHORT.get((script_id or "").strip().lower(), "")
+
+
+# Which scripts are plausible for a given language. Used to restrict the script dropdowns
+# and to reject impossible language/script combinations at save time. Every mapped set
+# includes "latin" (romanization / transliteration is broadly possible) and "other" (an
+# escape hatch), plus the language's native script(s) where Aura has a matching option.
+# Languages NOT listed here are treated as unrestricted (any script allowed) so that
+# free-typed languages never trigger a false error.
+_L = "latin"
+_O = "other"
+LANGUAGE_SCRIPTS = {
+    # Northeast India
+    "assamese":              ["bengali", _L, _O],
+    "manipuri (meitei)":     ["meetei", "bengali", _L, _O],
+    "manipuri":              ["meetei", "bengali", _L, _O],
+    "meitei":                ["meetei", "bengali", _L, _O],
+    "bishnupriya manipuri":  ["bengali", _L, _O],
+    "bodo":                  ["devanagari", _L, _O],
+    "mizo":                  [_L, _O],
+    "khasi":                 [_L, _O],
+    "khasi (pnar)":          [_L, _O],
+    "nyishi":                [_L, _O],
+    "kokborok":              [_L, "bengali", _O],
+    "nagamese":              [_L, "bengali", _O],
+    "garo":                  [_L, "bengali", _O],
+    "ao":                    [_L, _O],
+    "angami":                [_L, _O],
+    "sumi":                  [_L, _O],
+    "lotha":                 [_L, _O],
+    "tangkhul":              [_L, _O],
+    "hmar":                  [_L, _O],
+    "paite":                 [_L, _O],
+    "thadou (kuki)":         [_L, _O],
+    "thadou":                [_L, _O],
+    "karbi":                 [_L, "bengali", _O],
+    "dimasa":                [_L, "bengali", _O],
+    "rabha":                 [_L, "bengali", _O],
+    "adi":                   [_L, _O],
+    "apatani":               [_L, _O],
+    "rongmei":               [_L, _O],
+    "tiwa":                  [_L, "bengali", _O],
+    "deori":                 [_L, "bengali", _O],
+    "chakma":                ["bengali", _L, _O],
+    "wancho":                ["wancho", _L, _O],
+    # Other Indian + common
+    "english":               [_L, _O],
+    "hindi":                 ["devanagari", _L, _O],
+    "bengali":               ["bengali", _L, _O],
+    "nepali":                ["devanagari", _L, _O],
+    "marathi":               ["devanagari", _L, _O],
+    "sanskrit":              ["devanagari", _L, _O],
+    "maithili":              ["devanagari", _L, _O],
+    "santali":               ["ol_chiki", "devanagari", _L, _O],
+    "tamil":                 [_L, _O],
+    "telugu":                [_L, _O],
+    "kannada":               [_L, _O],
+    "malayalam":             [_L, _O],
+    "gujarati":              [_L, _O],
+    "punjabi":               [_L, _O],
+    "odia":                  [_L, _O],
+    "urdu":                  [_L, _O],
+}
+
+
+def _normalize_language(name):
+    return (name or "").strip().lower()
+
+
+def allowed_scripts_for_language(name):
+    """List of allowed script ids for a language, or None if the language is unknown
+    (meaning: no restriction). Matches the full name first, then the name with any
+    parenthetical qualifier removed (e.g. "Manipuri (Meitei)" -> "manipuri")."""
+    key = _normalize_language(name)
+    if not key:
+        return None
+    if key in LANGUAGE_SCRIPTS:
+        return list(LANGUAGE_SCRIPTS[key])
+    base = re.sub(r"\(.*?\)", "", key).strip()
+    if base and base in LANGUAGE_SCRIPTS:
+        return list(LANGUAGE_SCRIPTS[base])
+    return None
+
+
+def script_allowed_for_language(script_id, language):
+    """True if `script_id` is a valid choice for `language`. Unknown languages allow any
+    valid script; an empty script is always allowed (it's optional)."""
+    sid = (script_id or "").strip().lower()
+    if not sid:
+        return True
+    if sid not in _SCRIPT_IDS:
+        return False
+    allowed = allowed_scripts_for_language(language)
+    if allowed is None:
+        return True
+    return sid in allowed

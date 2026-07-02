@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 
-from models import Campaign, Annotator
+from models import Campaign, Annotator, normalize_fluency, FLUENCY_LEVELS
 from extensions import db
 from utils.constants import SCRIPT_OPTIONS, get_criteria_for
 from services.auth_service import (
@@ -223,7 +223,8 @@ def annotator_signup_view(campaign_id):
         "annotator_signup.html",
         campaign=c,
         scripts=SCRIPT_OPTIONS,
-        criteria=get_criteria_for(c)
+        criteria=get_criteria_for(c),
+        fluency_levels=FLUENCY_LEVELS,
     )
 
 
@@ -282,6 +283,8 @@ def annotator_register(campaign_id):
     confirm = request.form.get("password_confirm", "")
     native_lang = request.form.get("native_language", "").strip()
     expertise = (request.form.get("expertise", "") or "").strip().lower()
+    source_fluency = normalize_fluency(request.form.get("source_fluency", ""))
+    target_fluency = normalize_fluency(request.form.get("target_fluency", ""))
 
     if expertise not in ("easy", "medium", "hard"):
         expertise = ""
@@ -309,6 +312,14 @@ def annotator_register(campaign_id):
     if c.difficulty_method != "none" and not expertise:
         errors.append("Please select your expertise level.")
 
+    # For cross-lingual tasks (e.g. MT), fluency in both the source and target language is
+    # required; for monolingual tasks these fields aren't shown and stay blank.
+    if c.is_cross_lingual:
+        if not source_fluency:
+            errors.append(f"Please rate your fluency in {c.source_language or 'the source language'}.")
+        if not target_fluency:
+            errors.append(f"Please rate your fluency in {c.target_language or 'the target language'}.")
+
     if not errors and Annotator.query.filter_by(email=email).first():
         errors.append(
             "An account with that email already exists. Sign in instead."
@@ -330,6 +341,8 @@ def annotator_register(campaign_id):
         email=email,
         native_language=native_lang,
         expertise=expertise,
+        source_fluency=source_fluency,
+        target_fluency=target_fluency,
     )
 
     ann.set_password(password)

@@ -490,7 +490,7 @@ a.btn-aura-primary:hover {
         <div style="font-size:11px; letter-spacing:2.5px; text-transform:uppercase; color:var(--aura-text-faint); margin-bottom:10px;">Results &amp; statistics</div>
         <h1 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:48px; line-height:1.04; margin:0; color:var(--aura-text);">{{ campaign.name }}</h1>
         <p style="font-family:'Cormorant Garamond', serif; font-style:italic; font-size:21px; color:var(--aura-text-muted); margin:8px 0 0;">
-          {{ campaign.source_language }} → {{ campaign.target_language }} ·
+          {{ campaign.lang_pair_label }} ·
           {% if campaign.mode == 'likert' %}Likert rating{% elif campaign.mode == 'pairwise' %}Pairwise preference{% elif campaign.mode == 'span_only' %}Span-only annotation{% else %}Post-editing{% endif %}
         </p>
         {% if frozen %}

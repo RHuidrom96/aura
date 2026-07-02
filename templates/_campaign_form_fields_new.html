@@ -67,14 +67,40 @@
     <option value="Santali"></option><option value="Maithili"></option>
   </datalist>
 
-  <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin:22px 0 7px;">Script <span style="color:var(--aura-text-faint); font-weight:400;">(optional)</span></label>
-  <select id="script" name="script" class="ff-in">
-    <option value="">(not applicable)</option>
-    {% for s in scripts %}
-    <option value="{{ s.id }}" {% if form_data.get('script') == s.id %}selected{% endif %}>{{ s.name }}</option>
-    {% endfor %}
-  </select>
-  <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px; line-height:1.5;">Set this when the language has multiple scripts.</div>
+  <div id="script-row" style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:22px;">
+    <div id="source-script-field">
+      <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">
+        <span id="source-script-label">Source language script</span> <span style="color:var(--aura-text-faint); font-weight:400;">(optional)</span>
+      </label>
+      <select id="source_script" name="source_script" class="ff-in" data-selected="{{ form_data.get('source_script', '') }}">
+        <option value="">(not applicable)</option>
+        {% for s in scripts %}
+        <option value="{{ s.id }}" {% if form_data.get('source_script') == s.id %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div id="target-script-field">
+      <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">
+        <span id="target-script-label">Target language script</span> <span style="color:var(--aura-text-faint); font-weight:400;">(optional)</span>
+      </label>
+      <select id="target_script" name="target_script" class="ff-in" data-selected="{{ form_data.get('target_script', '') }}">
+        <option value="">(not applicable)</option>
+        {% for s in scripts %}
+        <option value="{{ s.id }}" {% if form_data.get('target_script') == s.id %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <div id="script-hint" style="font-size:12px; color:var(--aura-text-faint); margin-top:9px; line-height:1.5;">
+    Set a script per side when a language has more than one writing system. For machine
+    translation you can specify the input (source) script, the output (target) script, or both.
+    The dropdowns list only scripts valid for the chosen language. Same language on both sides
+    is allowed only with two different scripts (a transliteration / script-conversion task).
+  </div>
+  <div id="script-warning" role="alert" style="display:none; font-size:12px; color:#B0654F; margin-top:8px; line-height:1.5;"></div>
+  <!-- Hidden legacy field kept in sync for backward compatibility. -->
+  <input type="hidden" id="script" name="script" value="{{ form_data.get('script', '') }}">
+  <script type="application/json" id="language-scripts-data">{{ language_scripts | tojson }}</script>
 
   <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin:22px 0 7px;">Difficulty grouping</label>
   <select id="difficulty_method" name="difficulty_method" class="ff-in">
@@ -155,7 +181,7 @@
         </div>
         <div>
           <span style="font-size:14px; font-weight:600; color:var(--aura-text);">{{ m.name }}</span> 
-          <span style="font-size:13px; color:var(--aura-text-muted); line-height:1.5;">{{ m.desc }}</span>
+          <span {% if m.id == 'pairwise' %}id="pairwise-mode-desc" data-default="{{ m.desc }}"{% endif %} style="font-size:13px; color:var(--aura-text-muted); line-height:1.5;">{{ m.desc }}</span>
         </div>
       </label>
     {% endfor %}
@@ -188,7 +214,7 @@
 <div class="field" data-mode-block="pairwise" style="border:none; padding:0; margin:0;">
   <section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Preference options <span style="color:#B0654F; font-size:18px;">*</span></h2></div>
-    <p style="font-size:12px; color:var(--aura-text-faint); margin:0 0 20px;">The choices an annotator picks from when comparing translation A vs B. Order them as you want them shown. At least two.</p>
+    <p id="pairwise-pref-hint" style="font-size:12px; color:var(--aura-text-faint); margin:0 0 20px;">The choices an annotator picks from when comparing candidate A vs B. Order them as you want them shown. At least two.</p>
 
     <div id="preference-rows" style="display:flex; flex-direction:column; gap:12px;">
       {% for p in form_data.get('preferences', []) %}
@@ -410,7 +436,7 @@
   window.AI_CAMPAIGN_ID = {{ (campaign.id if campaign is defined and campaign else '') | tojson }};
   window.AI_TEST_URL = {{ url_for('admin_campaign.admin_ai_test') | tojson }};
   window.TASK_PRESETS = {
-    {% for tid, t in task_types.items() %}{{ tid|tojson }}: {"input": {{ t.input|tojson }}, "output": {{ t.output|tojson }}, "bilingual": {{ t.bilingual|tojson }}, "criteria": [{% for n in t.criteria %}{"name": {{ n|tojson }}, "guide": {{ criterion_guides.get(n, '')|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]}{% if not loop.last %},{% endif %}
+    {% for tid, t in task_types.items() %}{{ tid|tojson }}: {"input": {{ t.input|tojson }}, "output": {{ t.output|tojson }}, "bilingual": {{ t.bilingual|tojson }}, "cross_lingual": {{ t.get('cross_lingual', 'none')|tojson }}, "criteria": [{% for n in t.criteria %}{"name": {{ n|tojson }}, "guide": {{ criterion_guides.get(n, '')|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]}{% if not loop.last %},{% endif %}
     {% endfor %}
   };
   window.TASK_TYPE_INITIAL = {{ form_data.get('task_type', 'translation')|tojson }};
