@@ -1058,6 +1058,25 @@
         <div style="font-size:12px; color:var(--aura-text-muted); margin-top:9px;"><strong id="rated-count" style="color:var(--aura-text); font-weight:600;">0</strong> / <span id="seg-total">{{ segments|length }}</span> segments rated</div>
       </div>
 
+      <!-- Campaign reference + per-page preference -->
+      <div class="sidebar-card">
+        <div style="font-size:10px; letter-spacing:1.6px; text-transform:uppercase; color:var(--aura-text-faint); margin-bottom:8px;">Campaign</div>
+        <div style="font-size:13px; color:var(--aura-text); font-weight:600; margin-bottom:4px;">{{ campaign.name }}</div>
+        <div class="campaign-id-chip" style="color:var(--aura-text-faint); font-size:11px;">ID <code>{{ campaign.id }}</code><button type="button" class="copy-id-btn" data-copy="{{ campaign.id }}" title="Copy campaign ID">copy</button></div>
+        {% set _lo, _def, _hi = campaign.per_page_bounds() %}
+        {% if _hi > _lo %}
+        <div style="margin-top:14px;">
+          <label for="per-page-select" style="display:block; font-size:11px; color:var(--aura-text-muted); margin-bottom:5px;">Segments per page</label>
+          <select id="per-page-select" style="width:100%; padding:7px 10px; border:1px solid #d8d2c2; border-radius:6px; background:#fff; color:var(--aura-text); font-size:13px;">
+            {% for n in range(_lo, _hi + 1) %}
+            <option value="{{ n }}">{{ n }}{% if n == _def %} (default){% endif %}</option>
+            {% endfor %}
+          </select>
+          <div style="font-size:11px; color:var(--aura-text-faint); margin-top:5px;">Your choice (between {{ _lo }} and {{ _hi }}), saved to your account.</div>
+        </div>
+        {% endif %}
+      </div>
+
       <!-- Segment list items on this page -->
       <div class="sidebar-card">
         <div style="font-size:10px; letter-spacing:1.6px; text-transform:uppercase; color:var(--aura-text-faint); margin-bottom:12px;">This page</div>
@@ -1347,6 +1366,10 @@
   window.SPAN_POSITION   = {{ (campaign.span_position or 'below')|tojson }};
   window.SPAN_INSTRUCTIONS = {{ span_instructions|tojson }};
   window.PER_PAGE     = {{ segments_per_page|tojson }};
+  {% set _lo, _def, _hi = campaign.per_page_bounds() %}
+  window.PER_PAGE_MIN = {{ _lo|tojson }};
+  window.PER_PAGE_MAX = {{ _hi|tojson }};
+  window.PER_PAGE_URL = {{ url_for('annotator_rating.api_set_per_page', campaign_id=campaign.id)|tojson }};
   window.AI_AVAILABLE = {{ ai_available|tojson }};
   window.AI_AB_ENABLED = {{ ai_ab_enabled|tojson }};
   window.AI_AB_ELIGIBLE = {{ ai_ab_eligible|tojson }};

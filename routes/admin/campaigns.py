@@ -15,6 +15,9 @@ import exporter
 import mailer
 import seed_data
 from models import db, Campaign, Annotator, Rating, AssistantLog, CampaignGroup
+from models import (
+    normalize_fluency, FLUENCY_LEVELS, normalize_age_group, AGE_GROUPS, fluency_label,
+)
 from utils.constants import (
     get_criteria_for, EVAL_MODES, SCALE_TYPES, SCALE_DESIGNS, SCRIPT_OPTIONS,
     CRITERIA_DEFAULTS, LANGUAGE_SCRIPTS, script_allowed_for_language, script_label,
@@ -22,6 +25,7 @@ from utils.constants import (
 from utils.forms import (
     parse_scale_from_form, parse_criteria_from_form, parse_preferences_from_form,
 )
+from utils.ingest import parse_segments_upload, ACCEPT_ATTR as SEGMENTS_ACCEPT
 from services.auth_service import require_admin, ADMIN_EMAIL
 from services.ai_assistant import task_label
 
@@ -117,7 +121,7 @@ def _validate_segments_for_mode(segments, eval_mode, campaign_for_norm=None):
     """Return a list of error strings for the given segments under a mode."""
     errors = []
     if not isinstance(segments, list) or len(segments) == 0:
-        return ["Segments JSON must be a non-empty array."]
+        return ["Your segments must be a non-empty list (JSON array, or CSV/TSV rows)."]
     seen_ids = set()
     # Use a throwaway Campaign just for the candidate-normalization helper.
     norm = campaign_for_norm or Campaign(segments_json="[]")
@@ -220,6 +224,14 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
         segments_per_page = int(form.get("segments_per_page") or 3)
     except (TypeError, ValueError):
         segments_per_page = 3
+    try:
+        min_segments_per_page = int(form.get("min_segments_per_page") or 1)
+    except (TypeError, ValueError):
+        min_segments_per_page = 1
+    try:
+        max_segments_per_page = int(form.get("max_segments_per_page") or 10)
+    except (TypeError, ValueError):
+        max_segments_per_page = 10
 
     # Scale config (only meaningful in likert mode; keep sane defaults otherwise).
     scale_errors = []
@@ -270,6 +282,12 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
                           "different scripts (for a transliteration / script-conversion task).")
     if segments_per_page < 1 or segments_per_page > 50:
         errors.append("Segments per page must be between 1 and 50.")
+    if min_segments_per_page < 1 or max_segments_per_page > 50:
+        errors.append("Segments-per-page limits must be between 1 and 50.")
+    if min_segments_per_page > max_segments_per_page:
+        errors.append("Minimum segments per page can't be greater than the maximum.")
+    if not (min_segments_per_page <= segments_per_page <= max_segments_per_page):
+        errors.append("The default segments-per-page must be within the min/max limits you set.")
 
     if eval_mode in ("likert", "span_only"):
         if len(criteria) == 0:
@@ -294,10 +312,12 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
     segments = None
     if parse_segments:
         segments_raw = ""
+        upload_name = ""
         upload = files.get("segments_file") if files else None
         if upload and upload.filename:
+            upload_name = upload.filename
             try:
-                segments_raw = upload.read().decode("utf-8")
+                segments_raw = upload.read().decode("utf-8-sig")
             except UnicodeDecodeError:
                 errors.append("Could not read the uploaded file as UTF-8.")
                 segments_raw = ""
@@ -305,13 +325,14 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
             segments_raw = form.get("segments_paste", "").strip()
 
         if not segments_raw:
-            errors.append("Please upload or paste the segments JSON file.")
+            errors.append("Please upload or paste your segments (JSON, JSONL, CSV, or TSV).")
         else:
-            try:
-                segments = json.loads(segments_raw)
+            segments, parse_err = parse_segments_upload(segments_raw, upload_name)
+            if parse_err:
+                errors.append(f"Could not parse the segments file: {parse_err}")
+                segments = None
+            else:
                 errors.extend(_validate_segments_for_mode(segments, eval_mode))
-            except json.JSONDecodeError as e:
-                errors.append(f"Segments JSON is not valid: {e}")
         form_segments_paste = segments_raw
     else:
         # Editing: validate the existing segments against the (possibly new) mode.
@@ -375,6 +396,8 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
         "enable_spans": enable_spans,
         "span_scope": span_scope,
         "segments_per_page": segments_per_page,
+        "min_segments_per_page": min_segments_per_page,
+        "max_segments_per_page": max_segments_per_page,
         "eval_mode": eval_mode,
         "preferences_json": json.dumps(preferences, ensure_ascii=False),
         "ai_enabled": ai_enabled,
@@ -400,6 +423,8 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
         "instructions": instructions,
         "span_instructions": span_instructions, "enable_spans": enable_spans,
         "span_scope": span_scope, "segments_per_page": segments_per_page,
+        "min_segments_per_page": min_segments_per_page,
+        "max_segments_per_page": max_segments_per_page,
         "eval_mode": eval_mode,
         "criteria": [{"name": cr["name"], "desc": cr["guide"]} for cr in criteria],
         "preferences": preferences,
@@ -463,6 +488,10 @@ def _render_new_campaign_form(form_data=None):
         fd["scale"] = _default_scale_view()
     if "segments_per_page" not in fd:
         fd["segments_per_page"] = 3
+    if "min_segments_per_page" not in fd:
+        fd["min_segments_per_page"] = 1
+    if "max_segments_per_page" not in fd:
+        fd["max_segments_per_page"] = 10
     if "eval_mode" not in fd:
         fd["eval_mode"] = "likert"
     if "preferences" not in fd:
@@ -533,6 +562,8 @@ def admin_campaign_edit(campaign_id):
         "enable_spans": c.enable_spans if c.enable_spans is not None else True,
         "span_scope": c.span_scope or "target",
         "segments_per_page": c.segments_per_page or 3,
+        "min_segments_per_page": (c.min_segments_per_page or 1),
+        "max_segments_per_page": (c.max_segments_per_page or 10),
         "eval_mode": c.mode,
         "criteria": [{"name": x["name"], "desc": x.get("guide") or x.get("desc") or ""} for x in crit],
         "preferences": c.preferences,
@@ -628,6 +659,9 @@ def admin_campaign_progress(campaign_id):
             "expertise": ann.expertise or "",
             "source_fluency": ann.source_fluency_label,
             "target_fluency": ann.target_fluency_label,
+            "location": ann.location or "",
+            "dialect": ann.dialect or "",
+            "age_group": ann.age_group_label,
             "completed": completed, "total": c.num_segments,
             "last_update": last.strftime("%Y-%m-%d %H:%M UTC") if last else None,
         })
@@ -720,6 +754,38 @@ def admin_campaign_delete(campaign_id):
 # Campaign groups: bundle related campaigns (e.g. easy/medium/hard variants of one
 # study) so their results can be viewed and exported together.
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Editing an annotator's profile (admin). Lets admins correct or fill in the
+# social / background variables (location, dialect, age group) plus language
+# metadata, which help interpret an annotator's ratings.
+# ---------------------------------------------------------------------------
+
+@admin_campaign_bp.route("/annotator/<annotator_id>/edit", methods=["GET", "POST"])
+@require_admin
+def admin_annotator_edit(annotator_id):
+    ann = Annotator.query.get_or_404(annotator_id)
+    # Where to return afterwards (e.g. back to the campaign the admin came from).
+    back = request.values.get("next") or url_for("admin_campaign.admin_dashboard")
+
+    if request.method == "POST":
+        ann.name = (request.form.get("name") or ann.name).strip()[:200]
+        ann.native_language = (request.form.get("native_language") or "").strip()[:100]
+        expertise = (request.form.get("expertise") or "").strip().lower()
+        ann.expertise = expertise if expertise in ("easy", "medium", "hard") else ""
+        ann.source_fluency = normalize_fluency(request.form.get("source_fluency", ""))
+        ann.target_fluency = normalize_fluency(request.form.get("target_fluency", ""))
+        ann.location = (request.form.get("location") or "").strip()[:120]
+        ann.dialect = (request.form.get("dialect") or "").strip()[:120]
+        ann.age_group = normalize_age_group(request.form.get("age_group", ""))
+        db.session.commit()
+        flash(f"Updated {ann.name}'s profile.", "success")
+        return redirect(back)
+
+    return render_template("admin_annotator_edit.html",
+                        annotator=ann, back=back,
+                        fluency_levels=FLUENCY_LEVELS, age_groups=AGE_GROUPS)
+
 
 @admin_campaign_bp.route("/groups/new", methods=["POST"])
 @require_admin

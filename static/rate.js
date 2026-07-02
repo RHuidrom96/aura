@@ -23,7 +23,31 @@
   let SPAN_INSTRUCTIONS = window.SPAN_INSTRUCTIONS || "";
   let EVAL_MODE   = window.EVAL_MODE || "likert";
   let PREFERENCES = window.PREFERENCES || [];
+  // Annotator's segments-per-page. window.PER_PAGE is already the annotator's saved,
+  // bounds-clamped choice from the server (falling back to the admin default), so we just
+  // use it. Changes are persisted server-side (so they follow the annotator across devices)
+  // via PER_PAGE_URL.
   let PER_PAGE    = Math.max(1, parseInt(window.PER_PAGE, 10) || 3);
+  let PER_PAGE_MIN = Math.max(1, parseInt(window.PER_PAGE_MIN, 10) || 1);
+  let PER_PAGE_MAX = Math.max(PER_PAGE_MIN, parseInt(window.PER_PAGE_MAX, 10) || PER_PAGE);
+  const PER_PAGE_URL = window.PER_PAGE_URL || "";
+  function clampPerPage(n) {
+    n = parseInt(n, 10);
+    if (!n || n < PER_PAGE_MIN) n = PER_PAGE_MIN;
+    if (n > PER_PAGE_MAX) n = PER_PAGE_MAX;
+    return n;
+  }
+  PER_PAGE = clampPerPage(PER_PAGE);
+  function savePerPage(value) {
+    if (!PER_PAGE_URL) return;
+    try {
+      fetch(PER_PAGE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ segments_per_page: value }),
+      });
+    } catch (e) { /* preference save is best-effort */ }
+  }
   let CONFIG_VERSION = window.CONFIG_VERSION || "";
   const AI_AVAILABLE = !!window.AI_AVAILABLE;
   const ASSIST_URL = window.ASSIST_URL || "";
@@ -1542,8 +1566,13 @@
     ENABLE_SPANS = !!cfg.enable_spans;
     SPAN_SCOPE = cfg.span_scope || "target";
     SPAN_INSTRUCTIONS = cfg.span_instructions || "";
-    PER_PAGE   = Math.max(1, parseInt(cfg.segments_per_page, 10) || 3);
+    // Update bounds, then apply the annotator's saved choice for this campaign, which the
+    // server already returns (clamped) in cfg.segments_per_page.
+    if (cfg.min_segments_per_page != null) PER_PAGE_MIN = Math.max(1, parseInt(cfg.min_segments_per_page, 10) || 1);
+    if (cfg.max_segments_per_page != null) PER_PAGE_MAX = Math.max(PER_PAGE_MIN, parseInt(cfg.max_segments_per_page, 10) || PER_PAGE_MIN);
+    PER_PAGE   = clampPerPage(parseInt(cfg.segments_per_page, 10) || PER_PAGE);
     NUM_PAGES  = Math.max(1, Math.ceil(SEGMENTS.length / PER_PAGE));
+    syncPerPageSelect();
 
     reconcileRatings();
     rebuildInstructions(cfg);
@@ -1576,6 +1605,27 @@
     } catch (e) { /* network blip — try again next tick */ }
   }
   if (CONFIG_URL) setInterval(pollConfig, 5000);
+
+  /* ---- Annotator per-page control ---- */
+  function syncPerPageSelect() {
+    var sel = document.getElementById("per-page-select");
+    if (sel) sel.value = String(PER_PAGE);
+  }
+  (function initPerPageControl() {
+    var sel = document.getElementById("per-page-select");
+    if (!sel) return;
+    sel.value = String(PER_PAGE);
+    sel.addEventListener("change", function () {
+      // Keep the annotator on the same segment across the layout change.
+      var anchorSeg = state.currentPage * PER_PAGE;
+      PER_PAGE = clampPerPage(sel.value);
+      savePerPage(PER_PAGE);
+      NUM_PAGES = Math.max(1, Math.ceil(SEGMENTS.length / PER_PAGE));
+      state.currentPage = Math.min(NUM_PAGES - 1, Math.floor(anchorSeg / PER_PAGE));
+      syncPerPageSelect();
+      renderPage(state.currentPage);
+    });
+  })();
 
   /* ===================== init ===================== */
 

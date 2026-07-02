@@ -489,6 +489,7 @@ a.btn-aura-primary:hover {
       <div>
         <div style="font-size:11px; letter-spacing:2.5px; text-transform:uppercase; color:var(--aura-text-faint); margin-bottom:10px;">Results &amp; statistics</div>
         <h1 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:48px; line-height:1.04; margin:0; color:var(--aura-text);">{{ campaign.name }}</h1>
+        <p style="margin:8px 0 0;"><span class="campaign-id-chip" style="color:var(--aura-text-faint);">ID <code>{{ campaign.id }}</code><button type="button" class="copy-id-btn" data-copy="{{ campaign.id }}" title="Copy campaign ID">copy</button></span></p>
         <p style="font-family:'Cormorant Garamond', serif; font-style:italic; font-size:21px; color:var(--aura-text-muted); margin:8px 0 0;">
           {{ campaign.lang_pair_label }} ·
           {% if campaign.mode == 'likert' %}Likert rating{% elif campaign.mode == 'pairwise' %}Pairwise preference{% elif campaign.mode == 'span_only' %}Span-only annotation{% else %}Post-editing{% endif %}

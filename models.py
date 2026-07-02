@@ -139,6 +139,31 @@ def fluency_label(value):
     return _FLUENCY_LABELS.get((value or "").strip().lower(), "")
 
 
+# Age buckets (privacy-friendly alternative to an exact age), collected optionally at
+# registration and editable by an admin.
+AGE_GROUPS = [
+    {"id": "under_18", "label": "Under 18"},
+    {"id": "18_24",    "label": "18–24"},
+    {"id": "25_34",    "label": "25–34"},
+    {"id": "35_44",    "label": "35–44"},
+    {"id": "45_54",    "label": "45–54"},
+    {"id": "55_64",    "label": "55–64"},
+    {"id": "65_plus",  "label": "65+"},
+    {"id": "na",       "label": "Prefer not to say"},
+]
+AGE_GROUP_IDS = {g["id"] for g in AGE_GROUPS}
+_AGE_GROUP_LABELS = {g["id"]: g["label"] for g in AGE_GROUPS}
+
+
+def normalize_age_group(value):
+    v = (value or "").strip().lower()
+    return v if v in AGE_GROUP_IDS else ""
+
+
+def age_group_label(value):
+    return _AGE_GROUP_LABELS.get((value or "").strip().lower(), "")
+
+
 class Annotator(db.Model):
     """Global annotator account. Same login works for any campaign they join."""
     __tablename__ = "annotators"
@@ -159,6 +184,12 @@ class Annotator(db.Model):
     # tasks; carried on the global account like native_language / expertise.
     source_fluency = db.Column(db.String(20), default="")
     target_fluency = db.Column(db.String(20), default="")
+    # Social / demographic variables that help interpret annotator behaviour (all optional,
+    # self-reported, and editable by an admin). age_group is a bucket rather than an exact
+    # age, for privacy.
+    location = db.Column(db.String(120), default="")
+    dialect = db.Column(db.String(120), default="")
+    age_group = db.Column(db.String(20), default="")   # one of AGE_GROUP ids or ""
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     ratings = db.relationship("Rating", backref="annotator", lazy="dynamic")
@@ -170,6 +201,10 @@ class Annotator(db.Model):
     @property
     def target_fluency_label(self):
         return fluency_label(self.target_fluency)
+
+    @property
+    def age_group_label(self):
+        return age_group_label(self.age_group)
 
     def set_password(self, raw):
         self.password_hash = bcrypt.hashpw(raw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -341,7 +376,11 @@ class Campaign(db.Model):
     # Whether span annotation is enabled at all
     enable_spans = db.Column(db.Boolean, default=True)
     # How many segments appear on each page of the annotator's rating screen.
+    # `segments_per_page` is the admin's default; annotators may choose their own value
+    # within [min_segments_per_page, max_segments_per_page] for their convenience.
     segments_per_page = db.Column(db.Integer, default=3)
+    min_segments_per_page = db.Column(db.Integer, default=1)
+    max_segments_per_page = db.Column(db.Integer, default=10)
 
     # ---- Evaluation mode -------------------------------------------------
     # "likert"    -> score each criterion on a scale (optionally + span annotation)
@@ -392,6 +431,8 @@ class Campaign(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     ratings = db.relationship("Rating", backref="campaign", lazy="dynamic", cascade="all,delete-orphan")
+    prefs = db.relationship("AnnotatorCampaignPref", backref="campaign", lazy="dynamic",
+                            cascade="all,delete-orphan")
 
     @property
     def is_closed(self):
@@ -401,6 +442,31 @@ class Campaign(db.Model):
         """(input_label, output_label) for the annotator UI, with task-aware defaults."""
         d = task_defaults(self.task_type)
         return (self.input_label or d["input"], self.output_label or d["output"])
+
+    def per_page_bounds(self):
+        """Return (min, default, max) segments-per-page, coerced to a sane, consistent
+        range. The default always lies within [min, max]; bounds are clamped to 1..50."""
+        default = self.segments_per_page or 3
+        lo = self.min_segments_per_page or 1
+        hi = self.max_segments_per_page or max(default, lo, 10)
+        lo = max(1, min(lo, 50))
+        hi = max(1, min(hi, 50))
+        if hi < lo:
+            lo, hi = hi, lo
+        default = max(lo, min(default, hi))
+        return lo, default, hi
+
+    def per_page_for(self, annotator):
+        """The annotator's effective segments-per-page: their saved per-campaign choice
+        clamped to the current bounds, or the admin default if they haven't chosen one."""
+        lo, default, hi = self.per_page_bounds()
+        if annotator is None:
+            return default
+        pref = AnnotatorCampaignPref.query.filter_by(
+            annotator_id=annotator.id, campaign_id=self.id).first()
+        if pref and pref.segments_per_page:
+            return max(lo, min(pref.segments_per_page, hi))
+        return default
 
     @property
     def source_script_label(self):
@@ -620,6 +686,51 @@ class Campaign(db.Model):
             out[s.get("id")] = ("medium" if q1 is None else
                                 "easy" if sc <= q1 else "medium" if sc <= q2 else "hard")
         return out
+
+    @property
+    def difficulty_method_label(self):
+        return {
+            "auto": "Automatic (composite heuristic, split into equal thirds)",
+            "length": "By input length (character thresholds or thirds)",
+            "manual": "Manual (per-segment labels only)",
+            "none": "None (no difficulty grouping)",
+        }.get(self.difficulty_method or "auto", self.difficulty_method or "auto")
+
+    def difficulty_distribution(self):
+        """How the campaign's segments actually fall into easy / medium / hard, so an admin
+        can see the (deterministic) grouping rather than guess. Returns None when difficulty
+        grouping is off, otherwise a dict with per-tier counts, how many were labelled
+        directly in the data, and — for the length method — the character cutoffs in effect.
+        """
+        method = (self.difficulty_method or "auto")
+        if method == "none":
+            return None
+        diffs = self.difficulty_for_segments()
+        counts = {"easy": 0, "medium": 0, "hard": 0, "unlabelled": 0}
+        for s in self.segments:
+            d = diffs.get(s.get("id")) or ""
+            counts[d if d in ("easy", "medium", "hard") else "unlabelled"] += 1
+        n_from_data = sum(
+            1 for s in self.segments
+            if _DIFF_NORM.get(str(s.get("difficulty", "")).strip().lower())
+        )
+        info = {"method": method, "counts": counts, "total": len(self.segments),
+                "n_from_data": n_from_data, "cutoffs": None}
+        if method == "length":
+            emax = self.difficulty_easy_max or 0
+            hmin = self.difficulty_hard_min or 0
+            if emax and hmin and emax < hmin:
+                info["cutoffs"] = {"kind": "custom", "easy_max": emax, "hard_min": hmin}
+            else:
+                def _text_len(s):
+                    return len(s.get("source") or s.get("target") or s.get("target_a") or "")
+                lengths = sorted(_text_len(s) for s in self.segments)
+                n = len(lengths)
+                if n >= 3:
+                    info["cutoffs"] = {"kind": "tercile",
+                                       "easy_max": lengths[n // 3],
+                                       "hard_min": lengths[(2 * n) // 3]}
+        return info
 
     @property
     def segments(self):
@@ -851,3 +962,24 @@ class AssistantLog(db.Model):
     # what the human did with it: "" | "helpful" | "dismissed" | "reconsidered"
     action = db.Column(db.String(20), default="")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class AnnotatorCampaignPref(db.Model):
+    """Per-annotator, per-campaign UI preferences, stored server-side so a choice follows
+    the annotator across devices and browsers. Currently just holds the annotator's chosen
+    segments-per-page (within the admin's min/max range)."""
+    __tablename__ = "annotator_campaign_prefs"
+
+    id = db.Column(db.String(32), primary_key=True, default=_uuid)
+    annotator_id = db.Column(db.String(32), db.ForeignKey("annotators.id"),
+                             nullable=False, index=True)
+    campaign_id = db.Column(db.String(32), db.ForeignKey("campaigns.id"),
+                            nullable=False, index=True)
+    # None -> the annotator hasn't overridden the admin default.
+    segments_per_page = db.Column(db.Integer, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("annotator_id", "campaign_id",
+                            name="uq_annotator_campaign_pref"),
+    )

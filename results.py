@@ -182,6 +182,9 @@ def _annotators(ratings):
                 "native_language": (getattr(ann, "native_language", "") or "") if ann else "",
                 "source_fluency": (getattr(ann, "source_fluency", "") or "") if ann else "",
                 "target_fluency": (getattr(ann, "target_fluency", "") or "") if ann else "",
+                "location": (getattr(ann, "location", "") or "") if ann else "",
+                "dialect": (getattr(ann, "dialect", "") or "") if ann else "",
+                "age_group": (getattr(ann, "age_group", "") or "") if ann else "",
             }
     return list(seen.values())
 

@@ -115,8 +115,8 @@
     <option value="manual" {{ 'selected' if form_data.get('difficulty_method')=='manual' else '' }}>Manual: use only the per-segment "difficulty" labels you provide</option>
     <option value="none" {{ 'selected' if form_data.get('difficulty_method')=='none' else '' }}>None: don't group by difficulty</option>
   </select>
-  <p class="hint">How samples are grouped into easy / medium / hard in the results. A per-segment
-    <code>difficulty</code> field (easy/medium/hard) in your data overrides this (except when set to None).</p>
+  <p class="hint">Every segment is placed in one of three tiers — <strong>easy / medium / hard</strong>. The method only decides how segments are ranked; the split is always deterministic (equal thirds, or your custom length thresholds), so the same data groups the same way — it isn't a random choice. A per-segment
+    <code>difficulty</code> field in your data overrides the computed tier (except when set to None). The campaign page shows the resulting easy/medium/hard counts.</p>
   <div id="difficulty-length-row" class="form-row" style="margin-top:8px;">
     <div class="field">
       <label for="difficulty_easy_max">Easy: up to N characters</label>
@@ -333,11 +333,25 @@
 
 {# ----------------------- Layout ----------------------- #}
 <div class="field">
-  <label for="segments_per_page">Segments per page <span class="req">*</span></label>
+  <label for="segments_per_page">Segments per page (default) <span class="req">*</span></label>
   <input type="number" id="segments_per_page" name="segments_per_page" min="1" max="50"
          value="{{ form_data.get('segments_per_page', 3) }}">
-  <p class="hint">How many segments an annotator sees on each page before "Save &amp; next page". Between 1 and 50.</p>
+  <p class="hint">The default number of segments per page for annotators.</p>
 </div>
+
+<div class="form-row">
+  <div class="field">
+    <label for="min_segments_per_page">Minimum per page</label>
+    <input type="number" id="min_segments_per_page" name="min_segments_per_page" min="1" max="50"
+           value="{{ form_data.get('min_segments_per_page', 1) }}">
+  </div>
+  <div class="field">
+    <label for="max_segments_per_page">Maximum per page</label>
+    <input type="number" id="max_segments_per_page" name="max_segments_per_page" min="1" max="50"
+           value="{{ form_data.get('max_segments_per_page', 10) }}">
+  </div>
+</div>
+<p class="hint">Annotators may pick their own segments-per-page within this range (for their convenience). The default must lie within the limits; all values 1–50.</p>
 
 <hr class="form-divider" data-mode-block="likert span_only">
 
@@ -395,12 +409,12 @@
 <hr class="form-divider">
 <div class="field">
   <label for="segments_file">Segments file <span class="req">*</span></label>
-  <input type="file" id="segments_file" name="segments_file" accept=".json,application/json">
-  <p class="hint">A JSON array of objects. Likert / span-only: each needs <code class="code-inline">id</code>, <code class="code-inline">source</code>, <code class="code-inline">target</code>. Pairwise: <code class="code-inline">id</code>, <code class="code-inline">source</code>, <code class="code-inline">target_a</code>, <code class="code-inline">target_b</code>. Optional: <code class="code-inline">reference</code>, <code class="code-inline">system</code>, <code class="code-inline">domain</code>. <a href="#" onclick="document.getElementById('paste-toggle').open=true; document.getElementById('segments_paste').focus(); return false;">Or paste below.</a></p>
+  <input type="file" id="segments_file" name="segments_file" accept=".json,.jsonl,.ndjson,.csv,.tsv,.txt,application/json,text/csv,text/tab-separated-values">
+  <p class="hint"><strong>JSON, JSONL, CSV, or TSV.</strong> Each item/row needs <code class="code-inline">id</code>, <code class="code-inline">source</code>. Likert / span-only: also <code class="code-inline">target</code>. Pairwise: <code class="code-inline">target_a</code>, <code class="code-inline">target_b</code>. Optional: <code class="code-inline">reference</code>, <code class="code-inline">system</code>, <code class="code-inline">domain</code> (CSV/TSV use these as column headers). The source may be any text (document, article, passage, etc.). <a href="#" onclick="document.getElementById('paste-toggle').open=true; document.getElementById('segments_paste').focus(); return false;">Or paste below.</a></p>
 </div>
 
 <details id="paste-toggle">
-  <summary class="link-btn" style="display:inline-block;margin-bottom:6px;">Paste JSON instead</summary>
+  <summary class="link-btn" style="display:inline-block;margin-bottom:6px;">Paste data instead</summary>
   <div class="field">
     <label for="segments_paste">Segments JSON</label>
     <textarea id="segments_paste" name="segments_paste" rows="8"

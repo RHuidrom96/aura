@@ -2574,3 +2574,42 @@ table.result-table .num { text-align: right; font-variant-numeric: tabular-nums;
   color: #22c55e;
   font-weight: 600;
 }
+
+/* Campaign ID chip (shown next to campaign names for easy reference/sharing) */
+.campaign-id-chip { display: inline-flex; align-items: center; gap: 6px; }
+.campaign-id-chip code { font-size: 0.85em; }
+.copy-id-btn {
+  border: 1px solid var(--border, #d8d2c2);
+  background: transparent;
+  color: inherit;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.copy-id-btn:hover { opacity: 1; }
+.aura-card-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; opacity: 0.55; }
+
+/* Centered confirmation modal for destructive actions (delete/close campaign).
+   Cancel is the default-focused action so a stray Enter/click can't destroy work. */
+.confirm-modal { position: fixed; inset: 0; z-index: 1000; display: flex;
+  align-items: center; justify-content: center; }
+.confirm-modal[hidden] { display: none; }
+.confirm-backdrop { position: absolute; inset: 0; background: rgba(20, 18, 14, 0.55);
+  backdrop-filter: blur(2px); }
+.confirm-dialog { position: relative; z-index: 1; width: min(460px, calc(100vw - 32px));
+  background: var(--card-bg, #fff); color: var(--text, #2a2a24);
+  border: 1px solid var(--border, #e7e1d3); border-radius: 12px;
+  padding: 26px 26px 22px; box-shadow: 0 24px 60px rgba(20, 18, 14, 0.35); }
+.confirm-dialog.confirm-danger { border-top: 4px solid #b3402f; }
+.confirm-dialog h3 { margin: 0 0 10px; font-size: 20px; }
+.confirm-dialog p { margin: 0 0 12px; font-size: 14px; line-height: 1.5; }
+.confirm-dialog input[type="text"] { width: 100%; padding: 10px 12px; margin: 4px 0 4px;
+  border: 1px solid var(--border, #d8d2c2); border-radius: 6px;
+  background: var(--input-bg, #fff); color: inherit; font-size: 14px; box-sizing: border-box; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.confirm-actions [data-default] { font-weight: 600; }
+.confirm-actions [data-default]:focus-visible { outline: 2px solid var(--accent, #34433a);
+  outline-offset: 2px; }

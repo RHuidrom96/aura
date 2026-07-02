@@ -268,6 +268,32 @@
 
         {% endif %}
 
+        <!-- Optional background (helps interpret results; you can skip any of these) -->
+        <div class="field">
+            <label for="reg-location">Location <span class="hint-inline">(optional)</span></label>
+            <input type="text" id="reg-location" name="location" maxlength="120"
+                   placeholder="e.g. Guwahati, Assam">
+            <p class="hint">Region/city — helps interpret dialectal variation.</p>
+        </div>
+
+        <div class="field">
+            <label for="reg-dialect">Dialect / variety <span class="hint-inline">(optional)</span></label>
+            <input type="text" id="reg-dialect" name="dialect" maxlength="120"
+                   placeholder="e.g. Eastern Assamese">
+            <p class="hint">The specific variety you speak, if relevant.</p>
+        </div>
+
+        <div class="field">
+            <label for="reg-age-group">Age group <span class="hint-inline">(optional)</span></label>
+            <select id="reg-age-group" name="age_group">
+                <option value="" selected>Prefer not to say</option>
+                {% for g in age_groups %}
+                {% if g.id != 'na' %}<option value="{{ g.id }}">{{ g.label }}</option>{% endif %}
+                {% endfor %}
+            </select>
+            <p class="hint">Recorded as a range, never an exact age.</p>
+        </div>
+
         <!-- Consent -->
 
         <div class="consent">

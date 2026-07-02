@@ -109,17 +109,20 @@ closes and everything remains downloadable from the results page.
 6. The "Jump to…" button opens a modal with all segments and their status, for review and editing.
 7. Once finished, the thank-you screen offers a "Review my ratings" button — they can come back to this URL any time until the admin closes the campaign.
 
-## Segment file format
+## Segment (input) file format
 
-A JSON array of objects:
+You can upload (or paste) segments as **JSON, JSON Lines (`.jsonl`), CSV, or TSV** — the
+format is auto-detected from the file extension or content. All produce the same segments.
+
+JSON array of objects:
 
 ```json
 [
   {
     "id": "seg_001",
-    "source": "Source sentence text.",
-    "target": "Machine translation text.",
-    "reference": "Optional human reference translation.",
+    "source": "Source text (a sentence, document, article, passage, dialogue, …).",
+    "target": "Machine translation / summary / answer / etc.",
+    "reference": "Optional human reference.",
     "system": "SystemA",
     "domain": "Medical"
   },
@@ -127,8 +130,18 @@ A JSON array of objects:
 ]
 ```
 
-Required fields: `id` (unique within the file), `source`, `target`.
-Optional: `reference`, `system`, `domain`.
+The same data as CSV (the header names are the field names):
+
+```csv
+id,source,target,reference,system,domain
+seg_001,Source text,Machine output,Reference,SystemA,Medical
+```
+
+Required fields/columns: `id` (unique), `source`, and `target` (for pairwise, `target_a`
+and `target_b` instead — or a `candidates` column holding a JSON array or a `|`-delimited
+pair). Optional: `reference`, `system`, `domain`. Any extra columns are preserved as
+metadata. The **source can be any text** — summarization inputs aren't limited to
+"documents"; the input label is just an editable hint.
 
 ## CSV output columns
 
@@ -200,7 +213,7 @@ When creating **or editing** a campaign, the admin first picks an **evaluation m
 ### Shared options (all modes)
 
 - **Evaluation criteria** (Likert + Span-only): add/remove criteria, each with a name and a definition. In Likert these are the scored dimensions / CSV score columns; in Span-only they are the error-type categories.
-- **Segments per page** — how many segments per page before "Save & next page" (1–50).
+- **Segments per page** — the *default* number of segments shown per page before "Save & next page", plus a **min/max range** (both 1–50). Annotators can pick their own segments-per-page within that range for their convenience; their choice is saved **to their account** (server-side, per campaign), so it follows them across devices and browsers. The default must lie inside the range.
 - **Annotation instructions** — free text shown in the collapsible panel on every rating page.
 - **Span annotation instructions** (when spans are active) — free text shown in the span section; falls back to a built-in explanation if blank.
 
@@ -237,7 +250,28 @@ Every part of the configuration above — including the evaluation mode — can 
 
 ## Deleting a campaign
 
-On a campaign's detail page there's a **Delete campaign** card. To prevent accidents, the admin must type the exact campaign name to confirm. Deleting removes the campaign, all its ratings (local DB).
+On a campaign's detail page there's a **Delete campaign** card. Clicking it opens a
+centered confirmation dialog (not a browser `confirm()`): you must type the exact campaign
+name, and only then does the **Delete permanently** button enable. **Cancel is the
+default-focused action**, and Enter in the field never submits — so a stray click or
+keypress can't wipe out annotation progress. Closing a campaign uses the same style of
+dialog.
+
+## Campaign IDs
+
+Every campaign shows its **ID** (with a one-click copy button) next to its name on the
+dashboard, detail, and results pages, and on the annotator's rating screen. This makes it
+easy to refer to a specific campaign when you're running several similar ones and need to
+coordinate within your team or with annotators.
+
+## Annotator background variables
+
+Alongside native language, expertise and fluency, annotators can optionally provide
+**location**, **dialect / variety**, and **age group** (a range, never an exact age) at
+registration. These help interpret ratings (e.g. dialectal variation) and are included in
+results and the CSV export (`annotator_location`, `annotator_dialect`,
+`annotator_age_group`). An admin can view and **edit** any annotator's profile from the
+progress table on the campaign page (the "edit" link on each row).
 
 ## Grouping campaigns
 

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 
-from models import Campaign, Annotator, normalize_fluency, FLUENCY_LEVELS
+from models import Campaign, Annotator, normalize_fluency, FLUENCY_LEVELS, normalize_age_group, AGE_GROUPS
 from extensions import db
 from utils.constants import SCRIPT_OPTIONS, get_criteria_for
 from services.auth_service import (
@@ -225,6 +225,7 @@ def annotator_signup_view(campaign_id):
         scripts=SCRIPT_OPTIONS,
         criteria=get_criteria_for(c),
         fluency_levels=FLUENCY_LEVELS,
+        age_groups=AGE_GROUPS,
     )
 
 
@@ -285,6 +286,9 @@ def annotator_register(campaign_id):
     expertise = (request.form.get("expertise", "") or "").strip().lower()
     source_fluency = normalize_fluency(request.form.get("source_fluency", ""))
     target_fluency = normalize_fluency(request.form.get("target_fluency", ""))
+    location = request.form.get("location", "").strip()[:120]
+    dialect = request.form.get("dialect", "").strip()[:120]
+    age_group = normalize_age_group(request.form.get("age_group", ""))
 
     if expertise not in ("easy", "medium", "hard"):
         expertise = ""
@@ -343,6 +347,9 @@ def annotator_register(campaign_id):
         expertise=expertise,
         source_fluency=source_fluency,
         target_fluency=target_fluency,
+        location=location,
+        dialect=dialect,
+        age_group=age_group,
     )
 
     ann.set_password(password)
