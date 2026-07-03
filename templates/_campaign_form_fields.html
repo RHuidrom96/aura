@@ -353,6 +353,14 @@
 </div>
 <p class="hint">Annotators may pick their own segments-per-page within this range (for their convenience). The default must lie within the limits; all values 1–50.</p>
 
+<div class="field">
+  <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+    <input type="checkbox" id="shuffle_segments" name="shuffle_segments" value="1" {{ 'checked' if form_data.get('shuffle_segments') else '' }}>
+    <span><strong>Shuffle segment order for annotators</strong><br>
+      <span class="hint">Each annotator sees segments in a randomised order (stable per annotator across reloads), to reduce ordering/fatigue effects. Presentation only — results are keyed by segment id and are unaffected. Off keeps your original data order.</span></span>
+  </label>
+</div>
+
 <hr class="form-divider" data-mode-block="likert span_only">
 
 {# ----------------------- Span annotation ----------------------- #}

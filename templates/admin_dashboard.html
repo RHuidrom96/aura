@@ -227,11 +227,16 @@
     margin-bottom: 16px;
   }
 
+  .aura-group-chip-wrap {
+    position: relative;
+    display: inline-flex;
+  }
+
   .aura-group-chip {
     display: inline-flex;
     flex-direction: column;
     gap: 3px;
-    padding: 10px 14px;
+    padding: 10px 30px 10px 14px;
     border: 1px solid #d8d2c2;
     border-radius: 8px;
     background: #fff;
@@ -242,6 +247,32 @@
   .aura-group-chip:hover {
     border-color: #34433a;
     box-shadow: 0 4px 16px rgba(42, 42, 36, 0.08);
+  }
+
+  .aura-group-chip-delete-form {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    margin: 0;
+  }
+
+  .aura-group-chip-delete {
+    width: 20px;
+    height: 20px;
+    line-height: 1;
+    padding: 0;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: #b0a99a;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease;
+  }
+
+  .aura-group-chip-delete:hover {
+    background: #f2e5e1;
+    color: #b3402f;
   }
 
   .aura-group-chip-name {
@@ -589,10 +620,17 @@
       {% if groups %}
       <div class="aura-group-chips">
         {% for g in groups %}
-        <a class="aura-group-chip" href="{{ url_for('admin_results.admin_group_results', group_id=g.id) }}">
-          <span class="aura-group-chip-name">{{ g.name }}</span>
-          <span class="aura-group-chip-count">{{ group_counts[g.id] }} campaign{{ '' if group_counts[g.id] == 1 else 's' }}</span>
-        </a>
+        <div class="aura-group-chip-wrap">
+          <a class="aura-group-chip" href="{{ url_for('admin_results.admin_group_results', group_id=g.id) }}">
+            <span class="aura-group-chip-name">{{ g.name }}</span>
+            <span class="aura-group-chip-count">{{ group_counts[g.id] }} campaign{{ '' if group_counts[g.id] == 1 else 's' }}</span>
+          </a>
+          <form method="post" action="{{ url_for('admin_campaign.admin_group_delete', group_id=g.id) }}"
+                class="aura-group-chip-delete-form"
+                onsubmit="return confirm('Delete the group “{{ g.name|e }}”? Its {{ group_counts[g.id] }} campaign(s) are kept and simply un-grouped.');">
+            <button type="submit" class="aura-group-chip-delete" title="Delete group (campaigns are kept)" aria-label="Delete group {{ g.name }}">×</button>
+          </form>
+        </div>
         {% endfor %}
       </div>
       {% else %}

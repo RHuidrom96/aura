@@ -178,6 +178,7 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
     else:
         served_difficulties = ",".join(d for d in ("easy", "medium", "hard") if d in _served)
     expertise_matching = bool(form.get("expertise_matching")) and difficulty_method != "none"
+    shuffle_segments = bool(form.get("shuffle_segments"))
     rating_position = (form.get("rating_position") or "side").strip()
     if rating_position not in ("side", "below"):
         rating_position = "side"
@@ -383,6 +384,7 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
         "difficulty_hard_min": difficulty_hard_min,
         "served_difficulties": served_difficulties,
         "expertise_matching": expertise_matching,
+        "shuffle_segments": shuffle_segments,
         "rating_position": rating_position,
         "span_position": span_position,
         "source_language": source_language,
@@ -417,6 +419,7 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
         "difficulty_hard_min": difficulty_hard_min or "",
         "served_difficulties": served_difficulties,
         "expertise_matching": expertise_matching,
+        "shuffle_segments": shuffle_segments,
         "rating_position": rating_position, "span_position": span_position,
         "target_language": target_language, "script": script or "",
         "source_script": source_script or "", "target_script": target_script or "",
@@ -550,6 +553,7 @@ def admin_campaign_edit(campaign_id):
         "difficulty_hard_min": c.difficulty_hard_min or "",
         "served_difficulties": c.served_difficulties or "",
         "expertise_matching": c.expertise_matching,
+        "shuffle_segments": bool(c.shuffle_segments),
         "rating_position": c.rating_position or "side",
         "span_position": c.span_position or "below",
         "source_language": c.source_language,

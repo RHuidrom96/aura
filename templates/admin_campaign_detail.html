@@ -54,6 +54,7 @@
       <tr><td class="muted">Annotation</td><td>Annotators edit the {{ output_label|lower }} directly to correct errors.</td></tr>
       {% endif %}
       <tr><td class="muted">Segments per page</td><td>{{ campaign.segments_per_page }} <span class="muted">(annotators may choose {{ campaign.per_page_bounds()[0] }}–{{ campaign.per_page_bounds()[2] }})</span></td></tr>
+      <tr><td class="muted">Segment order</td><td>{% if campaign.shuffle_segments %}Shuffled per annotator <span class="muted">(randomised presentation; results unaffected)</span>{% else %}Original data order{% endif %}</td></tr>
       {% if campaign.mode in ['likert', 'span_only'] %}
       <tr><td class="muted">Span annotation</td>
         <td>

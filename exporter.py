@@ -26,7 +26,7 @@ def _csv_header(campaign, criteria):
         "annotator_location", "annotator_dialect", "annotator_age_group",
         "campaign_id", "campaign_name", "eval_mode",
         "source_language", "target_language", "source_script", "target_script",
-        "segment_id", "system", "domain", "source",
+        "segment_id", "presentation_position", "system", "domain", "source",
     ]
     if mode == "pairwise":
         header += ["candidate_a", "candidate_b", "system_a", "system_b", "reference",
@@ -50,6 +50,20 @@ def master_rows(campaign, ratings, criteria):
     """Yield each rating as a list aligned to _csv_header(campaign, criteria)."""
     mode = campaign.mode
     pref_labels = {p["id"]: p["label"] for p in campaign.preferences}
+    # Per-annotator presented order (0-based position of each segment as that annotator saw
+    # it). Computed once per annotator; reproduces any per-annotator shuffle for the record.
+    order_cache = {}
+
+    def position_for(rating):
+        ann = rating.annotator
+        if ann is None:
+            return ""
+        if ann.id not in order_cache:
+            order_cache[ann.id] = {sid: i for i, sid
+                                   in enumerate(campaign.presentation_order_for(ann))}
+        pos = order_cache[ann.id].get(rating.segment_id)
+        return pos if pos is not None else ""
+
     for r in ratings:
         seg = campaign.segment_by_id(r.segment_id) or {}
         ann = r.annotator
@@ -71,7 +85,8 @@ def master_rows(campaign, ratings, criteria):
             campaign.source_language, campaign.target_language,
             (campaign.source_script or campaign.script or ""),
             (campaign.target_script or campaign.script or ""),
-            r.segment_id, seg.get("system", ""), seg.get("domain", ""), seg.get("source", ""),
+            r.segment_id, position_for(r),
+            seg.get("system", ""), seg.get("domain", ""), seg.get("source", ""),
         ]
         if mode == "pairwise":
             a, b, sa, sb = campaign.pairwise_candidates(seg)
@@ -215,6 +230,31 @@ def _summary_tables_csv(results):
     return out.getvalue()
 
 
+def build_presentation_order_csv(campaign, ratings):
+    """One row per (annotator, presented position): the exact order each annotator was
+    shown segments, for the record and full reproducibility of any shuffle. Includes every
+    served segment (whether or not it was rated yet)."""
+    # Annotators who participated, and which segments each has rated.
+    rated = {}
+    ann_by_id = {}
+    for r in ratings:
+        ann = r.annotator
+        if ann is None:
+            continue
+        ann_by_id[ann.id] = ann
+        rated.setdefault(ann.id, set()).add(r.segment_id)
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["annotator_id", "annotator_name", "presentation_position",
+                     "segment_id", "rated"])
+    for aid, ann in sorted(ann_by_id.items(), key=lambda kv: (kv[1].name or "", kv[0])):
+        for pos, sid in enumerate(campaign.presentation_order_for(ann)):
+            writer.writerow([aid, ann.name or "", pos, sid,
+                             1 if sid in rated.get(aid, ()) else 0])
+    return buf.getvalue().encode("utf-8")
+
+
 def build_results_zip(campaign, ratings, criteria, results, charts, report_html=None):
     """Return ZIP bytes containing the CSV, chart PNGs, results JSON, summary CSV, and report."""
     base = _safe_filename(campaign.name)
@@ -222,6 +262,8 @@ def build_results_zip(campaign, ratings, criteria, results, charts, report_html=
     with zipfile.ZipFile(mem, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr(f"{base}/ratings.csv", build_master_csv(campaign, ratings, criteria))
         z.writestr(f"{base}/results_summary.csv", _summary_tables_csv(results))
+        z.writestr(f"{base}/presentation_order.csv",
+                   build_presentation_order_csv(campaign, ratings))
         z.writestr(f"{base}/results.json",
                    json.dumps(results, ensure_ascii=False, indent=2).encode("utf-8"))
         if report_html:

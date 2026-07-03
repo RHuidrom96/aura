@@ -328,6 +328,11 @@
   </div>
   <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">The range annotators may choose from for their own convenience. The default above must fall within these limits (both 1–50).</div>
 
+  <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; margin-top:22px;">
+    <input type="checkbox" id="shuffle_segments" name="shuffle_segments" value="1" {{ 'checked' if form_data.get('shuffle_segments') else '' }} style="accent-color:var(--aura-accent); width:16px; height:16px; margin-top:1px; cursor:pointer;">
+    <span><span style="font-size:13px; font-weight:600; color:var(--aura-text);">Shuffle segment order for annotators</span><br><span style="font-size:12px; color:var(--aura-text-faint); line-height:1.5;">Each annotator sees the segments in a randomised order (stable per annotator across reloads) to reduce ordering/fatigue effects. Presentation only — results are keyed by segment and are unaffected. Leave off to keep your original data order.</span></span>
+  </label>
+
   <!-- Span annotation -->
   <div class="field" data-mode-block="likert" id="span-enable-field" style="margin-top:24px; border:none; padding:0; margin-bottom:0;">
     <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">

@@ -381,6 +381,10 @@ class Campaign(db.Model):
     segments_per_page = db.Column(db.Integer, default=3)
     min_segments_per_page = db.Column(db.Integer, default=1)
     max_segments_per_page = db.Column(db.Integer, default=10)
+    # When true, each annotator sees the segments in a randomised order (deterministic per
+    # annotator, so it's stable across reloads). Presentation order only -- results are keyed
+    # by segment id and never depend on serving order, so shuffling never changes results.
+    shuffle_segments = db.Column(db.Boolean, default=False)
 
     # ---- Evaluation mode -------------------------------------------------
     # "likert"    -> score each criterion on a scale (optionally + span annotation)
@@ -585,20 +589,46 @@ class Campaign(db.Model):
         h = hashlib.sha1(f"{self.id}\u0001{annotator_id}\u0001{segment_id}".encode("utf-8")).hexdigest()
         return (int(h[:8], 16) % 100) < frac
 
+    def _shuffle_for_annotator(self, seq, annotator):
+        """Return `seq` in a randomised-but-stable order for this annotator when
+        shuffle_segments is on. The order is deterministic per (campaign, annotator), so it
+        stays the same across reloads and sessions but differs between annotators. This is
+        presentation order only; results are keyed by segment id and are unaffected."""
+        if not self.shuffle_segments or annotator is None:
+            return seq
+        import random as _random, hashlib as _hashlib
+        seed = int(_hashlib.sha1(
+            f"{self.id}\u0001{annotator.id}".encode("utf-8")).hexdigest()[:12], 16)
+        out = list(seq)
+        _random.Random(seed).shuffle(out)
+        return out
+
     def served_segments_for(self, annotator):
         """Segments served to a specific annotator.
 
         When ``expertise_matching`` is on and the annotator has chosen an expertise level,
         serve only segments of that difficulty (beginner→easy, intermediate→medium,
-        advanced→hard). Otherwise fall back to the campaign-level served set.
+        advanced→hard). Otherwise fall back to the campaign-level served set. When
+        ``shuffle_segments`` is on, the result is put in a per-annotator randomised order.
         """
         if (self.expertise_matching and annotator is not None
                 and getattr(annotator, "expertise", "")
                 and (self.difficulty_method or "auto") != "none"):
             lvl = annotator.expertise
             diffs = self.difficulty_for_segments()
-            return [s for s in self.segments if diffs.get(s.get("id")) == lvl]
-        return self.served_segments()
+            segs = [s for s in self.segments if diffs.get(s.get("id")) == lvl]
+        else:
+            segs = self.served_segments()
+        return self._shuffle_for_annotator(segs, annotator)
+
+    def presentation_order_for(self, annotator):
+        """The ordered list of segment ids exactly as this annotator was shown them.
+
+        Because the serving order (including any per-annotator shuffle) is deterministic,
+        this reproduces the presented sequence for the record and for export. When shuffle
+        is off it's simply the served data order.
+        """
+        return [s.get("id") for s in self.served_segments_for(annotator)]
 
     def difficulty_for_segments(self):
         """Return {segment_id: 'easy'|'medium'|'hard'}.
@@ -864,6 +894,7 @@ class Campaign(db.Model):
             self.difficulty_method or "", str(self.difficulty_easy_max),
             str(self.difficulty_hard_min), self.served_difficulties or "",
             str(self.expertise_matching), self.segments_json or "",
+            str(self.shuffle_segments),
             str(self.ai_ab_enabled), str(self.ai_ab_fraction),
             "closed" if self.is_closed else "open",
         ]
