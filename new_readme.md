@@ -98,8 +98,8 @@ For convenience, a populated demo campaign is available. Follow these steps:
 
 ### Testing the Admin View
 1. Log in to the administrator portal at `http://localhost:5000/admin/login` using:
-   * **Email**: `nicolaskhumukcham@gmail.com`
-   * **Password**: `netrix19kh`
+   * **Email**: `@gmail.com`
+   * **Password**: ``
 2. Open the campaign **`[DEMO] Northeast India MT Evaluation with Incentives`**.
 3. Under the **Progress** table:
    * Click **View Info** next to `Demo Annotator` to see their submitted Personal Info details.
