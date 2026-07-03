@@ -136,8 +136,8 @@
   <div>
     <h1>{{ campaign.name }}</h1>
     <p class="hint">
-      ID: <code>{{ campaign.id }}</code> ·
-      {{ campaign.source_language }} → {{ campaign.target_language }}{% if campaign.script %} · {{ campaign.script }}{% endif %}
+      <span class="campaign-id-chip">ID <code>{{ campaign.id }}</code><button type="button" class="copy-id-btn" data-copy="{{ campaign.id }}" title="Copy campaign ID">copy</button></span>
+      · {{ campaign.source_language }} → {{ campaign.target_language }}{% if campaign.scripts_summary %} · {{ campaign.scripts_summary }}{% endif %}
       · created {{ campaign.created_at.strftime('%Y-%m-%d %H:%M UTC') }}
     </p>
   </div>
@@ -208,7 +208,7 @@
       {% if campaign.mode == 'post_edit' %}
       <tr><td class="muted">Annotation</td><td>Annotators edit the {{ output_label|lower }} directly to correct errors.</td></tr>
       {% endif %}
-      <tr><td class="muted">Segments per page</td><td>{{ campaign.segments_per_page }}</td></tr>
+      <tr><td class="muted">Segments per page</td><td>{{ campaign.segments_per_page }} <span class="muted">(annotators may choose {{ campaign.per_page_bounds()[0] }}–{{ campaign.per_page_bounds()[2] }})</span></td></tr>
       {% if campaign.mode in ['likert', 'span_only'] %}
       <tr><td class="muted">Span annotation</td>
         <td>
@@ -220,6 +220,25 @@
       <tr><td class="muted">Difficulty grouping</td><td>{{ difficulty_label }}</td></tr>
       {% if campaign.difficulty_method != 'none' and campaign.served_difficulties %}
       <tr><td class="muted">Levels served</td><td>{{ campaign.served_difficulties.split(',') | map('capitalize') | join(', ') }} <span class="muted">(others hidden from annotators)</span></td></tr>
+      {% endif %}
+      {% set _dist = campaign.difficulty_distribution() %}
+      {% if _dist %}
+      <tr><td class="muted" style="vertical-align:top;">Difficulty split</td>
+        <td>
+          <span title="Easy">Easy: <strong>{{ _dist.counts.easy }}</strong></span> ·
+          <span title="Medium">Medium: <strong>{{ _dist.counts.medium }}</strong></span> ·
+          <span title="Hard">Hard: <strong>{{ _dist.counts.hard }}</strong></span>
+          {% if _dist.counts.unlabelled %} · <span class="muted">Unlabelled: {{ _dist.counts.unlabelled }}</span>{% endif %}
+          <div class="muted" style="font-size:12px; margin-top:4px; line-height:1.5;">
+            {% if _dist.method in ('auto', 'length') %}
+              Segments are ranked by {{ 'a composite difficulty score' if _dist.method == 'auto' else 'input length' }} and split into three equal-sized tiers (terciles) — a fixed, repeatable rule, not a random pick.
+              {% if _dist.cutoffs %} Length cutoffs: easy ≤ {{ _dist.cutoffs.easy_max }} chars, hard ≥ {{ _dist.cutoffs.hard_min }} chars{% if _dist.cutoffs.kind == 'tercile' %} (auto){% endif %}.{% endif %}
+            {% elif _dist.method == 'manual' %}
+              From the per-segment <code class="code-inline">difficulty</code> labels in your data.
+            {% endif %}
+            {% if _dist.n_from_data %} {{ _dist.n_from_data }} segment(s) used an explicit label from your data (these always override the computed tier).{% endif %}
+          </div>
+        </td></tr>
       {% endif %}
       {% if campaign.incentive_co_authorship or campaign.incentive_money %}
       <tr>
@@ -259,14 +278,21 @@
       <thead>
         <tr>
           <th>Annotator</th>
+          <th>ID</th>
           <th>Email</th>
           <th>Expertise</th>
+          {% if campaign.is_cross_lingual %}
+          <th>{{ campaign.source_language or 'Source' }} fluency</th>
+          <th>{{ campaign.target_language or 'Target' }} fluency</th>
+          {% endif %}
+          <th>Background</th>
           <th>Completed</th>
           <th>Last update</th>
           {% if campaign.incentive_money or campaign.incentive_co_authorship %}
           <th>Personal Info</th>
           <th>Evaluation</th>
           {% endif %}
+          <th></th>
         </tr>
       </thead>
       <tbody id="progress-tbody">
@@ -274,8 +300,20 @@
         {% for r in rows %}
         <tr>
           <td>{{ r.annotator.name }}</td>
+          <td class="muted"><code>{{ r.annotator.id }}</code></td>
           <td class="muted">{{ r.annotator.email }}</td>
           <td>{{ _exp_label.get(r.annotator.expertise, '—') }}</td>
+          {% if campaign.is_cross_lingual %}
+          <td>{{ r.annotator.source_fluency_label or '—' }}</td>
+          <td>{{ r.annotator.target_fluency_label or '—' }}</td>
+          {% endif %}
+          <td class="muted">
+            {% set bits = [] %}
+            {% if r.annotator.location %}{% set _ = bits.append(r.annotator.location) %}{% endif %}
+            {% if r.annotator.dialect %}{% set _ = bits.append(r.annotator.dialect) %}{% endif %}
+            {% if r.annotator.age_group_label %}{% set _ = bits.append(r.annotator.age_group_label) %}{% endif %}
+            {{ bits | join(' · ') if bits else '—' }}
+          </td>
           <td>
             <div class="mini-progress">
               <div class="mini-progress-fill" style="width: {{ (r.completed / r.total * 100) | int if r.total else 0 }}%;"></div>
@@ -297,6 +335,7 @@
             </button>
           </td>
           {% endif %}
+          <td><a class="muted" href="{{ url_for('admin_campaign.admin_annotator_edit', annotator_id=r.annotator.id, next=url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id)) }}">edit</a></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -314,12 +353,20 @@
   var empty = document.getElementById("progress-empty");
   function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
   var EXP_LABEL = { easy: "Beginner", medium: "Intermediate", hard: "Advanced" };
+  var CROSS_LINGUAL = {{ campaign.is_cross_lingual | tojson }};
+  var EDIT_BASE = {{ url_for('admin_campaign.admin_annotator_edit', annotator_id='__ID__', next=url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id)) | tojson }};
   var hasIncentives = {{ 'true' if campaign.incentive_money or campaign.incentive_co_authorship else 'false' }};
   function render(rows) {
     if (!rows.length) { table.hidden = true; empty.hidden = false; return; }
     table.hidden = false; empty.hidden = true;
     tbody.innerHTML = rows.map(function (r) {
       var pct = r.total ? Math.round(r.completed / r.total * 100) : 0;
+      var fluency = CROSS_LINGUAL
+        ? '<td>' + esc(r.source_fluency || '—') + '</td><td>' + esc(r.target_fluency || '—') + '</td>'
+        : '';
+      var bg = [r.profile_location, r.dialect, r.age_group].filter(Boolean).map(esc).join(' · ') || '—';
+      var editUrl = EDIT_BASE.replace('__ID__', encodeURIComponent(r.annotator_id || r.id));
+
       var incCols = '';
       if (hasIncentives) {
         var formB = r.form_submitted ? 
@@ -329,12 +376,18 @@
         var evalBtn = '<button class="btn btn-small" onclick="showEvalModal(\'' + r.annotator_id + '\', \'' + esc(r.name) + '\', ' + r.quality_score + ', ' + r.has_star + ', ' + r.completed + ', ' + {{ campaign.incentive_target_tasks }} + ', ' + {{ campaign.incentive_level }} + ', ' + {{ campaign.incentive_intensity }} + ')">' + starText + '</button>';
         incCols = '<td>' + formB + '</td><td>' + evalBtn + '</td>';
       }
-      return '<tr><td>' + esc(r.name) + '</td><td class="muted">' + esc(r.email) + '</td>' +
-        '<td>' + (EXP_LABEL[r.expertise] || '—') + '</td>' +
+
+      return '<tr><td>' + esc(r.name) + '</td>' +
+        '<td class="muted"><code>' + esc(r.annotator_id || r.id) + '</code></td>' +
+        '<td class="muted">' + esc(r.email) + '</td>' +
+        '<td>' + (EXP_LABEL[r.expertise] || '—') + '</td>' + 
+        fluency +
+        '<td class="muted">' + bg + '</td>' +
         '<td><div class="mini-progress"><div class="mini-progress-fill" style="width:' + pct + '%;"></div></div>' +
         '<span class="muted">' + r.completed + ' / ' + r.total + '</span></td>' +
         '<td class="muted">' + (r.last_update ? esc(r.last_update) : '—') + '</td>' +
-        incCols + '</tr>';
+        incCols +
+        '<td><a class="muted" href="' + editUrl + '">edit</a></td></tr>';
     }).join("");
   }
   function poll() {
@@ -349,6 +402,46 @@
 })();
 </script>
 {% endif %}
+
+<section class="card">
+  <h3>Group</h3>
+  {% if campaign.group %}
+  <p class="hint" style="margin-top:0;">
+    This campaign belongs to the group
+    <strong><a href="{{ url_for('admin_results.admin_group_results', group_id=campaign.group.id) }}">{{ campaign.group.name }}</a></strong>.
+    Its results can be viewed and exported together with the group's other campaigns.
+  </p>
+  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+    <a href="{{ url_for('admin_results.admin_group_results', group_id=campaign.group.id) }}" class="btn btn-primary btn-small">View combined results</a>
+    <form method="post" action="{{ url_for('admin_campaign.admin_campaign_set_group', campaign_id=campaign.id) }}" style="margin:0;">
+      <input type="hidden" name="group_id" value="">
+      <button type="submit" class="btn btn-small">Remove from group</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="hint" style="margin-top:0;">Grouping lets you view combined results across related campaigns — for example, easy / medium / hard difficulty variants of the same study.</p>
+  {% if groups %}
+  <form method="post" action="{{ url_for('admin_campaign.admin_campaign_set_group', campaign_id=campaign.id) }}"
+        style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 10px;">
+    <label for="group-select" class="muted">Add to an existing group:</label>
+    <select id="group-select" name="group_id" required>
+      <option value="" disabled selected>Select a group…</option>
+      {% for g in groups %}
+      <option value="{{ g.id }}">{{ g.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-small btn-primary">Add</button>
+  </form>
+  {% endif %}
+  <form method="post" action="{{ url_for('admin_campaign.admin_group_new') }}"
+        style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0;">
+    <input type="hidden" name="campaign_id" value="{{ campaign.id }}">
+    <label for="new-group-name" class="muted">Or create a new group:</label>
+    <input type="text" id="new-group-name" name="name" placeholder="e.g. Adequacy study (by difficulty)" required>
+    <button type="submit" class="btn btn-small">Create &amp; add</button>
+  </form>
+  {% endif %}
+</section>
 
 <section class="card">
   <h3>Results &amp; statistics</h3>
@@ -376,10 +469,21 @@
     {% if campaign.owner_email %}<code class="code-inline">{{ campaign.owner_email }}</code>{% else %}the campaign owner{% endif %}.
     This action cannot be undone.
   </p>
-  <form method="post" action="{{ url_for('admin_campaign.admin_campaign_close', campaign_id=campaign.id) }}"
-        onsubmit="return confirm('Close this campaign permanently? Annotators will no longer be able to edit.');">
-    <button type="submit" class="btn btn-danger">Close campaign</button>
-  </form>
+  <button type="button" class="btn btn-danger" data-open-modal="close-modal">Close campaign</button>
+
+  <div class="confirm-modal" id="close-modal" hidden>
+    <div class="confirm-backdrop" data-close-modal></div>
+    <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="close-modal-title">
+      <h3 id="close-modal-title">Close this campaign?</h3>
+      <p>Annotators will no longer be able to edit their ratings, and a results pack will be emailed to the owner. <strong>This cannot be undone.</strong></p>
+      <form method="post" action="{{ url_for('admin_campaign.admin_campaign_close', campaign_id=campaign.id) }}">
+        <div class="confirm-actions">
+          <button type="button" class="btn" data-close-modal data-default>Cancel</button>
+          <button type="submit" class="btn btn-danger">Yes, close campaign</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </section>
 {% endif %}
 
@@ -387,14 +491,25 @@
   <h3>Delete campaign</h3>
   <p class="hint">
     Permanently delete this campaign and <strong>all {{ rows|length }} annotators' ratings</strong> for it.
-    This cannot be undone. Type the campaign name <code class="code-inline">{{ campaign.name }}</code> to confirm.
+    This cannot be undone. You'll be asked to type the campaign name to confirm.
   </p>
-  <form method="post" action="{{ url_for('admin_campaign.admin_campaign_delete', campaign_id=campaign.id) }}"
-        onsubmit="return confirm('Delete this campaign and all its ratings permanently?');"
-        class="delete-form">
-    <input type="text" name="confirm_name" placeholder="Type the campaign name to confirm" autocomplete="off">
-    <button type="submit" class="btn btn-danger">Delete campaign</button>
-  </form>
+  <button type="button" class="btn btn-danger" data-open-modal="delete-modal">Delete campaign</button>
+
+  <div class="confirm-modal" id="delete-modal" hidden>
+    <div class="confirm-backdrop" data-close-modal></div>
+    <div class="confirm-dialog confirm-danger" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+      <h3 id="delete-modal-title">Delete “{{ campaign.name }}”?</h3>
+      <p>This permanently deletes the campaign and <strong>all {{ rows|length }} annotators' ratings</strong>. There is no undo.</p>
+      <p class="hint">Type <code class="code-inline">{{ campaign.name }}</code> to confirm:</p>
+      <form method="post" action="{{ url_for('admin_campaign.admin_campaign_delete', campaign_id=campaign.id) }}" class="delete-form" id="delete-form">
+        <input type="text" name="confirm_name" id="delete-confirm-input" placeholder="Type the campaign name" autocomplete="off">
+        <div class="confirm-actions">
+          <button type="button" class="btn" data-close-modal data-default>Cancel</button>
+          <button type="submit" class="btn btn-danger" id="delete-confirm-btn" disabled>Delete permanently</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </section>
 
 <!-- Personal Info Details Modal -->
@@ -467,6 +582,56 @@
     </form>
   </div>
 </div>
+
+<script>
+(function () {
+  var CAMPAIGN_NAME = {{ campaign.name|tojson }};
+
+  function openModal(id) {
+    var m = document.getElementById(id);
+    if (!m) return;
+    m.hidden = false;
+    document.body.style.overflow = "hidden";
+    // Default focus on the Cancel button so a stray Enter cancels rather than confirms.
+    var def = m.querySelector("[data-default]");
+    if (def) def.focus();
+  }
+  function closeModal(m) {
+    m.hidden = true;
+    document.body.style.overflow = "";
+    var input = m.querySelector("#delete-confirm-input");
+    var btn = m.querySelector("#delete-confirm-btn");
+    if (input) input.value = "";
+    if (btn) btn.disabled = true;
+  }
+
+  document.querySelectorAll("[data-open-modal]").forEach(function (b) {
+    b.addEventListener("click", function () { openModal(b.getAttribute("data-open-modal")); });
+  });
+  document.querySelectorAll("[data-close-modal]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var m = b.closest(".confirm-modal"); if (m) closeModal(m);
+    });
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      document.querySelectorAll(".confirm-modal:not([hidden])").forEach(closeModal);
+    }
+  });
+
+  // Delete confirm gate: enable only on exact name match; Enter in the field never submits.
+  var input = document.getElementById("delete-confirm-input");
+  var btn = document.getElementById("delete-confirm-btn");
+  if (input && btn) {
+    input.addEventListener("input", function () {
+      btn.disabled = (input.value.trim() !== CAMPAIGN_NAME);
+    });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") e.preventDefault();
+    });
+  }
+})();
+</script>
 
 <script>
 function copyShareUrl() {

@@ -58,24 +58,41 @@ def criterion_guide(name):
 # Supported evaluation task types. Each maps to default input/output panel labels and a
 # set of example criteria the admin form can pre-fill. "translation" preserves the original
 # MT behaviour; the rest let the same modes serve other tasks.
+#
+# ``cross_lingual`` records how many languages the task involves, which drives whether the
+# source/target language fields are required and whether annotators are asked for their
+# fluency in *both* the source and target languages:
+#   "required" -> the task is inherently bilingual; source and target differ (e.g. MT).
+#   "optional" -> usually monolingual but sometimes cross-lingual (e.g. cross-lingual
+#                 summarization or QA); collect both-language fluency only when the admin
+#                 has actually set two different languages.
+#   "none"     -> strictly single-language; only one language matters (e.g. text
+#                 simplification, dialogue/response).
+# ``bilingual`` (kept for backwards compatibility) is True exactly when cross_lingual is
+# "required".
 TASK_TYPES = {
     "translation":   {"name": "Machine translation",   "input": "Source",        "output": "Translation",
-                      "criteria": ["Adequacy", "Fluency"], "bilingual": True},
+                      "criteria": ["Adequacy", "Fluency"], "bilingual": True,  "cross_lingual": "required"},
     "summarization": {"name": "Summarization",          "input": "Document",      "output": "Summary",
-                      "criteria": ["Coherence", "Consistency", "Fluency", "Relevance"], "bilingual": False},
+                      "criteria": ["Coherence", "Consistency", "Fluency", "Relevance"],
+                      "bilingual": False, "cross_lingual": "optional"},
     "simplification": {"name": "Text simplification",   "input": "Original text", "output": "Simplified text",
-                      "criteria": ["Meaning preservation", "Simplicity", "Fluency"], "bilingual": False},
+                      "criteria": ["Meaning preservation", "Simplicity", "Fluency"],
+                      "bilingual": False, "cross_lingual": "none"},
     "dialogue":      {"name": "Dialogue / response",    "input": "Conversation",  "output": "Response",
-                      "criteria": ["Helpfulness", "Coherence", "Safety"], "bilingual": False},
+                      "criteria": ["Helpfulness", "Coherence", "Safety"],
+                      "bilingual": False, "cross_lingual": "none"},
     "qa":            {"name": "Question answering",     "input": "Question",      "output": "Answer",
-                      "criteria": ["Correctness", "Completeness", "Fluency"], "bilingual": False},
+                      "criteria": ["Correctness", "Completeness", "Fluency"],
+                      "bilingual": False, "cross_lingual": "optional"},
     "factuality":    {"name": "Factuality / hallucination", "input": "Source / context", "output": "Output",
                       "criteria": ["Unsupported (hallucination)", "Contradicts source",
-                                   "Misattribution", "Incorrect fact", "Fabricated detail"], "bilingual": False},
+                                   "Misattribution", "Incorrect fact", "Fabricated detail"],
+                      "bilingual": False, "cross_lingual": "optional"},
     "general":       {"name": "General LLM output",     "input": "Input",         "output": "Output",
-                      "criteria": ["Overall quality"], "bilingual": False},
+                      "criteria": ["Overall quality"], "bilingual": False, "cross_lingual": "optional"},
     "custom":        {"name": "Custom",                 "input": "Input",         "output": "Output",
-                      "criteria": [], "bilingual": False},
+                      "criteria": [], "bilingual": False, "cross_lingual": "optional"},
 }
 
 
@@ -97,6 +114,56 @@ def task_criteria(task_type):
             for n in task_defaults(task_type).get("criteria", [])]
 
 
+# Self-rated language proficiency levels, collected at registration for the source and/or
+# target language of a cross-lingual task. Ordered from most to least proficient. Stored on
+# the annotator by id ("" = not provided).
+FLUENCY_LEVELS = [
+    {"id": "native",       "label": "Native speaker"},
+    {"id": "fluent",       "label": "Fluent"},
+    {"id": "advanced",     "label": "Advanced"},
+    {"id": "intermediate", "label": "Intermediate"},
+    {"id": "beginner",     "label": "Beginner"},
+]
+FLUENCY_IDS = {lvl["id"] for lvl in FLUENCY_LEVELS}
+_FLUENCY_LABELS = {lvl["id"]: lvl["label"] for lvl in FLUENCY_LEVELS}
+
+
+def normalize_fluency(value):
+    """Return a valid fluency id or "" for anything unrecognised."""
+    v = (value or "").strip().lower()
+    return v if v in FLUENCY_IDS else ""
+
+
+def fluency_label(value):
+    """Human-readable label for a stored fluency id (empty string if unset/unknown)."""
+    return _FLUENCY_LABELS.get((value or "").strip().lower(), "")
+
+
+# Age buckets (privacy-friendly alternative to an exact age), collected optionally at
+# registration and editable by an admin.
+AGE_GROUPS = [
+    {"id": "under_18", "label": "Under 18"},
+    {"id": "18_24",    "label": "18–24"},
+    {"id": "25_34",    "label": "25–34"},
+    {"id": "35_44",    "label": "35–44"},
+    {"id": "45_54",    "label": "45–54"},
+    {"id": "55_64",    "label": "55–64"},
+    {"id": "65_plus",  "label": "65+"},
+    {"id": "na",       "label": "Prefer not to say"},
+]
+AGE_GROUP_IDS = {g["id"] for g in AGE_GROUPS}
+_AGE_GROUP_LABELS = {g["id"]: g["label"] for g in AGE_GROUPS}
+
+
+def normalize_age_group(value):
+    v = (value or "").strip().lower()
+    return v if v in AGE_GROUP_IDS else ""
+
+
+def age_group_label(value):
+    return _AGE_GROUP_LABELS.get((value or "").strip().lower(), "")
+
+
 class Annotator(db.Model):
     """Global annotator account. Same login works for any campaign they join."""
     __tablename__ = "annotators"
@@ -112,9 +179,32 @@ class Annotator(db.Model):
 
     native_language = db.Column(db.String(100), default="")
     expertise = db.Column(db.String(20), default="")   # "" | "easy" | "medium" | "hard"
+    # Self-rated proficiency in the source and target languages of a cross-lingual task.
+    # One of FLUENCY_IDS or "" (not provided). Collected once at registration for bilingual
+    # tasks; carried on the global account like native_language / expertise.
+    source_fluency = db.Column(db.String(20), default="")
+    target_fluency = db.Column(db.String(20), default="")
+    # Social / demographic variables that help interpret annotator behaviour (all optional,
+    # self-reported, and editable by an admin). age_group is a bucket rather than an exact
+    # age, for privacy.
+    location = db.Column(db.String(120), default="")
+    dialect = db.Column(db.String(120), default="")
+    age_group = db.Column(db.String(20), default="")   # one of AGE_GROUP ids or ""
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     ratings = db.relationship("Rating", backref="annotator", lazy="dynamic")
+
+    @property
+    def source_fluency_label(self):
+        return fluency_label(self.source_fluency)
+
+    @property
+    def target_fluency_label(self):
+        return fluency_label(self.target_fluency)
+
+    @property
+    def age_group_label(self):
+        return age_group_label(self.age_group)
 
     def set_password(self, raw):
         self.password_hash = bcrypt.hashpw(raw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -202,6 +292,30 @@ class Admin(db.Model):
         self.otp_expires_at = None
         self.otp_attempts = 0
 
+class CampaignGroup(db.Model):
+    """A named collection of related campaigns (e.g. easy / medium / hard variants of one
+    study, or several systems evaluated separately). Lets an admin view and export the
+    campaigns' results together. Deleting a group never deletes its campaigns -- they are
+    simply un-grouped (group_id set back to NULL)."""
+    __tablename__ = "campaign_groups"
+
+    id = db.Column(db.String(32), primary_key=True, default=_uuid)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, default="")
+    owner_email = db.Column(db.String(200), default="")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    campaigns = db.relationship(
+        "Campaign", backref="group", lazy="dynamic",
+        # On group delete, detach campaigns rather than cascading the delete.
+        passive_deletes=True,
+    )
+
+    def ordered_campaigns(self):
+        """Campaigns in this group, oldest first (stable display order)."""
+        return list(self.campaigns.order_by(Campaign.created_at.asc()))
+
+
 class Campaign(db.Model):
     """One evaluation campaign created by the admin."""
     __tablename__ = "campaigns"
@@ -235,8 +349,18 @@ class Campaign(db.Model):
     rating_position = db.Column(db.String(10), default="side")   # "side" | "below"
     span_position = db.Column(db.String(10), default="below")    # "below" | "beside"
     owner_email = db.Column(db.String(200), default="")          # who created it (results email)
-    # For Manipuri: "bengali" or "meetei" -- otherwise None.
+    # Optional grouping: campaigns that belong together (e.g. easy/medium/hard variants of
+    # the same study) share a group so their results can be viewed and exported together.
+    group_id = db.Column(db.String(32), db.ForeignKey("campaign_groups.id"),
+                         nullable=True, index=True, default=None)
+    # Writing system(s). `script` is the legacy single field (kept for backward
+    # compatibility and as a fallback); source_script / target_script record the script of
+    # the input (source) and output (target) language separately, so e.g. a script-
+    # conversion campaign can have the same language on both sides in different scripts.
+    # Each is a SCRIPT_OPTIONS id or None.
     script = db.Column(db.String(50), default=None)
+    source_script = db.Column(db.String(50), default=None)
+    target_script = db.Column(db.String(50), default=None)
     # Segments as a JSON-encoded list of dicts {id, source, target, reference?, system?, domain?}
     segments_json = db.Column(db.Text, nullable=False)
     # Criteria as a JSON-encoded list of dicts {id, name, color, desc, guide}
@@ -252,7 +376,11 @@ class Campaign(db.Model):
     # Whether span annotation is enabled at all
     enable_spans = db.Column(db.Boolean, default=True)
     # How many segments appear on each page of the annotator's rating screen.
+    # `segments_per_page` is the admin's default; annotators may choose their own value
+    # within [min_segments_per_page, max_segments_per_page] for their convenience.
     segments_per_page = db.Column(db.Integer, default=3)
+    min_segments_per_page = db.Column(db.Integer, default=1)
+    max_segments_per_page = db.Column(db.Integer, default=10)
 
     # ---- Evaluation mode -------------------------------------------------
     # "likert"    -> score each criterion on a scale (optionally + span annotation)
@@ -312,6 +440,8 @@ class Campaign(db.Model):
     incentive_bonus_amount = db.Column(db.Float, default=0.0)
 
     ratings = db.relationship("Rating", backref="campaign", lazy="dynamic", cascade="all,delete-orphan")
+    prefs = db.relationship("AnnotatorCampaignPref", backref="campaign", lazy="dynamic",
+                            cascade="all,delete-orphan")
 
     @property
     def is_closed(self):
@@ -322,10 +452,95 @@ class Campaign(db.Model):
         d = task_defaults(self.task_type)
         return (self.input_label or d["input"], self.output_label or d["output"])
 
+    def per_page_bounds(self):
+        """Return (min, default, max) segments-per-page, coerced to a sane, consistent
+        range. The default always lies within [min, max]; bounds are clamped to 1..50."""
+        default = self.segments_per_page or 3
+        lo = self.min_segments_per_page or 1
+        hi = self.max_segments_per_page or max(default, lo, 10)
+        lo = max(1, min(lo, 50))
+        hi = max(1, min(hi, 50))
+        if hi < lo:
+            lo, hi = hi, lo
+        default = max(lo, min(default, hi))
+        return lo, default, hi
+
+    def per_page_for(self, annotator):
+        """The annotator's effective segments-per-page: their saved per-campaign choice
+        clamped to the current bounds, or the admin default if they haven't chosen one."""
+        lo, default, hi = self.per_page_bounds()
+        if annotator is None:
+            return default
+        pref = AnnotatorCampaignPref.query.filter_by(
+            annotator_id=annotator.id, campaign_id=self.id).first()
+        if pref and pref.segments_per_page:
+            return max(lo, min(pref.segments_per_page, hi))
+        return default
+
+    @property
+    def source_script_label(self):
+        from utils.constants import script_label
+        return script_label(self.source_script or self.script)
+
+    @property
+    def target_script_label(self):
+        from utils.constants import script_label
+        return script_label(self.target_script or self.script)
+
+    @property
+    def scripts_summary(self):
+        """Short human string for the campaign's script(s), or '' if none set.
+
+        Examples: 'Bengali–Assamese → Latin', 'Latin' (monolingual/one side),
+        'Meitei Mayek → Bengali–Assamese' (same language, different scripts)."""
+        src = self.source_script_label
+        tgt = self.target_script_label
+        if src and tgt:
+            return src if src == tgt else f"{src} → {tgt}"
+        return src or tgt
+
+    @property
+    def lang_pair_label(self):
+        """Language pair with per-side script in parentheses where set, e.g.
+        'English (Latin) → Assamese (Bengali–Assamese)'. Falls back gracefully when a
+        script or a side is missing."""
+        def side(lang, script):
+            lang = (lang or "").strip()
+            if lang and script:
+                return f"{lang} ({script})"
+            return lang
+        src = side(self.source_language, self.source_script_label)
+        tgt = side(self.target_language, self.target_script_label)
+        if src and tgt:
+            return f"{src} → {tgt}"
+        return src or tgt
+
     @property
     def is_bilingual(self):
         """True for tasks with distinct source/target languages (e.g. translation)."""
         return bool(task_defaults(self.task_type).get("bilingual"))
+
+    @property
+    def cross_lingual_mode(self):
+        """"required" | "optional" | "none" -- how many languages the task type involves."""
+        return task_defaults(self.task_type).get("cross_lingual", "none")
+
+    @property
+    def is_cross_lingual(self):
+        """True when this specific campaign actually spans two languages.
+
+        Always true for inherently bilingual tasks (MT). For "optional" tasks (e.g.
+        cross-lingual summarization / QA) it's true only when the admin set two distinct
+        source and target languages. Never true for strictly monolingual tasks.
+        """
+        mode = self.cross_lingual_mode
+        if mode == "required":
+            return True
+        if mode == "none":
+            return False
+        src = (self.source_language or "").strip()
+        tgt = (self.target_language or "").strip()
+        return bool(src and tgt and src.casefold() != tgt.casefold())
 
     def has_explicit_difficulty(self):
         return any(_DIFF_NORM.get(str(s.get("difficulty", "")).strip().lower())
@@ -480,6 +695,51 @@ class Campaign(db.Model):
             out[s.get("id")] = ("medium" if q1 is None else
                                 "easy" if sc <= q1 else "medium" if sc <= q2 else "hard")
         return out
+
+    @property
+    def difficulty_method_label(self):
+        return {
+            "auto": "Automatic (composite heuristic, split into equal thirds)",
+            "length": "By input length (character thresholds or thirds)",
+            "manual": "Manual (per-segment labels only)",
+            "none": "None (no difficulty grouping)",
+        }.get(self.difficulty_method or "auto", self.difficulty_method or "auto")
+
+    def difficulty_distribution(self):
+        """How the campaign's segments actually fall into easy / medium / hard, so an admin
+        can see the (deterministic) grouping rather than guess. Returns None when difficulty
+        grouping is off, otherwise a dict with per-tier counts, how many were labelled
+        directly in the data, and — for the length method — the character cutoffs in effect.
+        """
+        method = (self.difficulty_method or "auto")
+        if method == "none":
+            return None
+        diffs = self.difficulty_for_segments()
+        counts = {"easy": 0, "medium": 0, "hard": 0, "unlabelled": 0}
+        for s in self.segments:
+            d = diffs.get(s.get("id")) or ""
+            counts[d if d in ("easy", "medium", "hard") else "unlabelled"] += 1
+        n_from_data = sum(
+            1 for s in self.segments
+            if _DIFF_NORM.get(str(s.get("difficulty", "")).strip().lower())
+        )
+        info = {"method": method, "counts": counts, "total": len(self.segments),
+                "n_from_data": n_from_data, "cutoffs": None}
+        if method == "length":
+            emax = self.difficulty_easy_max or 0
+            hmin = self.difficulty_hard_min or 0
+            if emax and hmin and emax < hmin:
+                info["cutoffs"] = {"kind": "custom", "easy_max": emax, "hard_min": hmin}
+            else:
+                def _text_len(s):
+                    return len(s.get("source") or s.get("target") or s.get("target_a") or "")
+                lengths = sorted(_text_len(s) for s in self.segments)
+                n = len(lengths)
+                if n >= 3:
+                    info["cutoffs"] = {"kind": "tercile",
+                                       "easy_max": lengths[n // 3],
+                                       "hard_min": lengths[(2 * n) // 3]}
+        return info
 
     @property
     def segments(self):
@@ -740,3 +1000,24 @@ class CampaignAnnotator(db.Model):
 
     campaign = db.relationship("Campaign", backref=db.backref("annotator_links", cascade="all, delete-orphan"))
     annotator = db.relationship("Annotator", backref=db.backref("campaign_links", cascade="all, delete-orphan"))
+
+
+class AnnotatorCampaignPref(db.Model):
+    """Per-annotator, per-campaign UI preferences, stored server-side so a choice follows
+    the annotator across devices and browsers. Currently just holds the annotator's chosen
+    segments-per-page (within the admin's min/max range)."""
+    __tablename__ = "annotator_campaign_prefs"
+
+    id = db.Column(db.String(32), primary_key=True, default=_uuid)
+    annotator_id = db.Column(db.String(32), db.ForeignKey("annotators.id"),
+                             nullable=False, index=True)
+    campaign_id = db.Column(db.String(32), db.ForeignKey("campaigns.id"),
+                            nullable=False, index=True)
+    # None -> the annotator hasn't overridden the admin default.
+    segments_per_page = db.Column(db.Integer, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("annotator_id", "campaign_id",
+                            name="uq_annotator_campaign_pref"),
+    )

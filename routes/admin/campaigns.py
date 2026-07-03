@@ -14,14 +14,18 @@ import llm
 import exporter
 import mailer
 import seed_data
-from models import db, Campaign, Annotator, Rating, AssistantLog
+from models import db, Campaign, Annotator, Rating, AssistantLog, CampaignGroup
+from models import (
+    normalize_fluency, FLUENCY_LEVELS, normalize_age_group, AGE_GROUPS, fluency_label,
+)
 from utils.constants import (
     get_criteria_for, EVAL_MODES, SCALE_TYPES, SCALE_DESIGNS, SCRIPT_OPTIONS,
-    CRITERIA_DEFAULTS,
+    CRITERIA_DEFAULTS, LANGUAGE_SCRIPTS, script_allowed_for_language, script_label,
 )
 from utils.forms import (
     parse_scale_from_form, parse_criteria_from_form, parse_preferences_from_form,
 )
+from utils.ingest import parse_segments_upload, ACCEPT_ATTR as SEGMENTS_ACCEPT
 from services.auth_service import require_admin, ADMIN_EMAIL
 from services.ai_assistant import task_label
 
@@ -37,6 +41,7 @@ admin_campaign_bp = Blueprint(
 @require_admin
 def admin_dashboard():
     campaigns = Campaign.query.order_by(Campaign.created_at.desc()).all()
+    groups = CampaignGroup.query.order_by(CampaignGroup.created_at.desc()).all()
     # Annotator counts per campaign
     stats = {}
     for c in campaigns:
@@ -47,8 +52,14 @@ def admin_dashboard():
             "total_ratings": sum(1 for r in c.ratings if c.rating_is_complete(r, get_criteria_for(c))),
             "max_possible": c.num_segments * max(1, len(annotator_ids)),
         }
+    # Per-group campaign counts for the dashboard summary.
+    group_counts = {g.id: 0 for g in groups}
+    for c in campaigns:
+        if c.group_id in group_counts:
+            group_counts[c.group_id] += 1
     return render_template("admin_dashboard.html",
                         campaigns=campaigns, stats=stats,
+                        groups=groups, group_counts=group_counts,
                         has_demo=seed_data.demo_present(Campaign),)
 
 
@@ -110,7 +121,7 @@ def _validate_segments_for_mode(segments, eval_mode, campaign_for_norm=None):
     """Return a list of error strings for the given segments under a mode."""
     errors = []
     if not isinstance(segments, list) or len(segments) == 0:
-        return ["Segments JSON must be a non-empty array."]
+        return ["Your segments must be a non-empty list (JSON array, or CSV/TSV rows)."]
     seen_ids = set()
     # Use a throwaway Campaign just for the candidate-normalization helper.
     norm = campaign_for_norm or Campaign(segments_json="[]")
@@ -175,7 +186,12 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
         span_position = "below"
     source_language = form.get("source_language", "").strip()
     target_language = form.get("target_language", "").strip()
-    script = form.get("script", "").strip() or None
+    source_script = form.get("source_script", "").strip() or None
+    target_script = form.get("target_script", "").strip() or None
+    # Legacy single field: accept it if present, and keep it populated from the per-side
+    # scripts so older readers still show something.
+    legacy_script = form.get("script", "").strip() or None
+    script = target_script or source_script or legacy_script
     instructions = form.get("instructions", "").strip()
     span_instructions = form.get("span_instructions", "").strip()
     if not instructions:
@@ -208,6 +224,14 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
         segments_per_page = int(form.get("segments_per_page") or 3)
     except (TypeError, ValueError):
         segments_per_page = 3
+    try:
+        min_segments_per_page = int(form.get("min_segments_per_page") or 1)
+    except (TypeError, ValueError):
+        min_segments_per_page = 1
+    try:
+        max_segments_per_page = int(form.get("max_segments_per_page") or 10)
+    except (TypeError, ValueError):
+        max_segments_per_page = 10
 
     # Scale config (only meaningful in likert mode; keep sane defaults otherwise).
     scale_errors = []
@@ -230,10 +254,40 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
             errors.append("Source language is required.")
         if not target_language:
             errors.append("Target language is required.")
-    if script and script not in {s["id"] for s in SCRIPT_OPTIONS}:
+    script_ids = {s["id"] for s in SCRIPT_OPTIONS}
+    if source_script and source_script not in script_ids:
+        errors.append("Invalid source-language script option.")
+    if target_script and target_script not in script_ids:
+        errors.append("Invalid target-language script option.")
+    if legacy_script and legacy_script not in script_ids:
         errors.append("Invalid script option.")
+    # A script must be plausible for the chosen language (unknown languages are unrestricted).
+    if source_script and source_language and not script_allowed_for_language(source_script, source_language):
+        errors.append(f"“{script_label(source_script)}” isn't a valid script for {source_language}. "
+                      "Pick a script listed for that language, or choose “Other”.")
+    if target_script and target_language and not script_allowed_for_language(target_script, target_language):
+        errors.append(f"“{script_label(target_script)}” isn't a valid script for {target_language}. "
+                      "Pick a script listed for that language, or choose “Other”.")
+    # Source and target may share a language ONLY if the scripts differ (a script-conversion /
+    # transliteration task). This applies to inherently bilingual tasks (machine translation),
+    # where identical language *and* identical (or both-empty) script is a no-op. Monolingual
+    # and optionally-cross-lingual tasks (e.g. English→English summarization) legitimately use
+    # the same language on both sides, so they're exempt.
+    cross_mode = models.task_defaults(task_type).get("cross_lingual", "none")
+    if (cross_mode == "required" and source_language and target_language
+            and source_language.casefold() == target_language.casefold()):
+        if (source_script or "") == (target_script or ""):
+            errors.append("Source and target are identical (same language and script). "
+                          "Use two different languages, or the same language with two "
+                          "different scripts (for a transliteration / script-conversion task).")
     if segments_per_page < 1 or segments_per_page > 50:
         errors.append("Segments per page must be between 1 and 50.")
+    if min_segments_per_page < 1 or max_segments_per_page > 50:
+        errors.append("Segments-per-page limits must be between 1 and 50.")
+    if min_segments_per_page > max_segments_per_page:
+        errors.append("Minimum segments per page can't be greater than the maximum.")
+    if not (min_segments_per_page <= segments_per_page <= max_segments_per_page):
+        errors.append("The default segments-per-page must be within the min/max limits you set.")
 
     if eval_mode in ("likert", "span_only"):
         if len(criteria) == 0:
@@ -258,10 +312,12 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
     segments = None
     if parse_segments:
         segments_raw = ""
+        upload_name = ""
         upload = files.get("segments_file") if files else None
         if upload and upload.filename:
+            upload_name = upload.filename
             try:
-                segments_raw = upload.read().decode("utf-8")
+                segments_raw = upload.read().decode("utf-8-sig")
             except UnicodeDecodeError:
                 errors.append("Could not read the uploaded file as UTF-8.")
                 segments_raw = ""
@@ -269,13 +325,14 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
             segments_raw = form.get("segments_paste", "").strip()
 
         if not segments_raw:
-            errors.append("Please upload or paste the segments JSON file.")
+            errors.append("Please upload or paste your segments (JSON, JSONL, CSV, or TSV).")
         else:
-            try:
-                segments = json.loads(segments_raw)
+            segments, parse_err = parse_segments_upload(segments_raw, upload_name)
+            if parse_err:
+                errors.append(f"Could not parse the segments file: {parse_err}")
+                segments = None
+            else:
                 errors.extend(_validate_segments_for_mode(segments, eval_mode))
-            except json.JSONDecodeError as e:
-                errors.append(f"Segments JSON is not valid: {e}")
         form_segments_paste = segments_raw
     else:
         # Editing: validate the existing segments against the (possibly new) mode.
@@ -355,12 +412,16 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
         "source_language": source_language,
         "target_language": target_language,
         "script": script,
+        "source_script": source_script,
+        "target_script": target_script,
         "criteria_json": json.dumps(criteria, ensure_ascii=False),
         "instructions": instructions,
         "span_instructions": span_instructions,
         "enable_spans": enable_spans,
         "span_scope": span_scope,
         "segments_per_page": segments_per_page,
+        "min_segments_per_page": min_segments_per_page,
+        "max_segments_per_page": max_segments_per_page,
         "eval_mode": eval_mode,
         "preferences_json": json.dumps(preferences, ensure_ascii=False),
         "ai_enabled": ai_enabled,
@@ -389,9 +450,12 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
         "expertise_matching": expertise_matching,
         "rating_position": rating_position, "span_position": span_position,
         "target_language": target_language, "script": script or "",
+        "source_script": source_script or "", "target_script": target_script or "",
         "instructions": instructions,
         "span_instructions": span_instructions, "enable_spans": enable_spans,
         "span_scope": span_scope, "segments_per_page": segments_per_page,
+        "min_segments_per_page": min_segments_per_page,
+        "max_segments_per_page": max_segments_per_page,
         "eval_mode": eval_mode,
         "criteria": [{"name": cr["name"], "desc": cr["guide"]} for cr in criteria],
         "preferences": preferences,
@@ -462,6 +526,10 @@ def _render_new_campaign_form(form_data=None):
         fd["scale"] = _default_scale_view()
     if "segments_per_page" not in fd:
         fd["segments_per_page"] = 3
+    if "min_segments_per_page" not in fd:
+        fd["min_segments_per_page"] = 1
+    if "max_segments_per_page" not in fd:
+        fd["max_segments_per_page"] = 10
     if "eval_mode" not in fd:
         fd["eval_mode"] = "likert"
     if "preferences" not in fd:
@@ -484,6 +552,7 @@ def _render_new_campaign_form(form_data=None):
     fd.setdefault("incentive_bonus_amount", 0.0)
     return render_template("admin_campaign_new.html",
                         scripts=SCRIPT_OPTIONS,
+                        language_scripts=LANGUAGE_SCRIPTS,
                         scale_types=SCALE_TYPES,
                         scale_designs=SCALE_DESIGNS,
                         eval_modes=EVAL_MODES,
@@ -533,11 +602,15 @@ def admin_campaign_edit(campaign_id):
         "source_language": c.source_language,
         "target_language": c.target_language,
         "script": c.script or "",
+        "source_script": (c.source_script or c.script or ""),
+        "target_script": (c.target_script or c.script or ""),
         "instructions": c.instructions or "",
         "span_instructions": c.span_instructions or "",
         "enable_spans": c.enable_spans if c.enable_spans is not None else True,
         "span_scope": c.span_scope or "target",
         "segments_per_page": c.segments_per_page or 3,
+        "min_segments_per_page": (c.min_segments_per_page or 1),
+        "max_segments_per_page": (c.max_segments_per_page or 10),
         "eval_mode": c.mode,
         "criteria": [{"name": x["name"], "desc": x.get("guide") or x.get("desc") or ""} for x in crit],
         "preferences": c.preferences,
@@ -571,6 +644,7 @@ def _render_edit_campaign_form(campaign, form_data):
     return render_template("admin_campaign_edit.html",
                         campaign=campaign,
                         scripts=SCRIPT_OPTIONS,
+                        language_scripts=LANGUAGE_SCRIPTS,
                         scale_types=SCALE_TYPES,
                         scale_designs=SCALE_DESIGNS,
                         eval_modes=EVAL_MODES,
@@ -616,12 +690,14 @@ def admin_campaign_detail(campaign_id):
     diff_label = {"auto": "Automatic (composite heuristic)", "length": "By input length",
                 "manual": "Manual labels only", "none": "None"}.get(
                     c.difficulty_method or "auto", "Automatic")
+    groups = CampaignGroup.query.order_by(CampaignGroup.name.asc()).all()
     return render_template("admin_campaign_detail.html",
                         campaign=c, rows=rows, share_url=share_url,
                         criteria=get_criteria_for(c),
                         mode_label=mode_label, task_label=task_label(c),
                         input_label=in_label, output_label=out_label,
-                        difficulty_label=diff_label,)
+                        difficulty_label=diff_label,
+                        groups=groups,)
 
 
 @admin_campaign_bp.route("/campaign/<campaign_id>/progress.json")
@@ -645,8 +721,14 @@ def admin_campaign_progress(campaign_id):
         completed = sum(1 for r in rs if c.rating_is_complete(r, crit))
         last = max((r.updated_at for r in rs), default=None)
         rows.append({
+            "id": ann.id,
             "name": ann.name, "email": ann.email,
             "expertise": ann.expertise or "",
+            "source_fluency": ann.source_fluency_label,
+            "target_fluency": ann.target_fluency_label,
+            "profile_location": ann.location or "",
+            "dialect": ann.dialect or "",
+            "age_group": ann.age_group_label,
             "completed": completed, "total": c.num_segments,
             "last_update": last.strftime("%Y-%m-%d %H:%M UTC") if last else None,
             "annotator_id": ann.id,
@@ -763,6 +845,102 @@ def admin_campaign_delete(campaign_id):
     db.session.commit()
     flash(f"Campaign '{name}' and all its ratings were deleted.", "success")
     return redirect(url_for("admin_campaign.admin_dashboard"))
+
+
+# ---------------------------------------------------------------------------
+# Campaign groups: bundle related campaigns (e.g. easy/medium/hard variants of one
+# study) so their results can be viewed and exported together.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Editing an annotator's profile (admin). Lets admins correct or fill in the
+# social / background variables (location, dialect, age group) plus language
+# metadata, which help interpret an annotator's ratings.
+# ---------------------------------------------------------------------------
+
+@admin_campaign_bp.route("/annotator/<annotator_id>/edit", methods=["GET", "POST"])
+@require_admin
+def admin_annotator_edit(annotator_id):
+    ann = Annotator.query.get_or_404(annotator_id)
+    # Where to return afterwards (e.g. back to the campaign the admin came from).
+    back = request.values.get("next") or url_for("admin_campaign.admin_dashboard")
+
+    if request.method == "POST":
+        ann.name = (request.form.get("name") or ann.name).strip()[:200]
+        ann.native_language = (request.form.get("native_language") or "").strip()[:100]
+        expertise = (request.form.get("expertise") or "").strip().lower()
+        ann.expertise = expertise if expertise in ("easy", "medium", "hard") else ""
+        ann.source_fluency = normalize_fluency(request.form.get("source_fluency", ""))
+        ann.target_fluency = normalize_fluency(request.form.get("target_fluency", ""))
+        ann.location = (request.form.get("location") or "").strip()[:120]
+        ann.dialect = (request.form.get("dialect") or "").strip()[:120]
+        ann.age_group = normalize_age_group(request.form.get("age_group", ""))
+        db.session.commit()
+        flash(f"Updated {ann.name}'s profile.", "success")
+        return redirect(back)
+
+    return render_template("admin_annotator_edit.html",
+                        annotator=ann, back=back,
+                        fluency_levels=FLUENCY_LEVELS, age_groups=AGE_GROUPS)
+
+
+@admin_campaign_bp.route("/groups/new", methods=["POST"])
+@require_admin
+def admin_group_new():
+    name = (request.form.get("name") or "").strip()
+    description = (request.form.get("description") or "").strip()
+    if not name:
+        flash("A group name is required.", "error")
+        return redirect(url_for("admin_campaign.admin_dashboard"))
+    group = CampaignGroup(name=name, description=description, owner_email=ADMIN_EMAIL)
+    db.session.add(group)
+    db.session.commit()
+    # Optionally attach a campaign immediately (from the campaign detail page).
+    cid = (request.form.get("campaign_id") or "").strip()
+    if cid:
+        c = db.session.get(Campaign, cid)
+        if c:
+            c.group_id = group.id
+            db.session.commit()
+        flash(f"Created group '{name}' and added this campaign to it.", "success")
+        return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=cid))
+    flash(f"Created group '{name}'.", "success")
+    return redirect(url_for("admin_campaign.admin_dashboard"))
+
+
+@admin_campaign_bp.route("/groups/<group_id>/delete", methods=["POST"])
+@require_admin
+def admin_group_delete(group_id):
+    group = CampaignGroup.query.get_or_404(group_id)
+    name = group.name
+    # Detach campaigns first (deleting a group never deletes its campaigns).
+    for c in group.ordered_campaigns():
+        c.group_id = None
+    db.session.delete(group)
+    db.session.commit()
+    flash(f"Deleted group '{name}'. Its campaigns were kept and un-grouped.", "success")
+    return redirect(url_for("admin_campaign.admin_dashboard"))
+
+
+@admin_campaign_bp.route("/campaign/<campaign_id>/group", methods=["POST"])
+@require_admin
+def admin_campaign_set_group(campaign_id):
+    """Assign this campaign to an existing group, or remove it from its group."""
+    c = Campaign.query.get_or_404(campaign_id)
+    group_id = (request.form.get("group_id") or "").strip()
+    if not group_id:
+        c.group_id = None
+        db.session.commit()
+        flash("Removed this campaign from its group.", "success")
+        return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
+    group = db.session.get(CampaignGroup, group_id)
+    if not group:
+        flash("That group no longer exists.", "error")
+        return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
+    c.group_id = group.id
+    db.session.commit()
+    flash(f"Added this campaign to '{group.name}'.", "success")
+    return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
 
 
 @admin_campaign_bp.route("/campaign/<campaign_id>/download_csv")

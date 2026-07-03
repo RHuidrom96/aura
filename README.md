@@ -62,10 +62,29 @@ the per-rating master CSV anytime from the campaign page. When you **close** a c
 builds a results ZIP and emails it to the campaign owner (the admin who created it):
 
 - `ratings.csv` — one row per completed (annotator, segment) rating
-- `results_summary.csv` — key tables (per-criterion means, win rates, span F1, post-edit, difficulty)
+- `results_summary.csv` — key tables (per-criterion means, win rates, span F1 + **span density**, post-edit, difficulty, and the **most-contested segments** with readability and comment counts)
 - `results.json` — the full computed results
-- `results_report.html` — a self-contained HTML report
+- `results_report.html` — a self-contained HTML report; its header shows the language pair **with input/output scripts** where set (e.g. *English (Latin) → Assamese (Bengali–Assamese)*)
 - `figures/*.png` — every chart
+
+### Linguistic diagnosis
+
+The results dashboard and report include a **Linguistic diagnosis** section that goes beyond
+"these segments were contested" to help explain *why*. For each of the most-contested
+segments it shows a language-agnostic **readability proxy** (0–100, higher = easier — a
+heuristic from sentence and word length that flags unusually long or dense items), a preview
+of the **annotator comments** left on that segment, and a **link to inspect the segment
+directly** (its source/target text and every annotator's scores, the exact error spans they
+marked, and their comments). This makes it quick to jump from a disagreement number to the
+actual source of confusion.
+
+### Error-span density
+
+Span tables report not just how many spans were marked and how many characters they cover,
+but **density**: the mean length of a single span (in characters and words) and the **share
+of reviewed text flagged**. This distinguishes a one-word slip from a whole-clause error —
+one wrong word and one wrong clause both count as "1 span", but have very different density.
+Density is also broken down per system.
 
 Delivery uses whatever email transport you've configured (Resend / SendGrid / SMTP — see
 "Getting verification emails to actually send"). If no transport is set, the campaign still
@@ -90,17 +109,20 @@ closes and everything remains downloadable from the results page.
 6. The "Jump to…" button opens a modal with all segments and their status, for review and editing.
 7. Once finished, the thank-you screen offers a "Review my ratings" button — they can come back to this URL any time until the admin closes the campaign.
 
-## Segment file format
+## Segment (input) file format
 
-A JSON array of objects:
+You can upload (or paste) segments as **JSON, JSON Lines (`.jsonl`), CSV, or TSV** — the
+format is auto-detected from the file extension or content. All produce the same segments.
+
+JSON array of objects:
 
 ```json
 [
   {
     "id": "seg_001",
-    "source": "Source sentence text.",
-    "target": "Machine translation text.",
-    "reference": "Optional human reference translation.",
+    "source": "Source text (a sentence, document, article, passage, dialogue, …).",
+    "target": "Machine translation / summary / answer / etc.",
+    "reference": "Optional human reference.",
     "system": "SystemA",
     "domain": "Medical"
   },
@@ -108,8 +130,18 @@ A JSON array of objects:
 ]
 ```
 
-Required fields: `id` (unique within the file), `source`, `target`.
-Optional: `reference`, `system`, `domain`.
+The same data as CSV (the header names are the field names):
+
+```csv
+id,source,target,reference,system,domain
+seg_001,Source text,Machine output,Reference,SystemA,Medical
+```
+
+Required fields/columns: `id` (unique), `source`, and `target` (for pairwise, `target_a`
+and `target_b` instead — or a `candidates` column holding a JSON array or a `|`-delimited
+pair). Optional: `reference`, `system`, `domain`. Any extra columns are preserved as
+metadata. The **source can be any text** — summarization inputs aren't limited to
+"documents"; the input label is just an editable hint.
 
 ## CSV output columns
 
@@ -117,7 +149,9 @@ Optional: `reference`, `system`, `domain`.
 |---|---|
 | `response_id` | UUID for this rating |
 | `timestamp_utc` | Last update time |
+| `annotator_id` | Stable UUID of the annotator account (join key across campaigns) |
 | `annotator_name`, `annotator_email`, `annotator_native_lang` | Annotator info |
+| `annotator_source_fluency`, `annotator_target_fluency` | Annotator's self-rated fluency in the source and target languages (`native`/`fluent`/`advanced`/`intermediate`/`beginner`, or blank for monolingual tasks) |
 | `campaign_id`, `campaign_name` | Campaign info |
 | `source_language`, `target_language`, `script` | Languages and optional script |
 | `segment_id`, `system`, `domain` | Segment metadata |
@@ -179,7 +213,7 @@ When creating **or editing** a campaign, the admin first picks an **evaluation m
 ### Shared options (all modes)
 
 - **Evaluation criteria** (Likert + Span-only): add/remove criteria, each with a name and a definition. In Likert these are the scored dimensions / CSV score columns; in Span-only they are the error-type categories.
-- **Segments per page** — how many segments per page before "Save & next page" (1–50).
+- **Segments per page** — the *default* number of segments shown per page before "Save & next page", plus a **min/max range** (both 1–50). Annotators can pick their own segments-per-page within that range for their convenience; their choice is saved **to their account** (server-side, per campaign), so it follows them across devices and browsers. The default must lie inside the range.
 - **Annotation instructions** — free text shown in the collapsible panel on every rating page.
 - **Span annotation instructions** (when spans are active) — free text shown in the span section; falls back to a built-in explanation if blank.
 
@@ -216,7 +250,52 @@ Every part of the configuration above — including the evaluation mode — can 
 
 ## Deleting a campaign
 
-On a campaign's detail page there's a **Delete campaign** card. To prevent accidents, the admin must type the exact campaign name to confirm. Deleting removes the campaign, all its ratings (local DB).
+On a campaign's detail page there's a **Delete campaign** card. Clicking it opens a
+centered confirmation dialog (not a browser `confirm()`): you must type the exact campaign
+name, and only then does the **Delete permanently** button enable. **Cancel is the
+default-focused action**, and Enter in the field never submits — so a stray click or
+keypress can't wipe out annotation progress. Closing a campaign uses the same style of
+dialog.
+
+## Campaign IDs
+
+Every campaign shows its **ID** (with a one-click copy button) next to its name on the
+dashboard, detail, and results pages, and on the annotator's rating screen. This makes it
+easy to refer to a specific campaign when you're running several similar ones and need to
+coordinate within your team or with annotators.
+
+## Annotator background variables
+
+Alongside native language, expertise and fluency, annotators can optionally provide
+**location**, **dialect / variety**, and **age group** (a range, never an exact age) at
+registration. These help interpret ratings (e.g. dialectal variation) and are included in
+results and the CSV export (`annotator_location`, `annotator_dialect`,
+`annotator_age_group`). An admin can view and **edit** any annotator's profile from the
+progress table on the campaign page (the "edit" link on each row).
+
+## Grouping campaigns
+
+When you split one study across several campaigns — for example one campaign per difficulty
+level (easy / medium / hard), or one per system — you can bundle them into a **group** to see
+and export their results together.
+
+- **Create a group** from the admin dashboard (the *Groups* panel) or directly from a
+  campaign's detail page (the *Group* card).
+- **Add campaigns** to a group from each campaign's detail page. A campaign belongs to at
+  most one group; adding it elsewhere just moves it.
+- **Combined results** (`Groups → View combined results`) show: overall counts (segments,
+  distinct annotators de-duplicated by account, completed ratings), a per-campaign summary
+  table with each campaign's headline metric, **pooled Likert means** per criterion (an
+  n-weighted mean across the group's Likert campaigns, matched by criterion name), and a
+  **combined difficulty breakdown** (segments/ratings summed per level, the metric pooled as
+  an n-weighted mean).
+- **Combined CSV** — one download with every completed rating from all campaigns in the
+  group. Because campaigns can use different modes/criteria, the file uses the union of all
+  columns; every row still carries its `campaign_id`, `campaign_name`, `eval_mode`,
+  `annotator_id`, and `response_id`, so rows are never ambiguous.
+- Inter-annotator agreement (α/κ/F1) is **not** pooled across campaigns — segments differ
+  between them — so it stays on each campaign's own dashboard.
+- **Deleting a group never deletes its campaigns**: they are simply un-grouped.
 
 ## CSV columns are dynamic
 
@@ -275,21 +354,37 @@ The three evaluation modes (Likert scoring, pairwise preference, span/error anno
 specific to translation. Each campaign has a **Task type** that relabels the interface and
 suggests criteria, so the same machinery serves other text-evaluation tasks:
 
-| Task type | Input label | Output label | Example criteria |
-|---|---|---|---|
-| Machine translation | Source | Translation | Adequacy, Fluency |
-| Summarization | Document | Summary | Coherence, Consistency, Fluency, Relevance |
-| Text simplification | Original text | Simplified text | Meaning preservation, Simplicity, Fluency |
-| Dialogue / response | Conversation | Response | Helpfulness, Coherence, Safety |
-| Question answering | Question | Answer | Correctness, Completeness, Fluency |
-| General LLM output | Input | Output | Overall quality |
-| Custom | (your own) | (your own) | (your own) |
+| Task type | Input label | Output label | Example criteria | Languages |
+|---|---|---|---|---|
+| Machine translation | Source | Translation | Adequacy, Fluency | **Two (required)** — source ≠ target |
+| Summarization | Document | Summary | Coherence, Consistency, Fluency, Relevance | One, or two (cross-lingual summarization) |
+| Question answering | Question | Answer | Correctness, Completeness, Fluency | One, or two (cross-lingual QA) |
+| Text simplification | Original text | Simplified text | Meaning preservation, Simplicity, Fluency | **One only** |
+| Dialogue / response | Conversation | Response | Helpfulness, Coherence, Safety | **One only** |
+| Factuality / hallucination | Source / context | Output | (error categories) | One, or two |
+| General LLM output | Input | Output | Overall quality | One, or two |
+| Custom | (your own) | (your own) | (your own) | One, or two |
 
 Choosing a task type on the campaign form pre-fills the input/output labels and example
 criteria (all editable), and makes the **Source/Target language** fields optional for
 monolingual tasks. Machine-translation campaigns are unchanged and remain the default, so
 existing campaigns keep working exactly as before. The labels flow through the annotator
 screen, the AI assistant, and the segment context.
+
+### Cross-lingual tasks and annotator fluency
+
+Some tasks are inherently **bilingual** (machine translation: the source and target are in
+different languages and both matter). Others are **usually monolingual but can be
+cross-lingual** (summarizing an English document into Hindi, or answering an English
+question from a Bengali passage) — for these, Aura treats the campaign as cross-lingual only
+when you actually set two *different* source and target languages. The rest
+(**text simplification**, **dialogue / response**) are **strictly single-language**.
+
+For any campaign that ends up cross-lingual, annotators are asked at registration to rate
+their **fluency in both the source and target language** (native / fluent / advanced /
+intermediate / beginner). These are stored on the annotator account and exported as
+`annotator_source_fluency` / `annotator_target_fluency`, so you can filter or weight results
+by how well each rater knew each language. Monolingual campaigns don't show these fields.
 
 The demo loader includes two non-MT examples — **Summarization quality (English)** and
 **LLM response comparison (English)** — alongside the nine Northeast India language campaigns.

@@ -140,6 +140,29 @@
 {% block scripts %}{% endblock %}
 
 <script>
+// Copy-to-clipboard for campaign ID chips (delegated; works on any .copy-id-btn).
+(function () {
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('.copy-id-btn');
+    if (!btn) return;
+    var val = btn.getAttribute('data-copy') || '';
+    var done = function () {
+      var old = btn.textContent; btn.textContent = 'copied';
+      setTimeout(function () { btn.textContent = old; }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(val).then(done, done);
+    } else {
+      var ta = document.createElement('textarea'); ta.value = val;
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (err) {}
+      document.body.removeChild(ta); done();
+    }
+  });
+})();
+</script>
+
+<script>
 // Light/dark theme toggle
 (function () {
   const btn = document.getElementById('theme-toggle');

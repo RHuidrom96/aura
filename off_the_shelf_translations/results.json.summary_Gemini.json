@@ -1,0 +1,9 @@
+{
+  "gemini": {
+    "calls": 1,
+    "total_seconds": 9.419,
+    "avg_seconds": 9.419,
+    "total_cost_usd": 2.9e-05,
+    "cost_known_for_calls": 1
+  }
+}

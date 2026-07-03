@@ -179,6 +179,12 @@ def _annotators(ratings):
                 "name": ann.name if ann else r.annotator_id,
                 "email": ann.email if ann else "",
                 "expertise": (getattr(ann, "expertise", "") or "") if ann else "",
+                "native_language": (getattr(ann, "native_language", "") or "") if ann else "",
+                "source_fluency": (getattr(ann, "source_fluency", "") or "") if ann else "",
+                "target_fluency": (getattr(ann, "target_fluency", "") or "") if ann else "",
+                "location": (getattr(ann, "location", "") or "") if ann else "",
+                "dialect": (getattr(ann, "dialect", "") or "") if ann else "",
+                "age_group": (getattr(ann, "age_group", "") or "") if ann else "",
             }
     return list(seen.values())
 
@@ -229,6 +235,7 @@ def compute_results(campaign, ratings, criteria):
 
     out = {
         "mode": mode,
+        "campaign_id": campaign.id,
         "summary": {
             "n_segments": campaign.num_segments,
             "n_annotators": len(annotators),
@@ -265,6 +272,184 @@ def compute_results(campaign, ratings, criteria):
     return out
 
 
+def combine_group_results(items):
+    """Aggregate several campaigns' already-computed results into one group view.
+
+    ``items`` is a list of dicts, each ``{"id", "name", "mode", "results"}`` where
+    ``results`` is the output of :func:`compute_results` (or a frozen snapshot) for that
+    campaign. Aggregation is done at the summary level from each campaign's own correct
+    results, so no statistic is re-derived incorrectly:
+
+      - counts are summed; annotators are unioned across campaigns by id;
+      - Likert per-criterion means are pooled across campaigns as an n-weighted mean
+        (``mean_i * n_i`` summed over campaigns, divided by total n) -- exactly the mean of
+        the pooled scores, matched by criterion name;
+      - the difficulty breakdown is rolled up per level (segments and ratings summed, the
+        per-level metric pooled as an n_ratings-weighted mean of each campaign's metric).
+
+    Cross-campaign inter-annotator agreement is deliberately *not* pooled: it would require
+    the raw per-segment ratings and segments differ between campaigns, so it stays per
+    campaign (shown in each campaign's own dashboard).
+    """
+    per_campaign = []
+    annotators = {}
+    n_segments = 0
+    n_complete = 0
+    modes = []
+
+    # criterion name -> [sum_of_scores, n]
+    crit_pool = {}
+    crit_order = []
+    n_likert = 0
+
+    # difficulty level -> [n_segments, n_ratings, weighted_metric_sum, metric_weight]
+    diff_pool = {}
+    diff_metric_labels = set()
+
+    for it in items:
+        res = it.get("results") or {}
+        summ = res.get("summary", {})
+        mode = it.get("mode") or res.get("mode") or ""
+        modes.append(mode)
+        n_segments += int(summ.get("n_segments", 0) or 0)
+        n_complete += int(summ.get("n_complete_ratings", 0) or 0)
+        for a in summ.get("annotators", []) or []:
+            aid = a.get("id")
+            if aid and aid not in annotators:
+                annotators[aid] = {"id": aid, "name": a.get("name", ""),
+                                   "email": a.get("email", "")}
+
+        headline = None
+        if mode == "likert":
+            n_likert += 1
+            for row in (res.get("likert", {}) or {}).get("criteria", []) or []:
+                nm, mean, n = row.get("name"), row.get("mean"), row.get("n_ratings") or 0
+                if nm is None or mean is None or not n:
+                    continue
+                if nm not in crit_pool:
+                    crit_pool[nm] = [0.0, 0]
+                    crit_order.append(nm)
+                crit_pool[nm][0] += float(mean) * int(n)
+                crit_pool[nm][1] += int(n)
+            pc = (res.get("likert", {}) or {}).get("criteria", []) or []
+            if pc:
+                headline = "; ".join(f"{r['name']} {r['mean']}" for r in pc if r.get("mean") is not None)
+        elif mode == "pairwise":
+            systems = (res.get("pairwise", {}) or {}).get("systems", []) or []
+            if systems:
+                top = max(systems, key=lambda s: s.get("win_rate") or 0)
+                headline = f"Top: {top.get('system','?')} ({top.get('win_rate')} win rate)"
+        elif mode == "span_only":
+            S = res.get("span_only", {}) or {}
+            if S.get("mean_span_f1") is not None:
+                headline = f"Span F1 (char) {S.get('mean_span_f1')}"
+        elif mode == "post_edit":
+            P = res.get("post_edit", {}) or {}
+            if P.get("mean_norm_distance") is not None:
+                headline = f"Mean edit distance {P.get('mean_norm_distance')}"
+
+        # difficulty roll-up
+        diff = res.get("difficulty")
+        if diff and diff.get("rows"):
+            if diff.get("metric_label"):
+                diff_metric_labels.add(diff["metric_label"])
+            for row in diff["rows"]:
+                lv = row.get("level")
+                if lv not in diff_pool:
+                    diff_pool[lv] = [0, 0, 0.0, 0]
+                diff_pool[lv][0] += int(row.get("n_segments", 0) or 0)
+                diff_pool[lv][1] += int(row.get("n_ratings", 0) or 0)
+                if row.get("metric") is not None and row.get("n_ratings"):
+                    diff_pool[lv][2] += float(row["metric"]) * int(row["n_ratings"])
+                    diff_pool[lv][3] += int(row["n_ratings"])
+
+        per_campaign.append({
+            "id": it.get("id"),
+            "name": it.get("name", ""),
+            "mode": mode,
+            "n_annotators": int(summ.get("n_annotators", 0) or 0),
+            "n_segments": int(summ.get("n_segments", 0) or 0),
+            "n_complete_ratings": int(summ.get("n_complete_ratings", 0) or 0),
+            "n_overlap_segments": int(summ.get("n_overlap_segments", 0) or 0),
+            "headline": headline or "—",
+        })
+
+    likert_pooled = []
+    for nm in crit_order:
+        total, n = crit_pool[nm]
+        if n:
+            likert_pooled.append({"name": nm, "mean": _r(total / n), "n": n})
+
+    difficulty_pooled = None
+    order = ["easy", "medium", "hard"]
+    diff_rows = []
+    for lv in order:
+        if lv not in diff_pool:
+            continue
+        nseg, nrat, msum, mw = diff_pool[lv]
+        diff_rows.append({"level": lv, "n_segments": nseg, "n_ratings": nrat,
+                          "metric": (_r(msum / mw) if mw else None)})
+    if diff_rows:
+        label = "; ".join(sorted(diff_metric_labels)) if diff_metric_labels else None
+        difficulty_pooled = {"rows": diff_rows, "metric_label": label,
+                             "mixed_metrics": len(diff_metric_labels) > 1}
+
+    from collections import Counter
+    mode_counts = Counter(m for m in modes if m)
+
+    return {
+        "summary": {
+            "n_campaigns": len(items),
+            "n_segments": n_segments,
+            "n_annotators": len(annotators),
+            "n_complete_ratings": n_complete,
+            "annotators": list(annotators.values()),
+            "modes": dict(mode_counts),
+            "single_mode": (len(mode_counts) == 1),
+        },
+        "per_campaign": per_campaign,
+        "likert_pooled": likert_pooled,
+        "n_likert_campaigns": n_likert,
+        "difficulty_pooled": difficulty_pooled,
+    }
+
+
+def _readability(text):
+    """A lightweight, language-agnostic readability proxy for a piece of text.
+
+    English-specific formulas (Flesch etc.) rely on syllable counting and are unreliable
+    for the low-resource languages Aura targets, so this instead reports transparent
+    structural signals -- word count, mean word length (characters), sentence count and
+    mean sentence length (words) -- plus a simple 0-100 "reading ease" proxy where higher
+    means easier: longer sentences and longer words lower the score. It's a heuristic for
+    triage (spotting unusually long / dense items), not a validated readability index.
+    """
+    import re as _re
+    t = (text or "").strip()
+    if not t:
+        return None
+    words = _re.findall(r"\w+", t, flags=_re.UNICODE)
+    n_words = len(words)
+    if not n_words:
+        return None
+    n_chars = sum(len(w) for w in words)
+    # Sentence delimiters: Latin punctuation + Devanagari/Bengali danda (।॥) + newlines.
+    sentences = [s for s in _re.split(r"[.!?।॥\n]+", t) if s.strip()]
+    n_sent = max(1, len(sentences))
+    mean_word_len = n_chars / n_words
+    mean_sent_len = n_words / n_sent
+    ease = 100.0 - (mean_sent_len * 1.5) - (mean_word_len * 5.0)
+    ease = max(0.0, min(100.0, ease))
+    return {
+        "words": n_words,
+        "chars": len(t),
+        "sentences": n_sent,
+        "mean_word_len": round(mean_word_len, 2),
+        "mean_sentence_len": round(mean_sent_len, 2),
+        "reading_ease": round(ease, 1),
+    }
+
+
 def _disagreement(campaign, complete, criteria, mode):
     """Where annotators disagree: per-criterion spread + the most-contested segments.
 
@@ -284,7 +469,10 @@ def _disagreement(campaign, complete, criteria, mode):
     for seg_id, rs in by_seg.items():
         if len(rs) < 2:
             continue
-        src = (seg_lookup.get(seg_id, {}).get("source", "") or "")[:140]
+        seg = seg_lookup.get(seg_id, {})
+        full_src = (seg.get("source", "") or "")
+        full_tgt = (seg.get("target", "") or "")
+        src = full_src[:140]
         score = None
         detail = ""
 
@@ -339,9 +527,20 @@ def _disagreement(campaign, complete, criteria, mode):
                 score = (sum((d - m) ** 2 for d in dists) / len(dists)) ** 0.5
 
         if score is not None:
+            comments = []
+            for r in rs:
+                ctext = (r.comments or "").strip()
+                if ctext:
+                    ann = r.annotator
+                    comments.append({"annotator": (ann.name if ann else r.annotator_id),
+                                     "text": ctext})
             contested.append({
                 "segment_id": seg_id, "source": src, "n_raters": len(rs),
                 "disagreement": round(score, 3), "detail": detail,
+                "target": full_tgt[:140],
+                "readability": _readability(full_src or full_tgt),
+                "comments": comments,
+                "n_comments": len(comments),
             })
 
     contested.sort(key=lambda x: -x["disagreement"])
@@ -875,10 +1074,12 @@ def _overlap_f1(ma, mb):
 def _span_stats(campaign, ratings, criteria, annotators):
     seg_len = {}
     seg_tokens = {}
+    seg_text = {}
     seg_system = {}
     for s in campaign.segments:
         target = s.get("target", "") or ""
         seg_len[s.get("id")] = len(target)
+        seg_text[s.get("id")] = target
         seg_tokens[s.get("id")] = _token_spans(target)
         if s.get("system"):
             seg_system[s.get("id")] = s.get("system")
@@ -887,26 +1088,39 @@ def _span_stats(campaign, ratings, criteria, annotators):
     for r in ratings:
         by_ann.setdefault(r.annotator_id, {})[r.segment_id] = r.spans_dict()
 
-    # per-criterion counts/density
+    # Total characters actually reviewed (denominator for span density): every rating is a
+    # review of one segment, so sum that segment's length once per rating.
+    total_reviewed_chars = sum(seg_len.get(r.segment_id, 0) for r in ratings)
+
+    # per-criterion counts / density. char_count is the number of characters covered by
+    # spans; mean_span_chars / mean_span_words describe the *size* of a typical flagged
+    # error (1 wrong word vs 1 wrong clause); char_density is the share of reviewed text
+    # flagged for this criterion.
     from collections import defaultdict
     crit_rows = []
     for c in criteria:
         cid = c["id"]
-        n_spans = 0; n_chars = 0; n_segwith = 0; seg_seen = set()
+        n_spans = 0; n_chars = 0; n_words = 0; seg_seen = set()
         for r in ratings:
             spans = r.spans_dict().get(cid, [])
-            if spans:
-                n_spans += len(spans)
-                for sp in spans:
-                    if len(sp) >= 2:
-                        n_chars += max(0, sp[1] - sp[0])
-                key = (r.annotator_id, r.segment_id)
-                seg_seen.add(key)
+            if not spans:
+                continue
+            txt = seg_text.get(r.segment_id, "")
+            n_spans += len(spans)
+            for sp in spans:
+                if len(sp) >= 2:
+                    a, b = sp[0], sp[1]
+                    n_chars += max(0, b - a)
+                    n_words += len((txt[a:b] if 0 <= a <= b <= len(txt) else "").split())
+            seg_seen.add((r.annotator_id, r.segment_id))
         crit_rows.append({
             "id": cid, "name": c["name"],
             "n_spans": n_spans,
             "char_count": n_chars,
             "marked_instances": len(seg_seen),
+            "mean_span_chars": _r(n_chars / n_spans, 1) if n_spans else None,
+            "mean_span_words": _r(n_words / n_spans, 2) if n_spans else None,
+            "char_density": _r(100.0 * n_chars / total_reviewed_chars, 2) if total_reviewed_chars else None,
         })
 
     # pairwise span agreement: character-level F1 and token-level (word-overlap) F1,
@@ -958,12 +1172,13 @@ def _span_stats(campaign, ratings, criteria, annotators):
 
     systems = None
     if seg_system:
-        acc = defaultdict(lambda: {"spans": 0, "chars": 0, "n": 0})
+        acc = defaultdict(lambda: {"spans": 0, "chars": 0, "n": 0, "reviewed_chars": 0})
         for r in ratings:
             sysname = seg_system.get(r.segment_id)
             if not sysname:
                 continue
             acc[sysname]["n"] += 1
+            acc[sysname]["reviewed_chars"] += seg_len.get(r.segment_id, 0)
             for c in criteria:
                 for sp in r.spans_dict().get(c["id"], []):
                     acc[sysname]["spans"] += 1
@@ -973,7 +1188,10 @@ def _span_stats(campaign, ratings, criteria, annotators):
         for sysname, d in sorted(acc.items()):
             systems.append({"system": sysname, "spans": d["spans"], "chars": d["chars"],
                             "n": d["n"],
-                            "spans_per_segment": _r(d["spans"] / d["n"]) if d["n"] else None})
+                            "spans_per_segment": _r(d["spans"] / d["n"]) if d["n"] else None,
+                            "mean_span_chars": _r(d["chars"] / d["spans"], 1) if d["spans"] else None,
+                            "char_density": _r(100.0 * d["chars"] / d["reviewed_chars"], 2)
+                                            if d["reviewed_chars"] else None})
 
     return {
         "criteria": crit_rows,

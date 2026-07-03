@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} · Group results · Aura{% endblock %}
+
+{% block content %}
+{% set S = combined.summary %}
+<div class="page-header">
+  <div>
+    <h1>{{ group.name }}</h1>
+    <p class="hint">
+      Combined results across {{ S.n_campaigns }} campaign{{ '' if S.n_campaigns == 1 else 's' }}
+      · created {{ group.created_at.strftime('%Y-%m-%d %H:%M UTC') }}
+    </p>
+    {% if group.description %}<p class="hint">{{ group.description }}</p>{% endif %}
+  </div>
+  <a href="{{ url_for('admin_campaign.admin_dashboard') }}" class="link-btn">← back to dashboard</a>
+</div>
+
+{% if not campaigns %}
+<section class="card">
+  <p class="hint" style="margin:0;">This group has no campaigns yet. Add campaigns to it from each campaign's detail page (the “Group” card).</p>
+</section>
+{% else %}
+
+<section class="card">
+  <h3 style="margin-top:0;">Overview</h3>
+  <table class="annotator-table">
+    <tbody>
+      <tr><td class="muted">Campaigns</td><td>{{ S.n_campaigns }}</td></tr>
+      <tr><td class="muted">Distinct annotators</td><td>{{ S.n_annotators }}</td></tr>
+      <tr><td class="muted">Total segments</td><td>{{ S.n_segments }}</td></tr>
+      <tr><td class="muted">Completed ratings</td><td>{{ S.n_complete_ratings }}</td></tr>
+      <tr><td class="muted">Evaluation modes</td>
+        <td>
+          {% for m, n in S.modes.items() %}{{ m|replace('_',' ')|title }} ({{ n }}){% if not loop.last %}, {% endif %}{% endfor %}
+        </td></tr>
+    </tbody>
+  </table>
+  <p class="hint">
+    Counts are summed across campaigns and annotators are de-duplicated by account. Inter-annotator
+    agreement is not pooled across campaigns (segments differ); see each campaign's own dashboard for that.
+  </p>
+</section>
+
+<section class="card">
+  <h3 style="margin-top:0;">Per-campaign summary</h3>
+  <table class="result-table">
+    <thead>
+      <tr>
+        <th>Campaign</th><th>Mode</th>
+        <th class="num">Annotators</th><th class="num">Segments</th>
+        <th class="num">Completed</th><th class="num">Overlap</th>
+        <th>Headline metric</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in combined.per_campaign %}
+      <tr>
+        <td>{{ campaign_by_id[r.id].name if r.id in campaign_by_id else r.name }}</td>
+        <td>{{ r.mode|replace('_',' ')|title }}</td>
+        <td class="num">{{ r.n_annotators }}</td>
+        <td class="num">{{ r.n_segments }}</td>
+        <td class="num">{{ r.n_complete_ratings }}</td>
+        <td class="num">{{ r.n_overlap_segments }}</td>
+        <td>{{ r.headline }}</td>
+        <td><a href="{{ url_for('admin_results.admin_campaign_results', campaign_id=r.id) }}">View →</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if combined.likert_pooled %}
+<section class="card">
+  <h3 style="margin-top:0;">Pooled Likert scores</h3>
+  <p class="hint" style="margin-top:0;">
+    Mean score per criterion, pooled across the {{ combined.n_likert_campaigns }} Likert
+    campaign{{ '' if combined.n_likert_campaigns == 1 else 's' }} in this group (weighted by number of ratings).
+    Criteria are matched by name.
+  </p>
+  <table class="result-table">
+    <thead>
+      <tr><th>Criterion</th><th class="num">Pooled mean</th><th class="num">Ratings (n)</th></tr>
+    </thead>
+    <tbody>
+      {% for c in combined.likert_pooled %}
+      <tr><td>{{ c.name }}</td><td class="num">{{ c.mean }}</td><td class="num">{{ c.n }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if combined.difficulty_pooled %}
+{% set D = combined.difficulty_pooled %}
+<section class="card">
+  <h3 style="margin-top:0;">Combined breakdown by difficulty</h3>
+  <p class="hint" style="margin-top:0;">
+    Segments and ratings summed per difficulty level across the group.
+    {% if D.metric_label %}Metric: {{ D.metric_label }} (pooled as an n-weighted mean{% if D.mixed_metrics %}; note campaigns use different metrics, so the pooled metric column mixes them{% endif %}).{% endif %}
+  </p>
+  <table class="result-table">
+    <thead>
+      <tr><th>Level</th><th class="num">Segments</th><th class="num">Ratings</th><th class="num">{{ D.metric_label or 'Metric' }}</th></tr>
+    </thead>
+    <tbody>
+      {% for r in D.rows %}
+      <tr>
+        <td>{{ r.level|capitalize }}</td>
+        <td class="num">{{ r.n_segments }}</td>
+        <td class="num">{{ r.n_ratings }}</td>
+        <td class="num">{{ r.metric if r.metric is not none else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<section class="card">
+  <h3 style="margin-top:0;">Data export</h3>
+  <p class="hint" style="margin-top:0;">One combined CSV with every completed rating from all campaigns in the group. Each row carries its <code>campaign_id</code>, <code>campaign_name</code>, <code>annotator_id</code> and <code>response_id</code>, so campaigns and modes can be told apart.</p>
+  <a href="{{ url_for('admin_results.admin_group_download_csv', group_id=group.id) }}" class="btn">Download combined CSV</a>
+</section>
+
+<section class="card">
+  <h3 style="margin-top:0;">Danger zone</h3>
+  <p class="hint" style="margin-top:0;">Deleting this group keeps all its campaigns and their ratings — they are simply un-grouped.</p>
+  <form method="post" action="{{ url_for('admin_campaign.admin_group_delete', group_id=group.id) }}"
+        onsubmit="return confirm('Delete this group? The campaigns in it are kept and un-grouped.');">
+    <button type="submit" class="btn">Delete group</button>
+  </form>
+</section>
+
+{% endif %}
+{% endblock %}

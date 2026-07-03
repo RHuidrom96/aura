@@ -17,7 +17,7 @@
     <div class="ann-campaign-head">
       <div>
         <h3>{{ c.name }}</h3>
-        <p class="campaign-langs">{{ c.source_language }} → {{ c.target_language }}{% if c.script %} · {{ c.script }}{% endif %}</p>
+        <p class="campaign-langs">{{ c.source_language }} → {{ c.target_language }}{% if c.scripts_summary %} · {{ c.scripts_summary }}{% endif %}</p>
       </div>
       {% if c.is_closed %}
         <span class="status-pill status-closed">Closed</span>

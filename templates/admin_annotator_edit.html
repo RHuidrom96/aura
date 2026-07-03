@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ annotator.name }} · Aura{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Edit annotator</h1>
+    <p class="hint"><code>{{ annotator.id }}</code> · {{ annotator.email }}</p>
+  </div>
+  <a href="{{ back }}" class="link-btn">← back</a>
+</div>
+
+<section class="card">
+  <form method="post" action="{{ url_for('admin_campaign.admin_annotator_edit', annotator_id=annotator.id) }}">
+    <input type="hidden" name="next" value="{{ back }}">
+
+    <div class="field">
+      <label for="a-name">Name</label>
+      <input type="text" id="a-name" name="name" maxlength="200" value="{{ annotator.name }}">
+    </div>
+
+    <div class="field">
+      <label for="a-native">Native language</label>
+      <input type="text" id="a-native" name="native_language" maxlength="100" value="{{ annotator.native_language or '' }}">
+    </div>
+
+    <div class="field">
+      <label for="a-expertise">Expertise level</label>
+      <select id="a-expertise" name="expertise">
+        <option value="" {% if not annotator.expertise %}selected{% endif %}>—</option>
+        <option value="easy" {% if annotator.expertise == 'easy' %}selected{% endif %}>Beginner</option>
+        <option value="medium" {% if annotator.expertise == 'medium' %}selected{% endif %}>Intermediate</option>
+        <option value="hard" {% if annotator.expertise == 'hard' %}selected{% endif %}>Advanced</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label for="a-src-fluency">Source-language fluency</label>
+        <select id="a-src-fluency" name="source_fluency">
+          <option value="" {% if not annotator.source_fluency %}selected{% endif %}>—</option>
+          {% for lvl in fluency_levels %}
+          <option value="{{ lvl.id }}" {% if annotator.source_fluency == lvl.id %}selected{% endif %}>{{ lvl.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="a-tgt-fluency">Target-language fluency</label>
+        <select id="a-tgt-fluency" name="target_fluency">
+          <option value="" {% if not annotator.target_fluency %}selected{% endif %}>—</option>
+          {% for lvl in fluency_levels %}
+          <option value="{{ lvl.id }}" {% if annotator.target_fluency == lvl.id %}selected{% endif %}>{{ lvl.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <h3 style="margin:20px 0 4px; font-size:15px;">Background variables</h3>
+    <p class="hint" style="margin-top:0;">Optional; help interpret annotator behaviour (e.g. dialectal variation).</p>
+
+    <div class="form-row">
+      <div class="field">
+        <label for="a-location">Location</label>
+        <input type="text" id="a-location" name="location" maxlength="120" value="{{ annotator.location or '' }}" placeholder="e.g. Guwahati, Assam">
+      </div>
+      <div class="field">
+        <label for="a-dialect">Dialect / variety</label>
+        <input type="text" id="a-dialect" name="dialect" maxlength="120" value="{{ annotator.dialect or '' }}" placeholder="e.g. Eastern Assamese">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="a-age">Age group</label>
+      <select id="a-age" name="age_group">
+        <option value="" {% if not annotator.age_group %}selected{% endif %}>—</option>
+        {% for g in age_groups %}
+        <option value="{{ g.id }}" {% if annotator.age_group == g.id %}selected{% endif %}>{{ g.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="margin-top:18px; display:flex; gap:10px;">
+      <button type="submit" class="btn btn-primary">Save changes</button>
+      <a href="{{ back }}" class="btn">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

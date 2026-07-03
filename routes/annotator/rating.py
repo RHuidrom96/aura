@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, session, jsonify, current
 import json
 from datetime import datetime
 
-from models import Campaign, Rating, AssistantLog
+from models import Campaign, Rating, AssistantLog, AnnotatorCampaignPref
 from extensions import db
 from utils.constants import get_criteria_for, get_scale_for
 from services.auth_service import require_annotator, current_annotator
@@ -83,7 +83,7 @@ def rate_view(campaign_id):
         enable_spans=(c.enable_spans if c.enable_spans is not None else True) if mode != "pairwise" else False,
         instructions=c.instructions or "",
         span_instructions=c.span_instructions or "",
-        segments_per_page=c.segments_per_page or 3,
+        segments_per_page=c.per_page_for(ann),
         ai_available=llm.is_configured(llm.effective_config(c, current_app.config["SECRET_KEY"])),
         ai_ab_enabled=bool(c.ai_ab_enabled),
         ai_ab_eligible={s["id"]: c.ai_ab_eligible(ann.id, s["id"]) for s in segments},
@@ -121,12 +121,39 @@ def api_config(campaign_id):
         "enable_spans": (c.enable_spans if c.enable_spans is not None else True) if c.mode != "pairwise" else False,
         "span_scope": c.span_scope or "target",
         "span_instructions": c.span_instructions or "",
-        "segments_per_page": c.segments_per_page or 3,
+        "segments_per_page": c.per_page_for(ann),
+        "min_segments_per_page": c.per_page_bounds()[0],
+        "max_segments_per_page": c.per_page_bounds()[2],
         "instructions": c.instructions or "",
         "rating_position": c.rating_position or "side",
         "span_position": c.span_position or "below",
         "segments": [dict(s) for s in c.served_segments_for(ann)],
     })
+
+
+@annotator_rating_bp.route("/campaign/<campaign_id>/api/per-page", methods=["POST"])
+@require_annotator
+def api_set_per_page(campaign_id):
+    """Persist this annotator's segments-per-page choice for this campaign (clamped to the
+    admin's min/max range), so it follows them across devices and browsers."""
+    c = Campaign.query.get_or_404(campaign_id)
+    ann = current_annotator()
+    data = request.get_json(silent=True) or {}
+    try:
+        requested = int(data.get("segments_per_page"))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Invalid value."}), 400
+    lo, _default, hi = c.per_page_bounds()
+    value = max(lo, min(requested, hi))
+
+    pref = AnnotatorCampaignPref.query.filter_by(
+        annotator_id=ann.id, campaign_id=c.id).first()
+    if pref is None:
+        pref = AnnotatorCampaignPref(annotator_id=ann.id, campaign_id=c.id)
+        db.session.add(pref)
+    pref.segments_per_page = value
+    db.session.commit()
+    return jsonify({"ok": True, "segments_per_page": value})
 
 
 @annotator_rating_bp.route("/campaign/<campaign_id>/api/submit", methods=["POST"])

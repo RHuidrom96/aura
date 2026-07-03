@@ -188,6 +188,109 @@
     gap: 20px;
   }
 
+  .aura-groups {
+    margin-bottom: 32px;
+    padding: 22px 24px;
+    border: 1px solid #e7e1d3;
+    border-radius: 8px;
+    background: #fbf9f3;
+  }
+
+  .aura-groups-head {
+    margin-bottom: 14px;
+  }
+
+  .aura-groups-title {
+    margin: 0;
+    color: #2a2a24;
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .aura-groups-sub {
+    margin: 6px 0 0;
+    color: #6e6a5f;
+    font-size: 14px;
+  }
+
+  .aura-groups-empty {
+    margin: 0 0 14px;
+    color: #8c887b;
+    font-size: 14px;
+  }
+
+  .aura-group-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .aura-group-chip {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 14px;
+    border: 1px solid #d8d2c2;
+    border-radius: 8px;
+    background: #fff;
+    text-decoration: none;
+    transition: border-color .18s ease, box-shadow .18s ease;
+  }
+
+  .aura-group-chip:hover {
+    border-color: #34433a;
+    box-shadow: 0 4px 16px rgba(42, 42, 36, 0.08);
+  }
+
+  .aura-group-chip-name {
+    color: #2a2a24;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .aura-group-chip-count {
+    color: #9a9486;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .aura-group-form {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .aura-group-form input[type="text"] {
+    flex: 1 1 320px;
+    min-height: 42px;
+    padding: 10px 14px;
+    border: 1px solid #d8d2c2;
+    border-radius: 6px;
+    background: #fff;
+    color: #2a2a24;
+    font: 400 14px/1.2 var(--font);
+  }
+
+  .aura-group-pill {
+    border-radius: 4px;
+    background: #e6ece7;
+    color: #34433a;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    line-height: 1;
+    padding: 4px 7px;
+    text-transform: uppercase;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .aura-campaign-card {
     display: flex;
     min-width: 0;
@@ -485,6 +588,29 @@
   </section>
 
   <main class="aura-main">
+    <section class="aura-groups">
+      <div class="aura-groups-head">
+        <h2 class="aura-groups-title aura-serif">Groups</h2>
+        <p class="aura-groups-sub">Bundle related campaigns — e.g. easy / medium / hard variants — to view and export their results together.</p>
+      </div>
+      {% if groups %}
+      <div class="aura-group-chips">
+        {% for g in groups %}
+        <a class="aura-group-chip" href="{{ url_for('admin_results.admin_group_results', group_id=g.id) }}">
+          <span class="aura-group-chip-name">{{ g.name }}</span>
+          <span class="aura-group-chip-count">{{ group_counts[g.id] }} campaign{{ '' if group_counts[g.id] == 1 else 's' }}</span>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="aura-groups-empty">No groups yet. Create one below, then add campaigns to it from each campaign's page.</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('admin_campaign.admin_group_new') }}" class="aura-group-form">
+        <input type="text" name="name" placeholder="New group name (e.g. Adequacy study by difficulty)" required>
+        <button type="submit" class="aura-button">Create group</button>
+      </form>
+    </section>
+
     {% if campaigns %}
     <div class="aura-campaign-grid">
       {% for c in campaigns %}
@@ -497,6 +623,9 @@
               {% if is_demo_campaign %}
               <span class="aura-demo-pill">Demo</span>
               {% endif %}
+              {% if c.group %}
+              <span class="aura-group-pill" title="In group: {{ c.group.name }}">◆ {{ c.group.name }}</span>
+              {% endif %}
               <span class="aura-mode">{{ c.mode|replace('_', ' ')|title if c.mode else 'Evaluation' }}</span>
             </div>
             <span class="aura-status-pill {{ 'aura-status-closed' if c.is_closed else 'aura-status-open' }}" data-status>
@@ -507,8 +636,9 @@
           <h2 class="aura-card-title aura-serif">{{ display_name }}</h2>
           <div class="aura-campaign-id">ID: <code>{{ c.id }}</code></div>
           <div class="aura-languages">
-            {{ c.source_language }} → {{ c.target_language }}{% if c.script %} · {{ c.script }}{% endif %}
+            {{ c.source_language }} → {{ c.target_language }}{% if c.scripts_summary %} · {{ c.scripts_summary }}{% endif %}
           </div>
+          <div class="aura-card-id">ID {{ c.id }}</div>
 
           <div class="aura-divider"></div>
 

@@ -301,6 +301,64 @@
 
         </div>
 
+        {% if campaign.is_cross_lingual %}
+
+        <!-- Language fluency (cross-lingual tasks) -->
+
+        <div class="field">
+
+            <label for="reg-source-fluency">
+                Your fluency in {{ campaign.source_language or 'the source language' }}
+                <span class="req">*</span>
+            </label>
+
+            <select
+                id="reg-source-fluency"
+                name="source_fluency"
+                required
+            >
+                <option value="" disabled selected>
+                    Select your level…
+                </option>
+                {% for lvl in fluency_levels %}
+                <option value="{{ lvl.id }}">{{ lvl.label }}</option>
+                {% endfor %}
+            </select>
+
+            <p class="hint">
+                How well you read/understand {{ campaign.source_language or 'the source language' }}.
+            </p>
+
+        </div>
+
+        <div class="field">
+
+            <label for="reg-target-fluency">
+                Your fluency in {{ campaign.target_language or 'the target language' }}
+                <span class="req">*</span>
+            </label>
+
+            <select
+                id="reg-target-fluency"
+                name="target_fluency"
+                required
+            >
+                <option value="" disabled selected>
+                    Select your level…
+                </option>
+                {% for lvl in fluency_levels %}
+                <option value="{{ lvl.id }}">{{ lvl.label }}</option>
+                {% endfor %}
+            </select>
+
+            <p class="hint">
+                How well you read/write {{ campaign.target_language or 'the target language' }}.
+            </p>
+
+        </div>
+
+        {% endif %}
+
         {% if campaign.difficulty_method != 'none' %}
 
         <div class="field">
@@ -347,6 +405,32 @@
         </div>
 
         {% endif %}
+
+        <!-- Optional background (helps interpret results; you can skip any of these) -->
+        <div class="field">
+            <label for="reg-location">Location <span class="hint-inline">(optional)</span></label>
+            <input type="text" id="reg-location" name="location" maxlength="120"
+                   placeholder="e.g. Guwahati, Assam">
+            <p class="hint">Region/city — helps interpret dialectal variation.</p>
+        </div>
+
+        <div class="field">
+            <label for="reg-dialect">Dialect / variety <span class="hint-inline">(optional)</span></label>
+            <input type="text" id="reg-dialect" name="dialect" maxlength="120"
+                   placeholder="e.g. Eastern Assamese">
+            <p class="hint">The specific variety you speak, if relevant.</p>
+        </div>
+
+        <div class="field">
+            <label for="reg-age-group">Age group <span class="hint-inline">(optional)</span></label>
+            <select id="reg-age-group" name="age_group">
+                <option value="" selected>Prefer not to say</option>
+                {% for g in age_groups %}
+                {% if g.id != 'na' %}<option value="{{ g.id }}">{{ g.label }}</option>{% endif %}
+                {% endfor %}
+            </select>
+            <p class="hint">Recorded as a range, never an exact age.</p>
+        </div>
 
         <!-- Consent -->
 
