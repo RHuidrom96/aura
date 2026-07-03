@@ -40,10 +40,19 @@ Output:
       "latency_seconds": 1.234,
       "input_tokens": 42,
       "output_tokens": 17,
-      "cost_usd": 0.000312
+      "cost_usd": 0.000312,
+      "script_check": null | "ok" | "corrected" | "unresolved"
     },
     ...
   ]
+
+  script_check flags outputs that came back in the wrong script/language
+  (e.g. Manipuri in Bengali script instead of Meitei Mayek) -- a 200
+  response with fluent-looking WRONG-script text isn't something HTTP-level
+  retries can catch, so this does a lightweight Unicode-range check after
+  each call and automatically re-asks (see SCRIPT_RETRY_MAX_ATTEMPTS below)
+  before giving up. null means no validator is registered for that
+  language (nothing was checked); "unresolved" rows need manual review.
 
   A summary of total time and total estimated cost per system is printed to
   stdout at the end of the run, and written alongside the output JSON as
@@ -84,6 +93,11 @@ Optional retry tuning (defaults shown):
   Retries only apply to transient errors (5xx, 429, timeouts, connection
   errors). Errors like 400/401/403/404/422 fail immediately since retrying
   a malformed or unauthorized request can't succeed.
+
+  SCRIPT_RETRY_MAX_ATTEMPTS=2  - separate from the above: how many times to
+                                  re-ask with an explicit correction if the
+                                  output comes back in the wrong script/
+                                  language (see script_check above).
 
 Optional generation tuning:
   OPENAI_TEMPERATURE   - if set, sent as the 'temperature' param to OpenAI.
@@ -204,6 +218,61 @@ def raise_for_status_verbose(resp: requests.Response) -> None:
         ) from exc
 
 
+# Expected Unicode script for languages where an LLM might silently produce
+# the wrong one. Used by detect_script_mismatch() below to catch full
+# script/language swaps after the fact -- a 200 response with fluent-looking
+# text in the wrong script is not something HTTP-level error handling can
+# catch, since nothing failed as far as the API is concerned.
+EXPECTED_SCRIPT_RANGES = {
+    "manipuri (meitei mayek)": [(0xABC0, 0xABFF)],
+    "manipuri": [(0xABC0, 0xABFF)],
+    "meitei": [(0xABC0, 0xABFF)],
+    "meitei mayek": [(0xABC0, 0xABFF)],
+    "assamese": [(0x0980, 0x09FF)],  # Bengali-Assamese script
+}
+
+
+def detect_script_mismatch(text: str, language: str) -> Optional[str]:
+    """
+    Heuristic check: does `text` look like it's actually in the wrong
+    script/language for `language`? Returns a human-readable reason if so,
+    else None. This is NOT a real language identifier -- it just checks
+    what fraction of letters fall in the expected Unicode block(s), which is
+    enough to catch egregious full-script swaps (e.g. Manipuri coming back
+    in Bengali script, or a row coming back in English/Hindi instead of the
+    target language) without false-flagging normal punctuation/digits/code-
+    switched proper nouns.
+    """
+    letters = [c for c in text if c.isalpha()]
+    if len(letters) < 5:
+        return None  # too short to judge reliably
+
+    key = language.strip().lower()
+    expected_ranges = EXPECTED_SCRIPT_RANGES.get(key)
+
+    if expected_ranges:
+        in_range = sum(1 for c in letters if any(lo <= ord(c) <= hi for lo, hi in expected_ranges))
+        fraction = in_range / len(letters)
+        if fraction < 0.3:
+            return (
+                f"expected script for '{language}' barely present "
+                f"(only {fraction:.0%} of letters match; looks like a different script/language)"
+            )
+        return None
+
+    # No specific script registered (e.g. Nagamese, which is Latin-script).
+    # Flag if the output is mostly non-Latin, which would mean it silently
+    # switched to some other Indic script instead.
+    non_latin = sum(1 for c in letters if ord(c) > 0x2FF)
+    fraction = non_latin / len(letters)
+    if fraction > 0.5:
+        return (
+            f"expected Latin-script output for '{language}' but "
+            f"{fraction:.0%} of letters are non-Latin (looks like a different script/language)"
+        )
+    return None
+
+
 # Some languages are ambiguous about which script to use unless told
 # explicitly -- an LLM given just the language name can silently default to
 # the "wrong" one. Map a language name (lowercased) to an explicit script
@@ -237,12 +306,15 @@ SCRIPT_INSTRUCTIONS = {
 }
 
 
-def build_prompt(language: str, text: str) -> str:
-    """Shared instruction used across all LLM-based systems (Gemini/Claude/OpenAI)."""
+def build_prompt(language: str, text: str, extra_instruction: str = "") -> str:
+    """Shared instruction used across all LLM-based systems (Gemini/Claude/OpenAI).
+    extra_instruction, if given, is appended -- used for corrective re-asks
+    when a first attempt came back in the wrong script/language."""
     script_instruction = SCRIPT_INSTRUCTIONS.get(language.strip().lower())
     script_line = f"\n{script_instruction}" if script_instruction else ""
+    extra_line = f"\n{extra_instruction}" if extra_instruction else ""
     return (
-        f"Translate the following English sentence into fluent, natural {language}.{script_line}\n"
+        f"Translate the following English sentence into fluent, natural {language}.{script_line}{extra_line}\n"
         f"Only output the {language} translation, with no extra commentary, quotes, "
         f"or explanation.\n\n"
         f"English sentence: {text}\n"
@@ -276,7 +348,7 @@ def compute_cost(system_key: str, input_tokens: Optional[int], output_tokens: Op
 # failure.
 # --------------------------------------------------------------------------
 
-def translate_gemini(text: str, language: str) -> Tuple[str, Dict[str, Any]]:
+def translate_gemini(text: str, language: str, extra_instruction: str = "") -> Tuple[str, Dict[str, Any]]:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise ConfigurationError("GEMINI_API_KEY environment variable not set")
@@ -288,7 +360,7 @@ def translate_gemini(text: str, language: str) -> Tuple[str, Dict[str, Any]]:
     )
     payload = {
         "contents": [
-            {"role": "user", "parts": [{"text": build_prompt(language, text)}]}
+            {"role": "user", "parts": [{"text": build_prompt(language, text, extra_instruction)}]}
         ],
     }
     # Only send temperature if explicitly requested. Not hardcoding this
@@ -355,7 +427,7 @@ def translate_gemini(text: str, language: str) -> Tuple[str, Dict[str, Any]]:
     return translated, usage
 
 
-def translate_claude(text: str, language: str) -> Tuple[str, Dict[str, Any]]:
+def translate_claude(text: str, language: str, extra_instruction: str = "") -> Tuple[str, Dict[str, Any]]:
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         raise ConfigurationError("ANTHROPIC_API_KEY environment variable not set")
@@ -370,7 +442,7 @@ def translate_claude(text: str, language: str) -> Tuple[str, Dict[str, Any]]:
     payload = {
         "model": model,
         "max_tokens": 512,
-        "messages": [{"role": "user", "content": build_prompt(language, text)}],
+        "messages": [{"role": "user", "content": build_prompt(language, text, extra_instruction)}],
     }
     resp = requests.post(url, headers=headers, json=payload, timeout=REQUEST_TIMEOUT)
     raise_for_status_verbose(resp)
@@ -387,7 +459,7 @@ def translate_claude(text: str, language: str) -> Tuple[str, Dict[str, Any]]:
     return translated, usage
 
 
-def translate_openai(text: str, language: str) -> Tuple[str, Dict[str, Any]]:
+def translate_openai(text: str, language: str, extra_instruction: str = "") -> Tuple[str, Dict[str, Any]]:
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise ConfigurationError("OPENAI_API_KEY environment variable not set")
@@ -400,7 +472,7 @@ def translate_openai(text: str, language: str) -> Tuple[str, Dict[str, Any]]:
     }
     payload = {
         "model": model,
-        "messages": [{"role": "user", "content": build_prompt(language, text)}],
+        "messages": [{"role": "user", "content": build_prompt(language, text, extra_instruction)}],
     }
     # Some newer models (e.g. gpt-5) only support the default temperature
     # (1) and reject any explicit value with a 400. Rather than hardcode a
@@ -457,11 +529,21 @@ TRANSLATORS = {
 # Core pipeline
 # --------------------------------------------------------------------------
 
-def translate_with_retry(fn, text: str, language: str) -> Tuple[str, Dict[str, Any], float]:
+SCRIPT_RETRY_MAX_ATTEMPTS = int(os.environ.get("SCRIPT_RETRY_MAX_ATTEMPTS", 2))
+
+CORRECTIVE_SCRIPT_INSTRUCTION_TEMPLATE = (
+    "IMPORTANT CORRECTION: your previous attempt was NOT in {language} "
+    "(or was in the wrong script). {reason}. You MUST write the output "
+    "text itself in {language}, in its correct native script. Do not "
+    "explain, do not apologize -- just output the corrected translation."
+)
+
+
+def _translate_one_attempt(fn, text: str, language: str) -> Tuple[str, Dict[str, Any], float]:
     """
-    Calls fn(text, language) with retries. Timing (latency_seconds) covers
-    only the final, successful attempt -- not time spent sleeping between
-    retries or on earlier failed attempts.
+    Calls fn(text, language) with network-level retries only (transient
+    errors). Does not do script validation -- that's handled by the caller,
+    translate_with_retry, one layer up.
 
     Retry behavior:
       - NonRetryableError (missing API key, unsupported language for a
@@ -515,6 +597,65 @@ def translate_with_retry(fn, text: str, language: str) -> Tuple[str, Dict[str, A
                 print(f"    retrying in {sleep_time:.1f}s ...", file=sys.stderr)
                 time.sleep(sleep_time)
     raise RuntimeError(f"All retries failed: {last_err}")
+
+
+def translate_with_retry(fn, text: str, language: str) -> Tuple[str, Dict[str, Any], float, Optional[str]]:
+    """
+    Wraps _translate_one_attempt with script/language validation. A 200
+    response with fluent-looking text in the WRONG script (e.g. Manipuri
+    coming back in Bengali script, or a row silently switching to English/
+    Hindi) is not something HTTP-level retry logic can catch -- nothing
+    "failed" as far as the API is concerned. So after a successful call,
+    detect_script_mismatch() checks the actual output, and if it looks
+    wrong, re-asks (up to SCRIPT_RETRY_MAX_ATTEMPTS times) with an explicit
+    correction appended to the prompt, separate from and in addition to the
+    normal network-error retries above.
+
+    Returns (translated_text, usage_dict, latency_seconds, script_check),
+    where script_check is one of:
+      None       - no script validator registered for this language (skipped)
+      "ok"       - passed on the first attempt
+      "corrected"- failed at first, but a corrective re-ask fixed it
+      "unresolved" - still looks wrong after all corrective attempts;
+                     the best (most recent) attempt is returned anyway so
+                     you at least have *something*, but this row needs
+                     manual review
+    """
+    translated, usage, latency = _translate_one_attempt(fn, text, language)
+
+    mismatch_reason = detect_script_mismatch(translated, language)
+    if mismatch_reason is None:
+        return translated, usage, latency, "ok"
+
+    print(f"    [warn] output looks wrong for '{language}': {mismatch_reason}", file=sys.stderr)
+    script_status = "unresolved"
+    for script_attempt in range(1, SCRIPT_RETRY_MAX_ATTEMPTS + 1):
+        print(f"    retrying with explicit script correction (attempt {script_attempt}/{SCRIPT_RETRY_MAX_ATTEMPTS}) ...", file=sys.stderr)
+        correction = CORRECTIVE_SCRIPT_INSTRUCTION_TEMPLATE.format(language=language, reason=mismatch_reason)
+        try:
+            retry_fn = lambda t, lang: fn(t, lang, correction)  # noqa: E731
+            new_translated, new_usage, new_latency = _translate_one_attempt(retry_fn, text, language)
+        except (NonRetryableError, APICallError):
+            # If the corrective re-ask itself fails outright, fall back to
+            # the original (wrong-script) output rather than losing the row.
+            break
+        latency += new_latency  # accumulate time spent across all attempts for this row
+        new_mismatch = detect_script_mismatch(new_translated, language)
+        if new_mismatch is None:
+            translated, usage = new_translated, new_usage
+            script_status = "corrected"
+            break
+        translated, usage = new_translated, new_usage  # keep the latest attempt even if still wrong
+        mismatch_reason = new_mismatch
+
+    if script_status == "unresolved":
+        print(
+            f"    [warn] '{language}' output still looks wrong after "
+            f"{SCRIPT_RETRY_MAX_ATTEMPTS} corrective attempt(s); keeping "
+            f"best-effort output, flag this row for manual review",
+            file=sys.stderr,
+        )
+    return translated, usage, latency, script_status
 
 
 def read_input_csv(path: str):
@@ -576,8 +717,9 @@ def process_file(
             target_text = ""
             usage = {"input_tokens": None, "output_tokens": None}
             latency = None
+            script_check = None
             try:
-                target_text, usage, latency = translate_with_retry(translate_fn, source_text, language)
+                target_text, usage, latency, script_check = translate_with_retry(translate_fn, source_text, language)
             except Exception as exc:  # noqa: BLE001
                 print(f"    [error] giving up on row {idx} / {system_key}: {exc}", file=sys.stderr)
 
@@ -591,6 +733,10 @@ def process_file(
             if cost is not None:
                 s["total_cost_usd"] += cost
                 s["cost_calls"] += 1
+            if script_check == "unresolved":
+                s["script_unresolved"] = s.get("script_unresolved", 0) + 1
+            elif script_check == "corrected":
+                s["script_corrected"] = s.get("script_corrected", 0) + 1
 
             results.append(
                 {
@@ -604,6 +750,7 @@ def process_file(
                     "input_tokens": usage.get("input_tokens"),
                     "output_tokens": usage.get("output_tokens"),
                     "cost_usd": round(cost, 6) if cost is not None else None,
+                    "script_check": script_check,
                 }
             )
 
@@ -619,10 +766,15 @@ def print_and_save_summary(stats: Dict[str, Dict[str, float]], output_path: str)
         avg_seconds = total_seconds / calls if calls else 0.0
         total_cost = s["total_cost_usd"]
         cost_note = "" if s["cost_calls"] == calls else f" (cost known for {s['cost_calls']}/{calls} calls)"
+        script_note = ""
+        unresolved = s.get("script_unresolved", 0)
+        corrected = s.get("script_corrected", 0)
+        if unresolved or corrected:
+            script_note = f" | script_check: {corrected} auto-corrected, {unresolved} UNRESOLVED"
         print(
             f"  {SYSTEM_LABELS.get(system_key, system_key):<22} "
             f"calls={calls:<5} total_time={total_seconds:8.2f}s avg_time={avg_seconds:6.2f}s "
-            f"total_cost=${total_cost:.6f}{cost_note}"
+            f"total_cost=${total_cost:.6f}{cost_note}{script_note}"
         )
         summary[system_key] = {
             "calls": calls,
@@ -630,7 +782,16 @@ def print_and_save_summary(stats: Dict[str, Dict[str, float]], output_path: str)
             "avg_seconds": round(avg_seconds, 3),
             "total_cost_usd": round(total_cost, 6),
             "cost_known_for_calls": s["cost_calls"],
+            "script_check_corrected": corrected,
+            "script_check_unresolved": unresolved,
         }
+
+    if any(s.get("script_unresolved") for s in stats.values()):
+        print(
+            "\nSome rows still look like they're in the wrong script/language "
+            "after corrective re-asks (see \"script_check\": \"unresolved\" in "
+            "the output JSON) -- worth a manual look at those specific rows."
+        )
 
     summary_path = f"{output_path}.summary.json"
     with open(summary_path, "w", encoding="utf-8") as f:

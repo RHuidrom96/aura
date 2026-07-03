@@ -1,0 +1,11 @@
+{
+  "openai": {
+    "calls": 90,
+    "total_seconds": 291.928,
+    "avg_seconds": 3.244,
+    "total_cost_usd": 0.008248,
+    "cost_known_for_calls": 90,
+    "script_check_corrected": 0,
+    "script_check_unresolved": 0
+  }
+}
