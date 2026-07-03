@@ -1,6 +1,136 @@
 {% extends "base.html" %}
 {% block title %}{{ campaign.name }} · Aura{% endblock %}
 
+{% block head_extra %}
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=Libre+Caslon+Text:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  #app {
+    max-width: 1400px !important;
+    padding: 24px 40px 80px !important;
+  }
+  .annotator-table td:nth-child(2), .annotator-table th:nth-child(2) {
+    max-width: 240px;
+    word-break: break-all;
+    white-space: normal;
+  }
+  body {
+    font-family: "Hanken Grotesk", sans-serif;
+  }
+  
+  .page-header h1 {
+    font-family: "Libre Caslon Text", serif;
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    color: var(--text);
+  }
+
+  /* Cards Styling */
+  .card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
+    background: var(--surface);
+    padding: 24px 30px;
+    margin-bottom: 24px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .card h3 {
+    font-family: "Libre Caslon Text", serif;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text);
+    margin-top: 0;
+    margin-bottom: 16px;
+  }
+
+  /* Tables Style */
+  .annotator-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .annotator-table th {
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border);
+    text-align: left;
+  }
+
+  .annotator-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    vertical-align: middle;
+  }
+
+  .annotator-table tbody tr:hover td {
+    background-color: rgba(0, 0, 0, 0.01);
+  }
+
+  /* Share Link Row styling */
+  .copy-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .copy-row input {
+    flex: 1;
+    font-family: monospace;
+    font-size: 13.5px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-2);
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .copy-row .btn {
+    padding: 0 24px;
+    font-weight: 700;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #ffffff;
+    border: 1px solid var(--accent);
+  }
+
+  .copy-row .btn:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+  }
+
+  /* Buttons styling */
+  .btn-small {
+    padding: 8px 16px;
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+
+  .link-btn {
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.15s;
+  }
+
+  .link-btn:hover {
+    color: var(--accent);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div>
@@ -12,6 +142,31 @@
     </p>
   </div>
   <a href="{{ url_for('admin_campaign.admin_dashboard') }}" class="link-btn">← back to dashboard</a>
+</div>
+
+<div class="metrics-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:20px; margin-bottom:30px; font-family:'Hanken Grotesk', sans-serif;">
+  <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
+    <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ rows | length }}</span>
+    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Annotators Enrolled</span>
+  </div>
+  <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
+    {% set ns = namespace(completed_count=0) %}
+    {% for r in rows %}
+      {% if r.completed >= campaign.num_segments %}
+        {% set ns.completed_count = ns.completed_count + 1 %}
+      {% endif %}
+    {% endfor %}
+    <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ ns.completed_count }}</span>
+    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Completed Ratings</span>
+  </div>
+  <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
+    {% set ns = namespace(total_segments=0) %}
+    {% for r in rows %}
+      {% set ns.total_segments = ns.total_segments + r.completed %}
+    {% endfor %}
+    <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ ns.total_segments }}</span>
+    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Total Rated Segments</span>
+  </div>
 </div>
 
 {% if campaign.is_closed %}
@@ -99,52 +254,54 @@
 <section class="card">
   <h3>Progress <span id="progress-live" class="progress-live" title="Updates automatically">● live</span></h3>
   <p class="hint">{{ campaign.num_segments }} segments per annotator.</p>
-  <table class="annotator-table" id="progress-table"{% if not rows %} hidden{% endif %}>
-    <thead>
-      <tr>
-        <th>Annotator</th>
-        <th>Email</th>
-        <th>Expertise</th>
-        <th>Completed</th>
-        <th>Last update</th>
-        {% if campaign.incentive_money or campaign.incentive_co_authorship %}
-        <th>Form B</th>
-        <th>Evaluation</th>
-        {% endif %}
-      </tr>
-    </thead>
-    <tbody id="progress-tbody">
-      {% set _exp_label = {'easy':'Beginner','medium':'Intermediate','hard':'Advanced'} %}
-      {% for r in rows %}
-      <tr>
-        <td>{{ r.annotator.name }}</td>
-        <td class="muted">{{ r.annotator.email }}</td>
-        <td>{{ _exp_label.get(r.annotator.expertise, '—') }}</td>
-        <td>
-          <div class="mini-progress">
-            <div class="mini-progress-fill" style="width: {{ (r.completed / r.total * 100) | int if r.total else 0 }}%;"></div>
-          </div>
-          <span class="muted">{{ r.completed }} / {{ r.total }}</span>
-        </td>
-        <td class="muted">{{ r.last_update.strftime('%Y-%m-%d %H:%M UTC') if r.last_update else '—' }}</td>
-        {% if campaign.incentive_money or campaign.incentive_co_authorship %}
-        <td>
-          {% if r.link and r.link.form_submitted %}
-            <button class="btn btn-small" onclick="showDetailsModal('{{ r.annotator.id }}', '{{ r.annotator.name|escape }}', '{{ r.link.location|escape }}', '{{ r.link.parents_language|escape }}', {{ 'true' if r.link.stayed_outside else 'false' }}, '{{ r.link.stayed_outside_duration|escape }}', '{{ r.link.stayed_outside_purpose|escape }}', '{{ r.link.exposure|escape }}')">View Form B</button>
-          {% else %}
-            <span class="muted">Pending</span>
+  <div style="overflow-x: auto; width: 100%;">
+    <table class="annotator-table" id="progress-table"{% if not rows %} hidden{% endif %}>
+      <thead>
+        <tr>
+          <th>Annotator</th>
+          <th>Email</th>
+          <th>Expertise</th>
+          <th>Completed</th>
+          <th>Last update</th>
+          {% if campaign.incentive_money or campaign.incentive_co_authorship %}
+          <th>Personal Info</th>
+          <th>Evaluation</th>
           {% endif %}
-        </td>
-        <td>
-          <button class="btn btn-small" onclick="showEvalModal('{{ r.annotator.id }}', '{{ r.annotator.name|escape }}', {{ r.link.quality_score if r.link else 100.0 }}, {{ 'true' if r.link and r.link.has_star else 'false' }}, {{ r.completed }}, {{ campaign.incentive_target_tasks }}, {{ campaign.incentive_level }}, {{ campaign.incentive_intensity }})">
-            {% if r.link and r.link.has_star %}⭐ Starred (Bonus){% else %}Evaluate{% endif %}
-          </button>
-        </td>
-        {% endif %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+        </tr>
+      </thead>
+      <tbody id="progress-tbody">
+        {% set _exp_label = {'easy':'Beginner','medium':'Intermediate','hard':'Advanced'} %}
+        {% for r in rows %}
+        <tr>
+          <td>{{ r.annotator.name }}</td>
+          <td class="muted">{{ r.annotator.email }}</td>
+          <td>{{ _exp_label.get(r.annotator.expertise, '—') }}</td>
+          <td>
+            <div class="mini-progress">
+              <div class="mini-progress-fill" style="width: {{ (r.completed / r.total * 100) | int if r.total else 0 }}%;"></div>
+            </div>
+            <span class="muted">{{ r.completed }} / {{ r.total }}</span>
+          </td>
+          <td class="muted">{{ r.last_update.strftime('%Y-%m-%d %H:%M UTC') if r.last_update else '—' }}</td>
+          {% if campaign.incentive_money or campaign.incentive_co_authorship %}
+          <td>
+            {% if r.link and r.link.form_submitted %}
+              <button class="btn btn-small" onclick="showDetailsModal('{{ r.annotator.id }}', '{{ r.annotator.name|escape }}', '{{ r.link.location|escape }}', '{{ r.link.parents_language|escape }}', {{ 'true' if r.link.stayed_outside else 'false' }}, '{{ r.link.stayed_outside_duration|escape }}', '{{ r.link.stayed_outside_purpose|escape }}', '{{ r.link.exposure|escape }}')">View Info</button>
+            {% else %}
+              <span class="muted">Pending</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-small" onclick="showEvalModal('{{ r.annotator.id }}', '{{ r.annotator.name|escape }}', {{ r.link.quality_score if r.link else 5.0 }}, {{ 'true' if r.link and r.link.has_star else 'false' }}, {{ r.completed }}, {{ campaign.incentive_target_tasks }}, {{ campaign.incentive_level }}, {{ campaign.incentive_intensity }})">
+              {% if r.link and r.link.has_star %}⭐ Starred (Bonus){% else %}Evaluate{% endif %}
+            </button>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   <p class="muted" id="progress-empty"{% if rows %} hidden{% endif %}>No annotators have started yet.</p>
 </section>
 
@@ -166,7 +323,7 @@
       var incCols = '';
       if (hasIncentives) {
         var formB = r.form_submitted ? 
-          '<button class="btn btn-small" onclick="showDetailsModal(\'' + r.annotator_id + '\', \'' + esc(r.name) + '\', \'' + esc(r.location) + '\', \'' + esc(r.parents_language) + '\', ' + r.stayed_outside + ', \'' + esc(r.stayed_outside_duration) + '\', \'' + esc(r.stayed_outside_purpose) + '\', \'' + esc(r.exposure) + '\')">View Form B</button>' :
+          '<button class="btn btn-small" onclick="showDetailsModal(\'' + r.annotator_id + '\', \'' + esc(r.name) + '\', \'' + esc(r.location) + '\', \'' + esc(r.parents_language) + '\', ' + r.stayed_outside + ', \'' + esc(r.stayed_outside_duration) + '\', \'' + esc(r.stayed_outside_purpose) + '\', \'' + esc(r.exposure) + '\')">View Info</button>' :
           '<span class="muted">Pending</span>';
         var starText = r.has_star ? '⭐ Starred (Bonus)' : 'Evaluate';
         var evalBtn = '<button class="btn btn-small" onclick="showEvalModal(\'' + r.annotator_id + '\', \'' + esc(r.name) + '\', ' + r.quality_score + ', ' + r.has_star + ', ' + r.completed + ', ' + {{ campaign.incentive_target_tasks }} + ', ' + {{ campaign.incentive_level }} + ', ' + {{ campaign.incentive_intensity }} + ')">' + starText + '</button>';
@@ -240,11 +397,11 @@
   </form>
 </section>
 
-<!-- Form B Details Modal -->
+<!-- Personal Info Details Modal -->
 <div id="details-modal-backdrop" class="modal-backdrop" style="display:none;">
   <div class="modal">
     <div class="modal-header">
-      <h3 id="details-title">Annotator Background Details</h3>
+      <h3 id="details-title">Personal Info</h3>
       <button class="link-btn" onclick="hideDetailsModal()">✕</button>
     </div>
     <div class="modal-body">
@@ -274,38 +431,30 @@
         <div>
           <strong>Progress Information:</strong>
           <div style="font-size:12px; margin-top:6px;" class="muted">
-            Completed tasks: <span id="eval-completed"></span> / <span id="eval-target"></span> (Target: <span id="eval-target-2"></span>)
+            Completed tasks: <span id="eval-completed"></span> / <span id="eval-target"></span> (Target to unlock rewards: <span id="eval-target-2"></span>)
           </div>
         </div>
         
         <div class="field">
-          <label for="quality_score">Quality Score (0 - 100)</label>
-          <input type="number" id="quality_score" name="quality_score" min="0" max="100" step="1" required class="ff-in" oninput="recalcComposite()">
-        </div>
-        
-        <div style="background:var(--surface-2); padding:12px; border-radius:6px; font-size:13px;">
-          <strong>AURA Star Pathway calculation:</strong>
-          <div style="margin-top:6px;">
-            Formula: <code>Quality Score * Level * Intensity</code>
+          <label style="font-weight: 600; margin-bottom: 6px; display: block;">Annotator Quality Rating</label>
+          <div class="star-rating-widget" style="display: flex; gap: 8px; font-size: 32px; cursor: pointer; color: var(--text-faint);">
+            <span class="star-btn" data-value="1" onclick="setStarRating(1)" style="transition: color 0.15s, transform 0.1s;">☆</span>
+            <span class="star-btn" data-value="2" onclick="setStarRating(2)" style="transition: color 0.15s, transform 0.1s;">☆</span>
+            <span class="star-btn" data-value="3" onclick="setStarRating(3)" style="transition: color 0.15s, transform 0.1s;">☆</span>
+            <span class="star-btn" data-value="4" onclick="setStarRating(4)" style="transition: color 0.15s, transform 0.1s;">☆</span>
+            <span class="star-btn" data-value="5" onclick="setStarRating(5)" style="transition: color 0.15s, transform 0.1s;">☆</span>
           </div>
-          <div style="margin-top:6px;" class="muted">
-            Multipliers: Level <span id="eval-lvl"></span> · Intensity <span id="eval-int"></span>
-          </div>
-          <div style="margin-top:8px; font-weight:600; font-size:14px; color:var(--accent);">
-            Calculated score: <span id="eval-composite"></span>
-          </div>
-          <div style="margin-top:6px; font-size:12px; color:#c44444;" id="eval-threshold-hint">
-            To unlock the star automatically, annotator needs to complete the target tasks and hit a composite score of 70+.
-          </div>
+          <input type="hidden" id="quality_score" name="quality_score" value="5">
+          <p class="hint" style="margin-top: 6px;">Select 1 to 5 stars to rate the annotator's translation work quality.</p>
         </div>
 
-        <div class="field">
+        <div class="field" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 16px;">
           <label class="toggle-row">
             <input type="checkbox" id="has_star_cb" onchange="document.getElementById('has_star_val').value = this.checked ? '1' : '0'">
             <input type="hidden" id="has_star_val" name="has_star" value="0">
             <span class="toggle-label">
-              ⭐ Award Star &amp; Bonus
-              <span class="hint-inline">(makes the annotator eligible for the bonus and acknowledgement)</span>
+              ⭐ Award Special AURA Star &amp; Bonus
+              <span class="hint-inline">(Marks this annotator as a top contributor, unlocking scientific acknowledgement and the configured bonus payout)</span>
             </span>
           </label>
         </div>
@@ -326,11 +475,6 @@ function copyShareUrl() {
   document.execCommand('copy');
 }
 
-var currentLvl = 1.0;
-var currentInt = 1.0;
-var currentCompleted = 0;
-var currentTarget = 10;
-
 function showDetailsModal(id, name, location, lang, stayed, duration, purpose, exposure) {
   document.getElementById("det-location").textContent = location;
   document.getElementById("det-lang").textContent = lang;
@@ -349,15 +493,13 @@ function showEvalModal(annId, name, quality, hasStar, completed, target, lvl, in
   document.getElementById("eval-completed").textContent = completed;
   document.getElementById("eval-target").textContent = target;
   document.getElementById("eval-target-2").textContent = target;
-  document.getElementById("eval-lvl").textContent = lvl;
-  document.getElementById("eval-int").textContent = intensity;
   
-  currentCompleted = completed;
-  currentTarget = target;
-  currentLvl = lvl;
-  currentInt = intensity;
+  // Set quality score (1-5 range)
+  var qVal = Math.round(quality);
+  if (qVal > 5) qVal = 5;
+  if (qVal < 1) qVal = 1;
+  setStarRating(qVal);
   
-  document.getElementById("quality_score").value = quality;
   document.getElementById("has_star_cb").checked = hasStar;
   document.getElementById("has_star_val").value = hasStar ? "1" : "0";
   
@@ -365,31 +507,25 @@ function showEvalModal(annId, name, quality, hasStar, completed, target, lvl, in
   var actionUrl = "/admin/campaign/" + {{ campaign.id|tojson }} + "/annotator/" + annId + "/evaluate";
   document.getElementById("eval-form").action = actionUrl;
   
-  recalcComposite();
-  
   document.getElementById("eval-modal-backdrop").style.display = "flex";
 }
 function hideEvalModal() {
   document.getElementById("eval-modal-backdrop").style.display = "none";
 }
 
-function recalcComposite() {
-  var quality = parseFloat(document.getElementById("quality_score").value || 0.0);
-  var score = Math.round(quality * currentLvl * currentInt);
-  document.getElementById("eval-composite").textContent = score;
-  
-  var autoEligible = (currentCompleted >= currentTarget) && (score >= 70);
-  var hintEl = document.getElementById("eval-threshold-hint");
-  if (autoEligible) {
-    hintEl.innerHTML = "✅ Annotator has reached the target and quality threshold for a Star!";
-    hintEl.style.color = "#2e7d32";
-  } else {
-    var reasons = [];
-    if (currentCompleted < currentTarget) reasons.push("needs " + (currentTarget - currentCompleted) + " more tasks");
-    if (score < 70) reasons.push("composite score " + score + " is under 70");
-    hintEl.innerHTML = "⚠️ Special Pathway criteria not fully met: " + reasons.join(", ") + ". You can still manually award the star using the checkbox below.";
-    hintEl.style.color = "#c44444";
-  }
+function setStarRating(rating) {
+  document.getElementById("quality_score").value = rating;
+  var stars = document.querySelectorAll(".star-rating-widget .star-btn");
+  stars.forEach(function(star) {
+    var val = parseInt(star.getAttribute("data-value"));
+    if (val <= rating) {
+      star.textContent = "★";
+      star.style.color = "#ffb300";
+    } else {
+      star.textContent = "☆";
+      star.style.color = "var(--text-faint)";
+    }
+  });
 }
 </script>
 {% endblock %}

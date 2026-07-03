@@ -21,9 +21,9 @@ Admins can toggle two types of incentives:
    * **Intensity Multiplier ($I$)**: Factor representing annotator load.
    * **Star Bonus**: Financial reward given to annotators who earn a ⭐ Star.
 
-### C. Background Details: Form B (Annotator Workspace)
+### C. Background Details: Personal Info (Annotator Workspace)
 Annotators working on a campaign with active monetary incentives see a **Campaign Incentives** banner.
-* To unlock bonuses, the annotator must submit their demographic background details (**Form B**):
+* To unlock bonuses, the annotator must submit their demographic background details (**Personal Info**):
   * **Location** (City, Village, State)
   * **Parents' native language(s)**
   * **Stayed outside city/village?** (Yes/No)
@@ -34,14 +34,21 @@ Annotators working on a campaign with active monetary incentives see a **Campaig
 
 ### D. Progress Monitoring & Evaluation (Admin Console)
 Admins tracking a campaign can inspect and grade annotators via the **Progress** list:
-1. **View Form B**: Admins can view the submitted demographics of any annotator.
-2. **Evaluate Dialog**: A scoring modal that:
-   * Displays tasks completed vs. target.
-   * Dynamically calculates the **Composite Quality Score**: $Quality \times Level \times Intensity$.
-   * Features an **Auto-Eligibility Checklist**: Highlights if the annotator has met the target tasks and reached a composite score of 70+.
-   * Allows the admin to award the ⭐ Star and Bonus.
+1. **View Info**: Admins can view the submitted Personal Info demographics of any annotator.
+2. **Evaluate Dialog**: A manual rating modal that allows the admin to:
+   * Select a **Quality Rating** from 1 to 5 stars (⭐⭐⭐⭐⭐) to grade translation performance.
+   * Manually toggle the Special ⭐ Star badge to award the configured bonus and scientific acknowledgement.
 
-### E. Results & Scientific Acknowledgements
+### E. Campaign Details Page & KPI Dashboard
+The admin Campaign Details page has been redesigned to offer a premium dashboard aesthetic:
+* **Typography**: Integrates the premium site fonts (`Hanken Grotesk` and `Libre Caslon Text`) for clean, balanced hierarchies.
+* **KPI Metrics Grid**: Features a dynamic metrics row at the top showing:
+  * **Annotators Enrolled**: Total registered study members.
+  * **Completed Ratings**: Members who have annotated the complete study set.
+  * **Total Rated Segments**: Total sum of segments evaluated.
+* **Sleek Cards**: Configured with polished border radii and shadow elevations.
+
+### F. Results & Scientific Acknowledgements
 * **Starred Annotators**: Displayed with a ⭐ icon on results views and offline HTML reports.
 * **Scientific Acknowledgements Card**: A dedicated section dynamically rendering names ofStarred annotators, highlighting their contributions to the study.
 
@@ -95,8 +102,8 @@ For convenience, a populated demo campaign is available. Follow these steps:
    * **Password**: `netrix19kh`
 2. Open the campaign **`[DEMO] Northeast India MT Evaluation with Incentives`**.
 3. Under the **Progress** table:
-   * Click **View Form B** next to `Demo Annotator` to see their submitted demographic details.
-   * Click **Evaluate** next to `Demo Annotator` to open the evaluation modal, check **Award Star & Bonus**, and save.
+   * Click **View Info** next to `Demo Annotator` to see their submitted Personal Info details.
+   * Click **Evaluate** next to `Demo Annotator` to open the evaluation modal, rate them using the stars widget, check **Award Special AURA Star & Bonus**, and save.
 4. Click **Results** at the top of the campaign view to verify that a ⭐ is shown in the results spreadsheet and dynamic **Scientific Acknowledgements** card.
 
 ### Testing the Annotator View

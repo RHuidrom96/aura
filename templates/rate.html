@@ -1104,10 +1104,10 @@
             {% if campaign.incentive_money %}
               <div style="margin-top: 8px;" id="form-b-status-box">
                 {% if link and link.form_submitted %}
-                  <span style="color:#2e7d32; font-weight:600;">✓ Background Details (Form B) submitted!</span>
+                  <span style="color:#2e7d32; font-weight:600;">✓ Personal Info submitted!</span>
                 {% else %}
-                  <span style="color:#c44444; font-weight:600;">⚠️ Background Details (Form B) required to unlock your bonus.</span>
-                  <button type="button" class="btn btn-small" onclick="showFormBModal()" style="margin-left: 8px; font-size: 11px; padding: 4px 8px; border-radius: 4px; cursor:pointer;">Fill in Details</button>
+                  <span style="color:#c44444; font-weight:600;">⚠️ Personal Info required to unlock your bonus.</span>
+                  <button type="button" class="btn btn-small" onclick="showFormBModal()" style="margin-left: 8px; font-size: 11px; padding: 4px 8px; border-radius: 4px; cursor:pointer;">Fill in Info</button>
                 {% endif %}
               </div>
             {% endif %}
@@ -1381,11 +1381,11 @@
 <script src="{{ url_for('static', filename='rate.js') }}"></script>
 
 {% if campaign.incentive_money %}
-<!-- Form B Modal -->
+<!-- Personal Info Modal -->
 <div id="form-b-modal-backdrop" class="modal-backdrop" style="display:none;">
   <div class="modal" style="max-width: 500px;">
     <div class="modal-header">
-      <h3>Annotator Background Details (Form B)</h3>
+      <h3>Personal Info</h3>
       <button type="button" class="link-btn" onclick="hideFormBModal()">✕</button>
     </div>
     <form id="form-b-form" onsubmit="submitFormB(event)">
@@ -1460,7 +1460,7 @@ function submitFormB(event) {
   .then(function(data) {
     if (data.ok) {
       hideFormBModal();
-      document.getElementById("form-b-status-box").innerHTML = '<span style="color:#2e7d32; font-weight:600;">✓ Background Details (Form B) submitted!</span>';
+      document.getElementById("form-b-status-box").innerHTML = '<span style="color:#2e7d32; font-weight:600;">✓ Personal Info submitted!</span>';
     } else {
       alert("Error: " + data.error);
     }
