@@ -435,6 +435,50 @@
   </div>
 </section>
 
+<!-- Incentives -->
+<section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px; display:flex; flex-direction:column; gap:20px;">
+  <div style="display:flex; align-items:center; gap:12px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Campaign incentives</h2></div>
+  <p style="font-size:13px; color:var(--aura-text-faint); margin:0; line-height:1.5;">Offer rewards or co-authorship benefits to annotators who provide complete, high-quality evaluations.</p>
+
+  <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+    <input type="checkbox" name="incentive_co_authorship" id="incentive_co_authorship" {% if form_data.get('incentive_co_authorship') %}checked{% endif %} style="accent-color:var(--aura-accent); width:16px; height:16px; margin-top:2px; cursor:pointer;">
+    <span><span style="font-size:13px; font-weight:600; color:var(--aura-text);">Enable Co-authorship Incentive</span><br><span style="font-size:12px; color:var(--aura-text-faint); line-height:1.5;">Offer co-authorship as an acknowledgement to highly productive annotators.</span></span>
+  </label>
+
+  <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+    <input type="checkbox" name="incentive_money" id="incentive_money" {% if form_data.get('incentive_money') %}checked{% endif %} onchange="document.getElementById('money-config-new').style.display=this.checked?'block':'none'" style="accent-color:var(--aura-accent); width:16px; height:16px; margin-top:2px; cursor:pointer;">
+    <span><span style="font-size:13px; font-weight:600; color:var(--aura-text);">Enable Monetary Payouts &amp; Special AURA Pathway</span><br><span style="font-size:12px; color:var(--aura-text-faint); line-height:1.5;">Offer a base wage rate per completed segment and a quality-based star reward with a bonus amount.</span></span>
+  </label>
+
+  <div id="money-config-new" {% if not form_data.get('incentive_money') %}style="display:none"{% endif %} style="margin-top:10px; background:var(--aura-bg); border:1px solid var(--aura-border); border-radius:8px; padding:24px; display:flex; flex-direction:column; gap:20px;">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+      <div>
+        <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Minimum Wage / Base Payout per segment</label>
+        <input type="number" id="incentive_min_wage" name="incentive_min_wage" step="0.01" min="0" class="ff-in" value="{{ form_data.get('incentive_min_wage', 0.0) }}">
+      </div>
+      <div>
+        <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Target completed tasks (x)</label>
+        <input type="number" id="incentive_target_tasks" name="incentive_target_tasks" min="1" class="ff-in" value="{{ form_data.get('incentive_target_tasks', 10) }}">
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+      <div>
+        <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Campaign Level Multiplier (Difficulty)</label>
+        <input type="number" id="incentive_level" name="incentive_level" step="0.1" min="0.1" class="ff-in" value="{{ form_data.get('incentive_level', 1.0) }}">
+      </div>
+      <div>
+        <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Campaign Intensity Multiplier</label>
+        <input type="number" id="incentive_intensity" name="incentive_intensity" step="0.1" min="0.1" class="ff-in" value="{{ form_data.get('incentive_intensity', 1.0) }}">
+      </div>
+    </div>
+    <div>
+      <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">⭐ Star Bonus Amount</label>
+      <input type="number" id="incentive_bonus_amount" name="incentive_bonus_amount" step="0.01" min="0" class="ff-in" value="{{ form_data.get('incentive_bonus_amount', 0.0) }}">
+    </div>
+  </div>
+</section>
+
+
 <script>
   window.SCALE_LABELS_PREFILL = {{ form_data.scale.labels | tojson }};
   window.SCALE_DESIGN_PREFILL = {{ form_data.scale.design | tojson }};

@@ -430,6 +430,15 @@ class Campaign(db.Model):
     closed_at = db.Column(db.DateTime, default=None)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # ---- Incentives Configuration ----------------------------------------
+    incentive_co_authorship = db.Column(db.Boolean, default=False)
+    incentive_money = db.Column(db.Boolean, default=False)
+    incentive_min_wage = db.Column(db.Float, default=0.0)
+    incentive_target_tasks = db.Column(db.Integer, default=0)
+    incentive_level = db.Column(db.Float, default=1.0)
+    incentive_intensity = db.Column(db.Float, default=1.0)
+    incentive_bonus_amount = db.Column(db.Float, default=0.0)
+
     ratings = db.relationship("Rating", backref="campaign", lazy="dynamic", cascade="all,delete-orphan")
     prefs = db.relationship("AnnotatorCampaignPref", backref="campaign", lazy="dynamic",
                             cascade="all,delete-orphan")
@@ -962,6 +971,35 @@ class AssistantLog(db.Model):
     # what the human did with it: "" | "helpful" | "dismissed" | "reconsidered"
     action = db.Column(db.String(20), default="")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class CampaignAnnotator(db.Model):
+    """Stores campaign-specific details and incentives for a global annotator."""
+    __tablename__ = "campaign_annotators"
+
+    id = db.Column(db.String(32), primary_key=True, default=_uuid)
+    campaign_id = db.Column(db.String(32), db.ForeignKey("campaigns.id"), nullable=False, index=True)
+    annotator_id = db.Column(db.String(32), db.ForeignKey("annotators.id"), nullable=False, index=True)
+
+    # Admin evaluations
+    quality_score = db.Column(db.Float, default=100.0)  # 0 to 100
+    has_star = db.Column(db.Boolean, default=False)
+
+    # Form B details filled by the annotator
+    form_submitted = db.Column(db.Boolean, default=False)
+    location = db.Column(db.String(200), default="")
+    parents_language = db.Column(db.String(100), default="")
+    stayed_outside = db.Column(db.Boolean, default=False)
+    stayed_outside_duration = db.Column(db.String(100), default="")
+    stayed_outside_purpose = db.Column(db.String(200), default="")
+    exposure = db.Column(db.Text, default="")
+
+    __table_args__ = (
+        db.UniqueConstraint("campaign_id", "annotator_id", name="uq_campaign_annotator"),
+    )
+
+    campaign = db.relationship("Campaign", backref=db.backref("annotator_links", cascade="all, delete-orphan"))
+    annotator = db.relationship("Annotator", backref=db.backref("campaign_links", cascade="all, delete-orphan"))
 
 
 class AnnotatorCampaignPref(db.Model):

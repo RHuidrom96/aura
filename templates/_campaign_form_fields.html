@@ -499,6 +499,69 @@
   </div>
 </div>
 
+<hr class="form-divider">
+
+{# ----------------------- Incentives Configuration ----------------------- #}
+<div class="field">
+  <label class="toggle-row">
+    <input type="checkbox" name="incentive_co_authorship" id="incentive_co_authorship"
+           {% if form_data.get('incentive_co_authorship') %}checked{% endif %}>
+    <span class="toggle-label">
+      Enable Co-authorship Incentive
+      <span class="hint-inline">(allow productive annotators to receive co-authorship)</span>
+    </span>
+  </label>
+</div>
+
+<div class="field">
+  <label class="toggle-row">
+    <input type="checkbox" name="incentive_money" id="incentive_money"
+           {% if form_data.get('incentive_money') %}checked{% endif %}
+           onchange="document.getElementById('money-config').style.display=this.checked?'':'none'">
+    <span class="toggle-label">
+      Enable Monetary Reward (with acknowledgement)
+      <span class="hint-inline">(offer base wage payouts and a star reward with bonus amount)</span>
+    </span>
+  </label>
+</div>
+
+<div id="money-config" {% if not form_data.get('incentive_money') %}style="display:none"{% endif %}>
+  <div class="scale-config-block" style="margin-top: 10px;">
+    <div class="form-row">
+      <div class="field">
+        <label for="incentive_min_wage">Minimum Wage / Base Payout per segment</label>
+        <input type="number" id="incentive_min_wage" name="incentive_min_wage" step="0.01" min="0"
+               value="{{ form_data.get('incentive_min_wage', 0.0) }}">
+      </div>
+      <div class="field">
+        <label for="incentive_target_tasks">Target completed tasks (x)</label>
+        <input type="number" id="incentive_target_tasks" name="incentive_target_tasks" min="1"
+               value="{{ form_data.get('incentive_target_tasks', 10) }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label for="incentive_level">Campaign Level Multiplier (Difficulty Level)</label>
+        <input type="number" id="incentive_level" name="incentive_level" step="0.1" min="0.1"
+               value="{{ form_data.get('incentive_level', 1.0) }}">
+      </div>
+      <div class="field">
+        <label for="incentive_intensity">Campaign Intensity Multiplier</label>
+        <input type="number" id="incentive_intensity" name="incentive_intensity" step="0.1" min="0.1"
+               value="{{ form_data.get('incentive_intensity', 1.0) }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label for="incentive_bonus_amount">⭐ Star Bonus Amount</label>
+        <input type="number" id="incentive_bonus_amount" name="incentive_bonus_amount" step="0.01" min="0"
+               value="{{ form_data.get('incentive_bonus_amount', 0.0) }}">
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <script>
   window.SCALE_LABELS_PREFILL = {{ form_data.scale.labels | tojson }};
   window.SCALE_DESIGN_PREFILL = {{ form_data.scale.design | tojson }};
