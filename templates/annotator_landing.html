@@ -1,126 +1,305 @@
 {% extends "base.html" %}
 {% block title %}{{ campaign.name }} · Aura{% endblock %}
 
+{% block head_extra %}
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=Libre+Caslon+Text:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* Custom styles to override defaults for a gorgeous premium aesthetic */
+  .auth-card {
+    max-width: 600px;
+    font-family: "Hanken Grotesk", sans-serif;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+    background: var(--surface);
+    overflow: hidden;
+    padding: 0 !important;
+    margin: 40px auto;
+  }
+  
+  .campaign-hero-header {
+    background: var(--aura-gradient);
+    color: #ffffff;
+    padding: 44px 32px 36px;
+    text-align: center;
+    position: relative;
+  }
+
+  .campaign-hero-header h1 {
+    font-family: "Libre Caslon Text", serif;
+    font-size: 30px;
+    font-weight: 700;
+    margin: 0 0 12px;
+    line-height: 1.35;
+    color: #ffffff !important;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  }
+
+  .campaign-hero-header .lede {
+    font-size: 13.5px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    opacity: 0.92;
+    margin: 0;
+  }
+
+  .campaign-body-wrapper {
+    padding: 36px 32px;
+  }
+
+  .instructions-box {
+    margin-bottom: 32px;
+  }
+
+  .instructions-box h3 {
+    font-family: "Libre Caslon Text", serif;
+    font-size: 19px;
+    font-weight: 700;
+    margin: 28px 0 12px;
+    color: var(--text);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 8px;
+  }
+
+  .instructions-box h3:first-of-type {
+    margin-top: 0;
+  }
+
+  .instructions-box p {
+    font-size: 14.5px;
+    color: var(--text-muted);
+    line-height: 1.65;
+    margin: 0 0 16px;
+  }
+
+  /* Custom numbered lists styling */
+  .instructions-box ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: li-counter;
+  }
+
+  .instructions-box ol > li {
+    position: relative;
+    padding-left: 44px;
+    margin-bottom: 20px;
+    font-size: 14.5px;
+    color: var(--text-muted);
+    line-height: 1.65;
+  }
+
+  .instructions-box ol > li::before {
+    content: counter(li-counter);
+    counter-increment: li-counter;
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 28px;
+    height: 28px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 13px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Incentives Card */
+  .incentives-card {
+    background: var(--surface-2);
+    border: 1px dashed var(--border-2);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-top: 28px;
+  }
+
+  .incentives-card h3 {
+    margin: 0 0 10px;
+    border-bottom: none;
+    padding-bottom: 0;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .incentives-card ul {
+    margin: 0;
+    padding-left: 20px;
+  }
+
+  .incentives-card li {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    line-height: 1.55;
+  }
+
+  .landing-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  .landing-actions .btn {
+    flex: 1;
+    margin: 0;
+    font-size: 14.5px;
+    font-weight: 700;
+    padding: 14px 20px;
+    border-radius: var(--radius);
+    text-align: center;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+  }
+
+  .landing-actions .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  .landing-actions .btn-primary {
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: #ffffff;
+  }
+  .landing-actions .btn-primary:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+  }
+
+  .landing-actions .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border-2);
+    color: var(--text);
+  }
+  .landing-actions .btn-secondary:hover {
+    background: var(--surface-2);
+    border-color: var(--text-muted);
+  }
+
+  @media (max-width: 580px) {
+    .landing-actions {
+      flex-direction: column;
+      gap: 12px;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 
 <section class="card hero-card auth-card">
 
+  <div class="campaign-hero-header">
     <h1>{{ campaign.name }}</h1>
-
     {% set io = campaign.io_labels() %}
-
     <p class="lede">
-        {% if campaign.is_bilingual and campaign.source_language and campaign.target_language %}
-            {{ campaign.source_language }} → {{ campaign.target_language }} ·
-        {% endif %}
-        {{ campaign.num_segments }} segments
+      {% if campaign.is_bilingual and campaign.source_language and campaign.target_language %}
+        {{ campaign.source_language }} → {{ campaign.target_language }} ·
+      {% endif %}
+      {{ campaign.num_segments }} segments
     </p>
+  </div>
 
+  <div class="campaign-body-wrapper">
     <div class="instructions-box">
+      <h3>Welcome</h3>
+      <p>
+        Thank you for participating in the evaluation of <strong>{{ campaign.name }}</strong>. 
+        Your feedback helps improve the quality of translation models and supports ongoing research. 
+        Please take a moment to review how it works below before getting started.
+      </p>
 
-        <h3>Welcome</h3>
-    
-        <p>
-            Thank you for participating in the evaluation of
-            <strong>{{ campaign.name }}</strong>. Your feedback helps improve the
-            quality of machine translation systems and supports ongoing research.
-            Please take a moment to read the instructions below before you begin.
-        </p>
-    
-        <h3>How it works</h3>
-    
-        <ol>
-            <li>
-                Create a new account or Sign in to your existing account.
-                The same annotator account can be used across multiple evaluation campaigns.
-            </li>
-    
-            {% set n = criteria|length %}
-            {% set names = criteria|map(attribute='name')|list %}
-    
-            {% if campaign.mode == 'likert' %}
-            <li>
-                For each segment, evaluate the
-                <strong>{{ io[1]|lower }}</strong>
-                using
-                {% if n == 1 %}
-                    the criterion <strong>{{ names[0] }}</strong>.
-                {% else %}
-                    the following {{ n }} criteria:
-                    <strong>{{ names|join(', ') }}</strong>.
-                {% endif %}
-                Select the rating that best reflects the quality of the translation.
-            </li>
-    
-            {% if campaign.enable_spans %}
-            <li>
-                If necessary, highlight error spans by selecting words in the
-                {% if campaign.span_scope == 'both' %}
-                    <strong>{{ io[0]|lower }}</strong> or
-                    <strong>{{ io[1]|lower }}</strong>.
-                {% else %}
-                    <strong>{{ io[1]|lower }}</strong>.
-                {% endif %}
-            </li>
-            {% endif %}
-    
-            {% elif campaign.mode == 'pairwise' %}
-    
-            <li>
-                Compare the two
-                <strong>{{ io[1]|lower }}</strong>
-                candidates (A and B) and choose the one that provides the better translation.
-            </li>
-    
-            {% elif campaign.mode == 'span_only' %}
-    
-            <li>
-                Identify and highlight error spans in the
-                <strong>{{ io[1]|lower }}</strong>
-                by selecting the relevant words and assigning the appropriate error type
-                {% if names %}
-                    (<strong>{{ names|join(', ') }}</strong>).
-                {% endif %}
-                When finished, mark the segment as <strong>Reviewed</strong>.
-            </li>
-    
-            {% elif campaign.mode == 'post_edit' %}
-    
-            <li>
-                Edit the
-                <strong>{{ io[1]|lower }}</strong>
-                to correct any translation errors. If the translation is already satisfactory,
-                you may leave it unchanged.
-            </li>
-    
-            {% endif %}
-    
-            <li>
-                Your progress is saved automatically. You may leave and return at any time
-                until the campaign is closed by the administrator.
-            </li>
-    
-        </ol>
-    
+      <h3>How it works</h3>
+      <ol>
+        <li>
+          Create a new account or Sign in to your existing account. 
+          The same annotator account can be used across multiple campaigns.
+        </li>
+
+        {% set n = criteria|length %}
+        {% set names = criteria|map(attribute='name')|list %}
+
+        {% if campaign.mode == 'likert' %}
+        <li>
+          For each segment, evaluate the <strong>{{ io[1]|lower }}</strong> using 
+          {% if n == 1 %}
+            the criterion <strong>{{ names[0] }}</strong>.
+          {% else %}
+            the following {{ n }} criteria: <strong>{{ names|join(', ') }}</strong>.
+          {% endif %}
+          Select the rating that best reflects the quality.
+        </li>
+
+        {% if campaign.enable_spans %}
+        <li>
+          If necessary, highlight error spans by selecting words in the 
+          {% if campaign.span_scope == 'both' %}
+            <strong>{{ io[0]|lower }}</strong> or <strong>{{ io[1]|lower }}</strong>.
+          {% else %}
+            <strong>{{ io[1]|lower }}</strong>.
+          {% endif %}
+        </li>
+        {% endif %}
+
+        {% elif campaign.mode == 'pairwise' %}
+        <li>
+          Compare the two <strong>{{ io[1]|lower }}</strong> candidates (A and B) and choose the one that provides the better translation.
+        </li>
+
+        {% elif campaign.mode == 'span_only' %}
+        <li>
+          Identify and highlight error spans in the <strong>{{ io[1]|lower }}</strong> by selecting the relevant words and assigning the appropriate error type 
+          {% if names %}
+            (<strong>{{ names|join(', ') }}</strong>).
+          {% endif %}
+          Mark the segment as <strong>Reviewed</strong> when finished.
+        </li>
+
+        {% elif campaign.mode == 'post_edit' %}
+        <li>
+          Correct any errors in the <strong>{{ io[1]|lower }}</strong>. If the translation is already satisfactory, you may leave it unchanged.
+        </li>
+        {% endif %}
+
+        <li>
+          Your progress is saved automatically. You may leave and return at any time until the campaign is closed by the administrator.
+        </li>
+      </ol>
+
+      {% if campaign.incentive_money or campaign.incentive_co_authorship %}
+      <div class="incentives-card">
+        <h3>🎁 Campaign Incentives</h3>
+        <p>This campaign offers the following rewards for productive, high-quality work:</p>
+        <ul>
+          {% if campaign.incentive_co_authorship %}
+          <li><strong>Co-authorship</strong>: Productive and reliable annotators are eligible for publication co-authorship.</li>
+          {% endif %}
+          {% if campaign.incentive_money %}
+          <li><strong>Base Payout</strong>: {{ campaign.incentive_min_wage }} per completed segment.</li>
+           <li><strong>AURA Pathway Bonus</strong>: Earn a bonus of <strong>{{ campaign.incentive_bonus_amount }}</strong> and a ⭐ **Star** for high quality and productivity (compulsory pathway after {{ campaign.incentive_target_tasks }} tasks). Note: You must submit your Personal Info to unlock the bonus.</li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endif %}
     </div>
 
     <div class="landing-actions">
-
-        <a
-            href="{{ url_for('annotator_campaign.annotator_login_view', campaign_id=campaign.id) }}"
-            class="btn btn-primary btn-large btn-block"
-        >
-            Sign In
-        </a>
-
-        <a
-            href="{{ url_for('annotator_campaign.annotator_signup_view', campaign_id=campaign.id) }}"
-            class="btn btn-secondary btn-large btn-block"
-        >
-            Create Account
-        </a>
-
+      <a href="{{ url_for('annotator_campaign.annotator_login_view', campaign_id=campaign.id) }}" class="btn btn-primary btn-large">
+        Sign In
+      </a>
+      <a href="{{ url_for('annotator_campaign.annotator_signup_view', campaign_id=campaign.id) }}" class="btn btn-secondary btn-large">
+        Create Account
+      </a>
     </div>
+  </div>
 
 </section>
 

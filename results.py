@@ -216,6 +216,10 @@ def compute_results(campaign, ratings, criteria):
         per_ann_counts[r.annotator_id] = per_ann_counts.get(r.annotator_id, 0) + 1
     for a in annotators:
         a["n_complete"] = per_ann_counts.get(a["id"], 0)
+        from models import CampaignAnnotator
+        link = CampaignAnnotator.query.filter_by(campaign_id=campaign.id, annotator_id=a["id"]).first()
+        a["has_star"] = bool(link and link.has_star)
+        a["quality_score"] = float(link.quality_score if link else 100.0)
 
     warnings = []
     iaa_ok = len(annotators) >= 2 and n_overlap >= 1

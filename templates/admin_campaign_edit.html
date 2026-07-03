@@ -6,7 +6,7 @@
 <div class="page-header">
   <div>
     <h1>Edit campaign</h1>
-    <p class="hint">{{ campaign.name }} · {{ campaign.num_segments }} segments</p>
+    <p class="hint">ID: <code>{{ campaign.id }}</code> · {{ campaign.name }} · {{ campaign.num_segments }} segments</p>
   </div>
   <a href="{{ url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id) }}" class="link-btn">← back to campaign</a>
 </div>

@@ -1,6 +1,136 @@
 {% extends "base.html" %}
 {% block title %}{{ campaign.name }} · Aura{% endblock %}
 
+{% block head_extra %}
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=Libre+Caslon+Text:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  #app {
+    max-width: 1400px !important;
+    padding: 24px 40px 80px !important;
+  }
+  .annotator-table td:nth-child(2), .annotator-table th:nth-child(2) {
+    max-width: 240px;
+    word-break: break-all;
+    white-space: normal;
+  }
+  body {
+    font-family: "Hanken Grotesk", sans-serif;
+  }
+  
+  .page-header h1 {
+    font-family: "Libre Caslon Text", serif;
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    color: var(--text);
+  }
+
+  /* Cards Styling */
+  .card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
+    background: var(--surface);
+    padding: 24px 30px;
+    margin-bottom: 24px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .card h3 {
+    font-family: "Libre Caslon Text", serif;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text);
+    margin-top: 0;
+    margin-bottom: 16px;
+  }
+
+  /* Tables Style */
+  .annotator-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .annotator-table th {
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border);
+    text-align: left;
+  }
+
+  .annotator-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    vertical-align: middle;
+  }
+
+  .annotator-table tbody tr:hover td {
+    background-color: rgba(0, 0, 0, 0.01);
+  }
+
+  /* Share Link Row styling */
+  .copy-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .copy-row input {
+    flex: 1;
+    font-family: monospace;
+    font-size: 13.5px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-2);
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .copy-row .btn {
+    padding: 0 24px;
+    font-weight: 700;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #ffffff;
+    border: 1px solid var(--accent);
+  }
+
+  .copy-row .btn:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+  }
+
+  /* Buttons styling */
+  .btn-small {
+    padding: 8px 16px;
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+
+  .link-btn {
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.15s;
+  }
+
+  .link-btn:hover {
+    color: var(--accent);
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
   <div>
@@ -12,6 +142,31 @@
     </p>
   </div>
   <a href="{{ url_for('admin_campaign.admin_dashboard') }}" class="link-btn">← back to dashboard</a>
+</div>
+
+<div class="metrics-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:20px; margin-bottom:30px; font-family:'Hanken Grotesk', sans-serif;">
+  <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
+    <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ rows | length }}</span>
+    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Annotators Enrolled</span>
+  </div>
+  <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
+    {% set ns = namespace(completed_count=0) %}
+    {% for r in rows %}
+      {% if r.completed >= campaign.num_segments %}
+        {% set ns.completed_count = ns.completed_count + 1 %}
+      {% endif %}
+    {% endfor %}
+    <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ ns.completed_count }}</span>
+    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Completed Ratings</span>
+  </div>
+  <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
+    {% set ns = namespace(total_segments=0) %}
+    {% for r in rows %}
+      {% set ns.total_segments = ns.total_segments + r.completed %}
+    {% endfor %}
+    <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ ns.total_segments }}</span>
+    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Total Rated Segments</span>
+  </div>
 </div>
 
 {% if campaign.is_closed %}
@@ -86,6 +241,22 @@
           </div>
         </td></tr>
       {% endif %}
+      {% if campaign.incentive_co_authorship or campaign.incentive_money %}
+      <tr>
+        <td class="muted">Incentives</td>
+        <td>
+          {% if campaign.incentive_co_authorship %}
+            <span class="aura-status-pill" style="background:#e8f5e9; color:#2e7d32; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:600; display:inline-flex; align-items:center;">Co-authorship</span>
+          {% endif %}
+          {% if campaign.incentive_money %}
+            <span class="aura-status-pill" style="background:#e3f2fd; color:#1565c0; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:600; display:inline-flex; align-items:center;">Monetary Reward</span>
+            <div style="margin-top:6px; font-size:12px; line-height:1.4;" class="muted">
+              Base payout: <strong>{{ campaign.incentive_min_wage }}</strong> per segment · Target: <strong>{{ campaign.incentive_target_tasks }} tasks</strong> · Multipliers: Level {{ campaign.incentive_level }} x Intensity {{ campaign.incentive_intensity }} · Star Bonus: <strong>{{ campaign.incentive_bonus_amount }}</strong>
+            </div>
+          {% endif %}
+        </td>
+      </tr>
+      {% endif %}
     </tbody>
   </table>
 </section>
@@ -103,54 +274,74 @@
 <section class="card">
   <h3>Progress <span id="progress-live" class="progress-live" title="Updates automatically">● live</span></h3>
   <p class="hint">{{ campaign.num_segments }} segments per annotator.</p>
-  <table class="annotator-table" id="progress-table"{% if not rows %} hidden{% endif %}>
-    <thead>
-      <tr>
-        <th>Annotator</th>
-        <th>ID</th>
-        <th>Email</th>
-        <th>Expertise</th>
-        {% if campaign.is_cross_lingual %}
-        <th>{{ campaign.source_language or 'Source' }} fluency</th>
-        <th>{{ campaign.target_language or 'Target' }} fluency</th>
-        {% endif %}
-        <th>Background</th>
-        <th>Completed</th>
-        <th>Last update</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody id="progress-tbody">
-      {% set _exp_label = {'easy':'Beginner','medium':'Intermediate','hard':'Advanced'} %}
-      {% for r in rows %}
-      <tr>
-        <td>{{ r.annotator.name }}</td>
-        <td class="muted"><code>{{ r.annotator.id }}</code></td>
-        <td class="muted">{{ r.annotator.email }}</td>
-        <td>{{ _exp_label.get(r.annotator.expertise, '—') }}</td>
-        {% if campaign.is_cross_lingual %}
-        <td>{{ r.annotator.source_fluency_label or '—' }}</td>
-        <td>{{ r.annotator.target_fluency_label or '—' }}</td>
-        {% endif %}
-        <td class="muted">
-          {% set bits = [] %}
-          {% if r.annotator.location %}{% set _ = bits.append(r.annotator.location) %}{% endif %}
-          {% if r.annotator.dialect %}{% set _ = bits.append(r.annotator.dialect) %}{% endif %}
-          {% if r.annotator.age_group_label %}{% set _ = bits.append(r.annotator.age_group_label) %}{% endif %}
-          {{ bits | join(' · ') if bits else '—' }}
-        </td>
-        <td>
-          <div class="mini-progress">
-            <div class="mini-progress-fill" style="width: {{ (r.completed / r.total * 100) | int if r.total else 0 }}%;"></div>
-          </div>
-          <span class="muted">{{ r.completed }} / {{ r.total }}</span>
-        </td>
-        <td class="muted">{{ r.last_update.strftime('%Y-%m-%d %H:%M UTC') if r.last_update else '—' }}</td>
-        <td><a class="muted" href="{{ url_for('admin_campaign.admin_annotator_edit', annotator_id=r.annotator.id, next=url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id)) }}">edit</a></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div style="overflow-x: auto; width: 100%;">
+    <table class="annotator-table" id="progress-table"{% if not rows %} hidden{% endif %}>
+      <thead>
+        <tr>
+          <th>Annotator</th>
+          <th>ID</th>
+          <th>Email</th>
+          <th>Expertise</th>
+          {% if campaign.is_cross_lingual %}
+          <th>{{ campaign.source_language or 'Source' }} fluency</th>
+          <th>{{ campaign.target_language or 'Target' }} fluency</th>
+          {% endif %}
+          <th>Background</th>
+          <th>Completed</th>
+          <th>Last update</th>
+          {% if campaign.incentive_money or campaign.incentive_co_authorship %}
+          <th>Personal Info</th>
+          <th>Evaluation</th>
+          {% endif %}
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="progress-tbody">
+        {% set _exp_label = {'easy':'Beginner','medium':'Intermediate','hard':'Advanced'} %}
+        {% for r in rows %}
+        <tr>
+          <td>{{ r.annotator.name }}</td>
+          <td class="muted"><code>{{ r.annotator.id }}</code></td>
+          <td class="muted">{{ r.annotator.email }}</td>
+          <td>{{ _exp_label.get(r.annotator.expertise, '—') }}</td>
+          {% if campaign.is_cross_lingual %}
+          <td>{{ r.annotator.source_fluency_label or '—' }}</td>
+          <td>{{ r.annotator.target_fluency_label or '—' }}</td>
+          {% endif %}
+          <td class="muted">
+            {% set bits = [] %}
+            {% if r.annotator.location %}{% set _ = bits.append(r.annotator.location) %}{% endif %}
+            {% if r.annotator.dialect %}{% set _ = bits.append(r.annotator.dialect) %}{% endif %}
+            {% if r.annotator.age_group_label %}{% set _ = bits.append(r.annotator.age_group_label) %}{% endif %}
+            {{ bits | join(' · ') if bits else '—' }}
+          </td>
+          <td>
+            <div class="mini-progress">
+              <div class="mini-progress-fill" style="width: {{ (r.completed / r.total * 100) | int if r.total else 0 }}%;"></div>
+            </div>
+            <span class="muted">{{ r.completed }} / {{ r.total }}</span>
+          </td>
+          <td class="muted">{{ r.last_update.strftime('%Y-%m-%d %H:%M UTC') if r.last_update else '—' }}</td>
+          {% if campaign.incentive_money or campaign.incentive_co_authorship %}
+          <td>
+            {% if r.link and r.link.form_submitted %}
+              <button class="btn btn-small" onclick="showDetailsModal('{{ r.annotator.id }}', '{{ r.annotator.name|escape }}', '{{ r.link.location|escape }}', '{{ r.link.parents_language|escape }}', {{ 'true' if r.link.stayed_outside else 'false' }}, '{{ r.link.stayed_outside_duration|escape }}', '{{ r.link.stayed_outside_purpose|escape }}', '{{ r.link.exposure|escape }}')">View Info</button>
+            {% else %}
+              <span class="muted">Pending</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-small" onclick="showEvalModal('{{ r.annotator.id }}', '{{ r.annotator.name|escape }}', {{ r.link.quality_score if r.link else 5.0 }}, {{ 'true' if r.link and r.link.has_star else 'false' }}, {{ r.completed }}, {{ campaign.incentive_target_tasks }}, {{ campaign.incentive_level }}, {{ campaign.incentive_intensity }})">
+              {% if r.link and r.link.has_star %}⭐ Starred (Bonus){% else %}Evaluate{% endif %}
+            </button>
+          </td>
+          {% endif %}
+          <td><a class="muted" href="{{ url_for('admin_campaign.admin_annotator_edit', annotator_id=r.annotator.id, next=url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id)) }}">edit</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   <p class="muted" id="progress-empty"{% if rows %} hidden{% endif %}>No annotators have started yet.</p>
 </section>
 
@@ -165,6 +356,7 @@
   var EXP_LABEL = { easy: "Beginner", medium: "Intermediate", hard: "Advanced" };
   var CROSS_LINGUAL = {{ campaign.is_cross_lingual | tojson }};
   var EDIT_BASE = {{ url_for('admin_campaign.admin_annotator_edit', annotator_id='__ID__', next=url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id)) | tojson }};
+  var hasIncentives = {{ 'true' if campaign.incentive_money or campaign.incentive_co_authorship else 'false' }};
   function render(rows) {
     if (!rows.length) { table.hidden = true; empty.hidden = false; return; }
     table.hidden = false; empty.hidden = true;
@@ -173,16 +365,29 @@
       var fluency = CROSS_LINGUAL
         ? '<td>' + esc(r.source_fluency || '—') + '</td><td>' + esc(r.target_fluency || '—') + '</td>'
         : '';
-      var bg = [r.location, r.dialect, r.age_group].filter(Boolean).map(esc).join(' · ') || '—';
-      var editUrl = EDIT_BASE.replace('__ID__', encodeURIComponent(r.id));
+      var bg = [r.profile_location, r.dialect, r.age_group].filter(Boolean).map(esc).join(' · ') || '—';
+      var editUrl = EDIT_BASE.replace('__ID__', encodeURIComponent(r.annotator_id || r.id));
+
+      var incCols = '';
+      if (hasIncentives) {
+        var formB = r.form_submitted ? 
+          '<button class="btn btn-small" onclick="showDetailsModal(\'' + r.annotator_id + '\', \'' + esc(r.name) + '\', \'' + esc(r.location) + '\', \'' + esc(r.parents_language) + '\', ' + r.stayed_outside + ', \'' + esc(r.stayed_outside_duration) + '\', \'' + esc(r.stayed_outside_purpose) + '\', \'' + esc(r.exposure) + '\')">View Info</button>' :
+          '<span class="muted">Pending</span>';
+        var starText = r.has_star ? '⭐ Starred (Bonus)' : 'Evaluate';
+        var evalBtn = '<button class="btn btn-small" onclick="showEvalModal(\'' + r.annotator_id + '\', \'' + esc(r.name) + '\', ' + r.quality_score + ', ' + r.has_star + ', ' + r.completed + ', ' + {{ campaign.incentive_target_tasks }} + ', ' + {{ campaign.incentive_level }} + ', ' + {{ campaign.incentive_intensity }} + ')">' + starText + '</button>';
+        incCols = '<td>' + formB + '</td><td>' + evalBtn + '</td>';
+      }
+
       return '<tr><td>' + esc(r.name) + '</td>' +
-        '<td class="muted"><code>' + esc(r.id) + '</code></td>' +
+        '<td class="muted"><code>' + esc(r.annotator_id || r.id) + '</code></td>' +
         '<td class="muted">' + esc(r.email) + '</td>' +
-        '<td>' + (EXP_LABEL[r.expertise] || '—') + '</td>' + fluency +
+        '<td>' + (EXP_LABEL[r.expertise] || '—') + '</td>' + 
+        fluency +
         '<td class="muted">' + bg + '</td>' +
         '<td><div class="mini-progress"><div class="mini-progress-fill" style="width:' + pct + '%;"></div></div>' +
         '<span class="muted">' + r.completed + ' / ' + r.total + '</span></td>' +
         '<td class="muted">' + (r.last_update ? esc(r.last_update) : '—') + '</td>' +
+        incCols +
         '<td><a class="muted" href="' + editUrl + '">edit</a></td></tr>';
     }).join("");
   }
@@ -308,6 +513,77 @@
   </div>
 </section>
 
+<!-- Personal Info Details Modal -->
+<div id="details-modal-backdrop" class="modal-backdrop" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="details-title">Personal Info</h3>
+      <button class="link-btn" onclick="hideDetailsModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <table class="annotator-table">
+        <tbody>
+          <tr><td class="muted" style="width: 40%;">Location</td><td id="det-location"></td></tr>
+          <tr><td class="muted">Parents' language</td><td id="det-lang"></td></tr>
+          <tr><td class="muted">Stayed outside city/village</td><td id="det-stayed"></td></tr>
+          <tr><td class="muted">Duration stayed outside</td><td id="det-duration"></td></tr>
+          <tr><td class="muted">Purpose of stay</td><td id="det-purpose"></td></tr>
+          <tr><td class="muted">Exposure</td><td id="det-exposure" style="white-space: pre-wrap;"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Evaluation & Star Modal -->
+<div id="eval-modal-backdrop" class="modal-backdrop" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Evaluate Annotator: <span id="eval-ann-name"></span></h3>
+      <button class="link-btn" onclick="hideEvalModal()">✕</button>
+    </div>
+    <form id="eval-form" method="post" action="">
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+        <div>
+          <strong>Progress Information:</strong>
+          <div style="font-size:12px; margin-top:6px;" class="muted">
+            Completed tasks: <span id="eval-completed"></span> / <span id="eval-target"></span> (Target to unlock rewards: <span id="eval-target-2"></span>)
+          </div>
+        </div>
+        
+        <div class="field">
+          <label style="font-weight: 600; margin-bottom: 6px; display: block;">Annotator Quality Rating</label>
+          <div class="star-rating-widget" style="display: flex; gap: 8px; font-size: 32px; cursor: pointer; color: var(--text-faint);">
+            <span class="star-btn" data-value="1" onclick="setStarRating(1)" style="transition: color 0.15s, transform 0.1s;">☆</span>
+            <span class="star-btn" data-value="2" onclick="setStarRating(2)" style="transition: color 0.15s, transform 0.1s;">☆</span>
+            <span class="star-btn" data-value="3" onclick="setStarRating(3)" style="transition: color 0.15s, transform 0.1s;">☆</span>
+            <span class="star-btn" data-value="4" onclick="setStarRating(4)" style="transition: color 0.15s, transform 0.1s;">☆</span>
+            <span class="star-btn" data-value="5" onclick="setStarRating(5)" style="transition: color 0.15s, transform 0.1s;">☆</span>
+          </div>
+          <input type="hidden" id="quality_score" name="quality_score" value="5">
+          <p class="hint" style="margin-top: 6px;">Select 1 to 5 stars to rate the annotator's translation work quality.</p>
+        </div>
+
+        <div class="field" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 16px;">
+          <label class="toggle-row">
+            <input type="checkbox" id="has_star_cb" onchange="document.getElementById('has_star_val').value = this.checked ? '1' : '0'">
+            <input type="hidden" id="has_star_val" name="has_star" value="0">
+            <span class="toggle-label">
+              ⭐ Award Special AURA Star &amp; Bonus
+              <span class="hint-inline">(Marks this annotator as a top contributor, unlocking scientific acknowledgement and the configured bonus payout)</span>
+            </span>
+          </label>
+        </div>
+        
+        <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; margin-top:10px;">
+          <button type="button" class="btn" onclick="hideEvalModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Evaluation</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 (function () {
   var CAMPAIGN_NAME = {{ campaign.name|tojson }};
@@ -363,6 +639,59 @@ function copyShareUrl() {
   const el = document.getElementById('share-url');
   el.select();
   document.execCommand('copy');
+}
+
+function showDetailsModal(id, name, location, lang, stayed, duration, purpose, exposure) {
+  document.getElementById("det-location").textContent = location;
+  document.getElementById("det-lang").textContent = lang;
+  document.getElementById("det-stayed").textContent = stayed ? "Yes" : "No";
+  document.getElementById("det-duration").textContent = duration || "—";
+  document.getElementById("det-purpose").textContent = purpose || "—";
+  document.getElementById("det-exposure").textContent = exposure || "—";
+  document.getElementById("details-modal-backdrop").style.display = "flex";
+}
+function hideDetailsModal() {
+  document.getElementById("details-modal-backdrop").style.display = "none";
+}
+
+function showEvalModal(annId, name, quality, hasStar, completed, target, lvl, intensity) {
+  document.getElementById("eval-ann-name").textContent = name;
+  document.getElementById("eval-completed").textContent = completed;
+  document.getElementById("eval-target").textContent = target;
+  document.getElementById("eval-target-2").textContent = target;
+  
+  // Set quality score (1-5 range)
+  var qVal = Math.round(quality);
+  if (qVal > 5) qVal = 5;
+  if (qVal < 1) qVal = 1;
+  setStarRating(qVal);
+  
+  document.getElementById("has_star_cb").checked = hasStar;
+  document.getElementById("has_star_val").value = hasStar ? "1" : "0";
+  
+  // Set action URL
+  var actionUrl = "/admin/campaign/" + {{ campaign.id|tojson }} + "/annotator/" + annId + "/evaluate";
+  document.getElementById("eval-form").action = actionUrl;
+  
+  document.getElementById("eval-modal-backdrop").style.display = "flex";
+}
+function hideEvalModal() {
+  document.getElementById("eval-modal-backdrop").style.display = "none";
+}
+
+function setStarRating(rating) {
+  document.getElementById("quality_score").value = rating;
+  var stars = document.querySelectorAll(".star-rating-widget .star-btn");
+  stars.forEach(function(star) {
+    var val = parseInt(star.getAttribute("data-value"));
+    if (val <= rating) {
+      star.textContent = "★";
+      star.style.color = "#ffb300";
+    } else {
+      star.textContent = "☆";
+      star.style.color = "var(--text-faint)";
+    }
+  });
 }
 </script>
 {% endblock %}
