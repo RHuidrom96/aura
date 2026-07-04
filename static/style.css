@@ -41,6 +41,20 @@
 
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
           Cantarell, "Helvetica Neue", Arial, sans-serif;
+
+  --aura-bg: #F4F0E7;
+  --aura-surface: #FFFFFF;
+  --aura-surface-2: #FAF7F0;
+  --aura-border: #E7E1D3;
+  --aura-border-light: #E4DECF;
+  --aura-input-border: #DDD7C8;
+  --aura-text: #2A2A24;
+  --aura-text-muted: #6E6A5F;
+  --aura-text-faint: #9A9486;
+  --aura-accent: #34433A;
+  --aura-accent-pill: rgba(52, 67, 58, 0.08);
+  --aura-accent-pill-hover: rgba(52, 67, 58, 0.15);
+  --aura-hero-pattern-color: #2A2A24;
 }
 
 [data-theme="dark"] {
@@ -56,6 +70,20 @@
   --accent:       #7d9bff;
   --accent-soft:  #25304d;
   --accent-dark:  #aebfff;
+
+  --aura-bg: #15171c;
+  --aura-surface: #1e2128;
+  --aura-surface-2: #262a33;
+  --aura-border: rgba(255, 255, 255, 0.10);
+  --aura-border-light: rgba(255, 255, 255, 0.08);
+  --aura-input-border: rgba(255, 255, 255, 0.15);
+  --aura-text: #e6e7ea;
+  --aura-text-muted: #a7a9b0;
+  --aura-text-faint: #7e8089;
+  --aura-accent: #8e9e94;
+  --aura-accent-pill: rgba(142, 158, 148, 0.12);
+  --aura-accent-pill-hover: rgba(142, 158, 148, 0.20);
+  --aura-hero-pattern-color: #ffffff;
 
   /* Aura brand gradient — brighter hues so it reads on dark backgrounds */
   --aura-1: #56B4E9;
@@ -1080,7 +1108,7 @@ h3 {
 .site-header {
   background: var(--surface);
   border-bottom: 0.5px solid var(--border);
-  padding: 12px 24px;
+  padding: 18px 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1089,11 +1117,15 @@ h3 {
   z-index: 50;
 }
 .brand {
-  font-weight: 600;
-  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: "Hanken Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.02em;
   text-decoration: none;
-  font-size: 16px;
-  letter-spacing: -0.01em;
+  color: var(--text);
 }
 .site-nav {
   display: flex;
@@ -1283,6 +1315,11 @@ select:focus,
   background: var(--surface-2);
   font-family: ui-monospace, Menlo, Consolas, monospace;
   color: var(--text);
+}
+.copy-row button {
+  flex-shrink: 0;
+  min-width: 80px;
+  font-weight: 600;
 }
 
 /* Annotator table */
@@ -2413,10 +2450,10 @@ table.result-table .num { text-align: right; font-variant-numeric: tabular-nums;
   width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
   background: var(--surface); color: var(--text-muted); cursor: pointer; padding: 0; }
 .theme-toggle:hover { color: var(--text); border-color: var(--border-2); }
-.theme-toggle .theme-ico-moon { display: none; }
-.theme-toggle .theme-ico-sun  { display: block; }
-[data-theme="dark"] .theme-toggle .theme-ico-moon { display: block; }
-[data-theme="dark"] .theme-toggle .theme-ico-sun  { display: none; }
+.theme-toggle .theme-ico-moon { display: block; }
+.theme-toggle .theme-ico-sun  { display: none; }
+[data-theme="dark"] .theme-toggle .theme-ico-moon { display: none; }
+[data-theme="dark"] .theme-toggle .theme-ico-sun  { display: block; }
 
 /* dark-mode tweaks for pale result chips/tables */
 [data-theme="dark"] .diff-tag.diff-easy   { background: #16382e; color: #6fd6a8; }
