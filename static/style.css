@@ -33,7 +33,7 @@
   --target-soft:  #e1f5ee;
 
   --radius-sm: 6px;
-  --radius:    10px;
+  --radius:    20px;
   --radius-lg: 14px;
 
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
@@ -361,11 +361,17 @@ h3 {
   cursor: pointer;
   transition: all .15s;
   text-decoration: none;
+  margin: 0.25rem auto;
+  border-radius: 20px;
 }
+
 .btn:hover:not(:disabled) {
   background: var(--surface-2);
-  border-color: var(--text-faint);
+  border-color: #3b82f6;
+  transform: translateX(-3px);
+  box-shadow: 0 8px 20px rgba(0, 191, 255, 0.45);
 }
+
 .btn:active:not(:disabled) { transform: scale(0.98); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -373,6 +379,8 @@ h3 {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
+  border-radius: 20px;
+  
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-dark);
@@ -383,6 +391,7 @@ h3 {
   width: 100%;
   padding: 14px 18px;
   font-size: 15px;
+  border-radius: 20px;
 }
 .btn-arrow { font-size: 18px; }
 
@@ -1320,6 +1329,7 @@ select:focus,
   flex-shrink: 0;
   min-width: 80px;
   font-weight: 600;
+  min-height: 40px;
 }
 
 /* Annotator table */
@@ -1365,7 +1375,10 @@ select:focus,
   border-color: #c4444a;
   color: white;
 }
-.btn-danger:hover { background: #a83a3f; border-color: #a83a3f; }
+.btn-danger:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(220, 53, 69, 0.45);
+}
 
 /* Tab group for sign-in / register */
 .tab-group { margin-top: 20px; }

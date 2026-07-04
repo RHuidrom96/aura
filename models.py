@@ -1070,7 +1070,7 @@ class AnnotatorCampaignPref(db.Model):
         db.UniqueConstraint("annotator_id", "campaign_id",
                             name="uq_annotator_campaign_pref"),
     )
-# ---- QualificationT -----
+# ---- QualificationTest -----
 
 class QualificationTest(db.Model):
     """Qualification exam that annotators must pass before joining campaigns."""

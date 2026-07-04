@@ -1,330 +1,311 @@
 {% extends "base.html" %}
 
-{% block title %}Qualification Test • Aura{% endblock %}
+{% block title %}Qualification • Aura{% endblock %}
 
 {% block content %}
 
-<section class="page page-qualification-test">
+<div class="qual-page">
 
-    <div class="container">
+    <div class="page-header">
 
-        <header class="qualification-header">
+        <div>
 
-            <div>
+            <h1>Qualification</h1>
 
-                <h1>Qualification Test</h1>
+            <p class="hint">
+                Complete every question before submitting your responses.
+            </p>
 
-                <p class="text-muted">
-                    Complete every question before submitting your responses.
-                </p>
+        </div>
 
-            </div>
+        <div class="progress-group">
 
-            <div class="qualification-progress">
+            <div class="progress-label">
 
-                <div class="progress-label">
+                <span>Questions</span>
 
-                    <span>Questions</span>
-
-                    <strong>{{ test.num_segments }}</strong>
-
-                </div>
-
-                <progress
-                    value="0"
-                    max="{{ test.num_segments }}"
-                    id="qualification-progress">
-                </progress>
+                <strong>{{ test.num_segments }}</strong>
 
             </div>
 
-        </header>
+            <progress
+                id="qualification-progress"
+                value="0"
+                max="{{ test.num_segments }}">
+            </progress>
 
+        </div>
 
-        <form
-            method="post"
-            action="{{ url_for('annotator_qualification.submit_qualification') }}"
-            id="qualification-form">
+    </div>
 
-            {% for segment in segments %}
+    <form
+        method="post"
+        action="{{ url_for('annotator_qualification.submit_qualification') }}"
+        id="qualification-form">
 
-            <article
-                class="card qualification-question"
-                data-question="{{ loop.index }}">
+        {% for segment in segments %}
 
-                <div class="card-header">
+        <article
+            class="card qualification-question"
+            data-question="{{ loop.index }}">
 
-                    <div class="question-number">
+            <h2>Question {{ loop.index }}</h2>
 
-                        <span class="badge">
+            <!-- Source ------------------------------------------------ -->
 
-                            Question {{ loop.index }}
+            <section class="segment-block">
 
-                        </span>
+                <h3>Source</h3>
 
-                    </div>
-
+                <div class="segment-text source-text">
+                    {{ segment.source }}
                 </div>
 
-                <div class="card-body">
+            </section>
 
-                    <!-- Source ------------------------------------------ -->
+            <!-- Translation ------------------------------------------- -->
 
-                    <section class="segment-block">
+            {% if test.mode == "pairwise" %}
 
-                        <h3>Source</h3>
+            <section class="segment-block">
 
-                        <div class="segment-text source-text">
+                <h3>Translation A</h3>
 
-                            {{ segment.source }}
+                <div class="segment-text translation-text">
+                    {{ segment.target_a }}
+                </div>
 
-                        </div>
+            </section>
 
-                    </section>
+            <section class="segment-block">
 
+                <h3>Translation B</h3>
 
-                    <!-- Translation ------------------------------------- -->
+                <div class="segment-text translation-text">
+                    {{ segment.target_b }}
+                </div>
 
-                    {% if test.mode == "pairwise" %}
+            </section>
 
-                    <section class="segment-block">
+            {% else %}
 
-                        <h3>Translation A</h3>
+            <section class="segment-block">
 
-                        <div class="segment-text translation-text">
+                <h3>Translation</h3>
 
-                            {{ segment.target_a }}
+                <div class="segment-text translation-text">
+                    {{ segment.target }}
+                </div>
 
-                        </div>
+            </section>
 
-                    </section>
+            {% endif %}
 
-                    <section class="segment-block">
+            <!-- Evaluation -------------------------------------------- -->
 
-                        <h3>Translation B</h3>
+            <section class="segment-block">
 
-                        <div class="segment-text translation-text">
+                <h3>Evaluation</h3>
 
-                            {{ segment.target_b }}
+                {% if test.mode == "likert" %}
 
-                        </div>
+                <div class="criteria-list">
 
-                    </section>
+                    {% for criterion in test.criteria %}
 
-                    {% else %}
+                    <div class="criterion-card">
 
-                    <section class="segment-block">
+                        <label class="criterion-title">
 
-                        <h3>Translation</h3>
+                            {{ criterion.name }}
 
-                        <div class="segment-text translation-text">
+                        </label>
 
-                            {{ segment.target }}
+                        {% if criterion.guide %}
 
-                        </div>
+                        <p class="hint">
+                            {{ criterion.guide }}
+                        </p>
 
-                    </section>
+                        {% endif %}
 
-                    {% endif %}
+                        <div class="likert-scale">
 
+                            {% for score in range(1, 6) %}
 
-                    <!-- Evaluation -------------------------------------- -->
+                            <label class="likert-option">
 
-                    <section class="segment-block">
+                                <input
+                                    type="radio"
+                                    name="score_{{ segment.id }}_{{ criterion.id }}"
+                                    value="{{ score }}"
+                                    required>
 
-                        <h3>Your Evaluation</h3>
+                                <span>{{ score }}</span>
 
-                        {% if test.mode == "likert" %}
-
-                        <div class="criteria-list">
-
-                            {% for criterion in test.criteria %}
-
-                            <div class="criterion-card">
-
-                                <label class="criterion-title">
-
-                                    {{ criterion.name }}
-
-                                </label>
-
-                                {% if criterion.guide %}
-                                <p class="criterion-guide">
-                                    {{ criterion.guide }}
-                                </p>
-                                {% endif %}
-
-                                <div class="likert-scale">
-
-                                    {% for score in range(1, 6) %}
-
-                                    <label class="likert-option">
-
-                                        <input
-                                            type="radio"
-                                            name="score_{{ segment.id }}_{{ criterion.id }}"
-                                            value="{{ score }}"
-                                            required>
-
-                                        <span>{{ score }}</span>
-
-                                    </label>
-
-                                    {% endfor %}
-
-                                </div>
-
-                            </div>
+                            </label>
 
                             {% endfor %}
 
                         </div>
 
-                    {% elif test.mode == "pairwise" %}
+                    </div>
 
-                        <div class="pairwise-container">
+                    {% endfor %}
 
-                            <label class="pairwise-option">
+                </div>
 
-                                <input
-                                    type="radio"
-                                    name="preference_{{ segment.id }}"
-                                    value="a"
-                                    required>
+                {% elif test.mode == "pairwise" %}
 
-                                <span>Translation A is better</span>
+                <div class="pairwise-container">
 
-                            </label>
+                    <label class="pairwise-option">
 
-                            <label class="pairwise-option">
+                        <input
+                            type="radio"
+                            name="preference_{{ segment.id }}"
+                            value="a"
+                            required>
 
-                                <input
-                                    type="radio"
-                                    name="preference_{{ segment.id }}"
-                                    value="tie"
-                                    required>
+                        <span>Translation A is better</span>
 
-                                <span>Both translations are equal</span>
+                    </label>
 
-                            </label>
+                    <label class="pairwise-option">
 
-                            <label class="pairwise-option">
+                        <input
+                            type="radio"
+                            name="preference_{{ segment.id }}"
+                            value="tie"
+                            required>
 
-                                <input
-                                    type="radio"
-                                    name="preference_{{ segment.id }}"
-                                    value="b"
-                                    required>
+                        <span>Both translations are equal</span>
 
-                                <span>Translation B is better</span>
+                    </label>
 
-                            </label>
+                    <label class="pairwise-option">
 
-                        </div>
+                        <input
+                            type="radio"
+                            name="preference_{{ segment.id }}"
+                            value="b"
+                            required>
 
-                    {% elif test.mode == "span_only" %}
+                        <span>Translation B is better</span>
 
-                        <div class="span-qual" data-segment-id="{{ segment.id }}">
+                    </label>
 
-                            <p class="hint">
-                                Pick an error type below, then click and drag
-                                across the translation to mark the span. Remove
-                                a marked span with the × next to it in the list.
-                                If there are no errors, leave the text unmarked.
-                            </p>
+                </div>
 
-                            <div class="span-qual-categories" role="group" aria-label="Error type">
+                {% elif test.mode == "span_only" %}
 
-                                {% for criterion in test.criteria %}
+                <div
+                    class="span-qual"
+                    data-segment-id="{{ segment.id }}">
 
-                                <button
-                                    type="button"
-                                    class="span-qual-cat-btn"
-                                    data-criterion-id="{{ criterion.id }}"
-                                    data-criterion-name="{{ criterion.name }}"
-                                    data-color="{{ criterion.color }}">
+                    <p class="hint">
 
-                                    <span
-                                        class="span-qual-cat-swatch"
-                                        style="background: {{ criterion.color }};"></span>
+                        Pick an error type below, then click and drag across the
+                        translation to mark the span. Remove a marked span with the
+                        × next to it in the list. If there are no errors, leave the
+                        text unmarked.
 
-                                    {{ criterion.name }}
+                    </p>
 
-                                </button>
+                    <div
+                        class="span-qual-categories"
+                        role="group"
+                        aria-label="Error type">
 
-                                {% endfor %}
+                        {% for criterion in test.criteria %}
 
-                            </div>
+                        <button
+                            type="button"
+                            class="span-qual-cat-btn"
+                            data-criterion-id="{{ criterion.id }}"
+                            data-criterion-name="{{ criterion.name }}"
+                            data-color="{{ criterion.color }}">
 
-                            <div
-                                class="span-qual-text"
-                                data-text="{{ segment.target }}"></div>
+                            <span
+                                class="span-qual-cat-swatch"
+                                style="background: {{ criterion.color }};">
+                            </span>
 
-                            <ul class="span-qual-list"></ul>
+                            {{ criterion.name }}
 
-                            <input
-                                type="hidden"
-                                name="spans_{{ segment.id }}"
-                                class="span-qual-input"
-                                value="{}">
+                        </button>
 
-                        </div>
+                        {% endfor %}
 
-                    {% elif test.mode == "post_edit" %}
+                    </div>
 
-                        <div class="qualification-placeholder">
+                    <div
+                        class="span-qual-text"
+                        data-text="{{ segment.target }}">
+                    </div>
 
-                            <label
-                                for="edit_{{ segment.id }}"
-                                class="criterion-title">
+                    <ul class="span-qual-list"></ul>
 
-                                Post-edited Translation
+                    <input
+                        type="hidden"
+                        class="span-qual-input"
+                        name="spans_{{ segment.id }}"
+                        value="{}">
 
-                            </label>
+                </div>
 
-                            <textarea
-                                id="edit_{{ segment.id }}"
-                                name="edited_text_{{ segment.id }}"
-                                rows="6"
-                                class="form-control"
-                                required></textarea>
+                {% elif test.mode == "post_edit" %}
 
-                        </div>
+                <div class="form-group">
 
-                    {% endif %}
+                    <label
+                        for="edit_{{ segment.id }}"
+                        class="criterion-title">
 
-                </section>
+                        Post-edited translation
 
-            </article>
+                    </label>
 
-            {% endfor %}
+                    <textarea
+                        id="edit_{{ segment.id }}"
+                        name="edited_text_{{ segment.id }}"
+                        rows="6"
+                        class="form-control"
+                        required></textarea>
 
-            <div class="qualification-submit">
+                </div>
 
-                <button
-                    type="submit"
-                    class="btn btn-primary btn-lg"
-                    id="submit-qualification">
-    
-                    Submit Qualification
-    
-                </button>
-    
-            </div>
-    
-            </form>
-    
+                {% endif %}
+
+            </section>
+
+        </article>
+
+        {% endfor %}
+
+        <div class="page-actions">
+
+            <button
+                type="submit"
+                class="btn btn-primary qual-btn-lg"
+                id="submit-qualification">
+
+                Submit qualification →
+
+            </button>
+
         </div>
-    
-    </section>
-    
-    {% endblock %}
-    
-    {% block scripts %}
-    
-    <script>
 
-    // -------------------------------------------------------------------
+    </form>
+
+</div>
+
+{% endblock %}
+{% block scripts %}
+
+<script>
+
+// -------------------------------------------------------------------
     // Span-marking editor (span_only mode).
     //
     // Wraps each character of the target text in its own span so a
@@ -614,99 +595,100 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-    
-        const form = document.getElementById("qualification-form");
-        const progress = document.getElementById("qualification-progress");
-    
-        if (!form) {
-            return;
+
+    const form = document.getElementById("qualification-form");
+    const progress = document.getElementById("qualification-progress");
+
+    if (!form) {
+        return;
+    }
+
+    initSpanQualEditors();
+
+    const questions = document.querySelectorAll(".qualification-question");
+
+    // A question counts as answered once its mode-appropriate input has
+    // a value. span_only questions are always "answered" -- an empty
+    // selection is itself a valid response ("no errors found").
+    function questionAnswered(question) {
+
+        const radioChecked = question.querySelector("input[type='radio']:checked");
+        if (radioChecked) {
+            return true;
         }
 
-        initSpanQualEditors();
-    
-        const questions = document.querySelectorAll(".qualification-question");
-
-        // A question counts as answered once its mode-appropriate input has
-        // a value. span_only questions are always "answered" -- an empty
-        // selection is itself a valid response ("no errors found").
-        function questionAnswered(question) {
-
-            const radioChecked = question.querySelector("input[type='radio']:checked");
-            if (radioChecked) {
-                return true;
-            }
-
-            const textarea = question.querySelector("textarea[name^='edited_text_']");
-            if (textarea) {
-                return textarea.value.trim().length > 0;
-            }
-
-            if (question.querySelector(".span-qual-input")) {
-                return true;
-            }
-
-            return false;
-
+        const textarea = question.querySelector("textarea[name^='edited_text_']");
+        if (textarea) {
+            return textarea.value.trim().length > 0;
         }
-    
-        function updateProgress() {
-    
-            let completed = 0;
-    
-            questions.forEach(function (question) {
 
-                if (questionAnswered(question)) {
-                    completed++;
-                }
-    
-            });
-    
-            progress.value = completed;
-    
+        if (question.querySelector(".span-qual-input")) {
+            return true;
         }
-    
-        form.addEventListener("change", updateProgress);
-        form.addEventListener("input", updateProgress);
-    
-        form.addEventListener("submit", function (event) {
-    
-            const unanswered = [];
-    
-            questions.forEach(function (question, index) {
 
-                if (!questionAnswered(question)) {
-                    unanswered.push(index + 1);
-                }
-    
-            });
-    
-            if (unanswered.length > 0) {
-    
-                event.preventDefault();
-    
-                alert(
-                    "Please answer all questions before submitting.\n\nMissing questions: "
-                    + unanswered.join(", ")
-                );
-    
-                return;
+        return false;
+
+    }
+
+    function updateProgress() {
+
+        let completed = 0;
+
+        questions.forEach(function (question) {
+
+            if (questionAnswered(question)) {
+                completed++;
             }
-    
-            const button = document.getElementById("submit-qualification");
-    
-            if (button) {
-    
-                button.disabled = true;
-                button.textContent = "Submitting...";
-    
-            }
-    
+
         });
-    
-        updateProgress();
-    
+
+        progress.value = completed;
+
+    }
+
+    form.addEventListener("change", updateProgress);
+    form.addEventListener("input", updateProgress);
+
+    form.addEventListener("submit", function (event) {
+
+        const unanswered = [];
+
+        questions.forEach(function (question, index) {
+
+            if (!questionAnswered(question)) {
+                unanswered.push(index + 1);
+            }
+
+        });
+
+        if (unanswered.length > 0) {
+
+            event.preventDefault();
+
+            alert(
+                "Please answer all questions before submitting.\n\nMissing questions: "
+                + unanswered.join(", ")
+            );
+
+            return;
+
+        }
+
+        const button = document.getElementById("submit-qualification");
+
+        if (button) {
+
+            button.disabled = true;
+            button.textContent = "Submitting...";
+
+        }
+
     });
-    
+
+    updateProgress();
+
+    });
+
     </script>
-    
-    {% endblock %}
+
+{% endblock %}

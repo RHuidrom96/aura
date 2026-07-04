@@ -4,177 +4,139 @@
 
 {% block content %}
 
-<section class="page page-qualification-result">
+<div class="qual-result-page">
 
-    <div class="container">
+    <div class="qual-panel qual-result-card">
 
-        <div class="card qualification-result-card">
+        {% if attempt.passed %}
 
-            <div class="card-body">
+        <div class="qual-result-status is-success">
 
-                {% if attempt.passed %}
-
-                <div class="result-status result-success">
-
-                    <div class="result-icon">
-                        ✅
-                    </div>
-
-                    <h1>Congratulations!</h1>
-
-                    <p>
-                        You have successfully passed the qualification test.
-                        You may now participate in annotation campaigns.
-                    </p>
-
-                </div>
-
-                {% else %}
-
-                <div class="result-status result-failed">
-
-                    <div class="result-icon">
-                        ❌
-                    </div>
-
-                    <h1>Qualification Not Passed</h1>
-
-                    <p>
-                        Unfortunately, you did not achieve the required passing
-                        score on this attempt.
-                    </p>
-
-                </div>
-
-                {% endif %}
-
-                <hr>
-
-                <section class="qualification-summary">
-
-                    <h2>Result Summary</h2>
-
-                    <dl class="summary-list">
-
-                        <div class="summary-row">
-
-                            <dt>Score</dt>
-
-                            <dd>
-                                {{ "%.1f"|format(attempt.score) }}%
-                            </dd>
-
-                        </div>
-
-                        <div class="summary-row">
-
-                            <dt>Correct Answers</dt>
-
-                            <dd>
-                                {{ attempt.correct_answers }}
-                                /
-                                {{ attempt.total_questions }}
-                            </dd>
-
-                        </div>
-
-                        <div class="summary-row">
-
-                            <dt>Passing Score</dt>
-
-                            <dd>
-                                {{ "%.1f"|format(attempt.test.passing_score) }}%
-                            </dd>
-
-                        </div>
-
-                        <div class="summary-row">
-
-                            <dt>Status</dt>
-
-                            <dd>
-
-                                {% if attempt.passed %}
-
-                                    <span class="status-badge status-success">
-                                        Qualified
-                                    </span>
-
-                                {% else %}
-
-                                    <span class="status-badge status-danger">
-                                        Not Qualified
-                                    </span>
-
-                                {% endif %}
-
-                            </dd>
-
-                        </div>
-
-                    </dl>
-
-                </section>
-
-                <hr>
-
-                <div class="qualification-actions">
-
-                    {% if attempt.passed %}
-
-                    <a
-                        href="{{ url_for('annotator_dashboard.annotator_dashboard') }}"
-                        class="btn btn-primary">
-
-                        Go to Dashboard
-
-                    </a>
-
-                    {% elif retry and retry.allowed %}
-
-                    <a
-                        href="{{ url_for('annotator_qualification.qualification') }}"
-                        class="btn btn-secondary">
-
-                        Try Again
-
-                    </a>
-
-                    <p class="hint" style="margin-top:10px;">
-                        Attempt {{ retry.attempts_used }} of {{ retry.max_attempts }} used.
-                    </p>
-
-                    {% elif retry and retry.reason == "max_attempts" %}
-
-                    <p class="hint">
-                        You have used all {{ retry.max_attempts }} attempts for this
-                        qualification test. Please contact your study admin.
-                    </p>
-
-                    {% elif retry and retry.reason == "cooldown" %}
-
-                    <p class="hint">
-                        You can try again after
-                        {{ retry.retry_at.strftime('%Y-%m-%d %H:%M UTC') }}.
-                    </p>
-
-                    {% else %}
-
-                    <p class="hint">
-                        No qualification test is currently available. Please check
-                        back later.
-                    </p>
-
-                    {% endif %}
-
-                </div>
-
+            <div class="qual-result-icon">
+                ✅
             </div>
+
+            <h1>Congratulations!</h1>
+
+            <p>
+                You have successfully passed the qualification test.
+                You may now participate in annotation campaigns.
+            </p>
+
+        </div>
+
+        {% else %}
+
+        <div class="qual-result-status is-failed">
+
+            <div class="qual-result-icon">
+                ❌
+            </div>
+
+            <h1>Qualification Not Passed</h1>
+
+            <p>
+                Unfortunately, you did not achieve the required passing
+                score on this attempt.
+            </p>
+
+        </div>
+
+        {% endif %}
+
+        <hr class="qual-divider">
+
+        <section class="qual-summary">
+
+            <h2 class="qual-summary-title">Result Summary</h2>
+
+            <dl class="summary-list">
+
+                <div class="summary-row qual-score-row">
+                    <dt>Score</dt>
+                    <dd>{{ "%.1f"|format(attempt.score) }}%</dd>
+                </div>
+
+                <div class="summary-row">
+                    <dt>Correct Answers</dt>
+                    <dd>{{ attempt.correct_answers }} / {{ attempt.total_questions }}</dd>
+                </div>
+
+                <div class="summary-row">
+                    <dt>Passing Score</dt>
+                    <dd>{{ "%.1f"|format(attempt.test.passing_score) }}%</dd>
+                </div>
+
+                <div class="summary-row">
+                    <dt>Status</dt>
+                    <dd>
+                        {% if attempt.passed %}
+                        <span class="status-badge status-success">Qualified</span>
+                        {% else %}
+                        <span class="status-badge status-danger">Not Qualified</span>
+                        {% endif %}
+                    </dd>
+                </div>
+
+            </dl>
+
+        </section>
+
+        <hr class="qual-divider">
+
+        <div class="qual-actions">
+
+            {% if attempt.passed %}
+
+            <a
+                href="{{ url_for('annotator_dashboard.annotator_dashboard') }}"
+                class="btn btn-primary qual-btn-lg">
+
+                Go to Dashboard
+
+            </a>
+
+            {% elif retry and retry.allowed %}
+
+            <a
+                href="{{ url_for('annotator_qualification.qualification') }}"
+                class="btn btn-secondary qual-btn-lg">
+
+                Try Again
+
+            </a>
+
+            <p class="hint">
+                Attempt {{ retry.attempts_used }} of {{ retry.max_attempts }} used.
+            </p>
+
+            {% elif retry and retry.reason == "max_attempts" %}
+
+            <p class="hint">
+                You have used all {{ retry.max_attempts }} attempts for this
+                qualification test. Please contact your study admin.
+            </p>
+
+            {% elif retry and retry.reason == "cooldown" %}
+
+            <p class="hint">
+                You can try again after
+                {{ retry.retry_at.strftime('%Y-%m-%d %H:%M UTC') }}.
+            </p>
+
+            {% else %}
+
+            <p class="hint">
+                No qualification test is currently available. Please check
+                back later.
+            </p>
+
+            {% endif %}
 
         </div>
 
     </div>
 
-</section>
+</div>
 
 {% endblock %}
