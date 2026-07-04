@@ -1,0 +1,712 @@
+{% extends "base.html" %}
+
+{% block title %}Qualification Test • Aura{% endblock %}
+
+{% block content %}
+
+<section class="page page-qualification-test">
+
+    <div class="container">
+
+        <header class="qualification-header">
+
+            <div>
+
+                <h1>Qualification Test</h1>
+
+                <p class="text-muted">
+                    Complete every question before submitting your responses.
+                </p>
+
+            </div>
+
+            <div class="qualification-progress">
+
+                <div class="progress-label">
+
+                    <span>Questions</span>
+
+                    <strong>{{ test.num_segments }}</strong>
+
+                </div>
+
+                <progress
+                    value="0"
+                    max="{{ test.num_segments }}"
+                    id="qualification-progress">
+                </progress>
+
+            </div>
+
+        </header>
+
+
+        <form
+            method="post"
+            action="{{ url_for('annotator_qualification.submit_qualification') }}"
+            id="qualification-form">
+
+            {% for segment in segments %}
+
+            <article
+                class="card qualification-question"
+                data-question="{{ loop.index }}">
+
+                <div class="card-header">
+
+                    <div class="question-number">
+
+                        <span class="badge">
+
+                            Question {{ loop.index }}
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="card-body">
+
+                    <!-- Source ------------------------------------------ -->
+
+                    <section class="segment-block">
+
+                        <h3>Source</h3>
+
+                        <div class="segment-text source-text">
+
+                            {{ segment.source }}
+
+                        </div>
+
+                    </section>
+
+
+                    <!-- Translation ------------------------------------- -->
+
+                    {% if test.mode == "pairwise" %}
+
+                    <section class="segment-block">
+
+                        <h3>Translation A</h3>
+
+                        <div class="segment-text translation-text">
+
+                            {{ segment.target_a }}
+
+                        </div>
+
+                    </section>
+
+                    <section class="segment-block">
+
+                        <h3>Translation B</h3>
+
+                        <div class="segment-text translation-text">
+
+                            {{ segment.target_b }}
+
+                        </div>
+
+                    </section>
+
+                    {% else %}
+
+                    <section class="segment-block">
+
+                        <h3>Translation</h3>
+
+                        <div class="segment-text translation-text">
+
+                            {{ segment.target }}
+
+                        </div>
+
+                    </section>
+
+                    {% endif %}
+
+
+                    <!-- Evaluation -------------------------------------- -->
+
+                    <section class="segment-block">
+
+                        <h3>Your Evaluation</h3>
+
+                        {% if test.mode == "likert" %}
+
+                        <div class="criteria-list">
+
+                            {% for criterion in test.criteria %}
+
+                            <div class="criterion-card">
+
+                                <label class="criterion-title">
+
+                                    {{ criterion.name }}
+
+                                </label>
+
+                                {% if criterion.guide %}
+                                <p class="criterion-guide">
+                                    {{ criterion.guide }}
+                                </p>
+                                {% endif %}
+
+                                <div class="likert-scale">
+
+                                    {% for score in range(1, 6) %}
+
+                                    <label class="likert-option">
+
+                                        <input
+                                            type="radio"
+                                            name="score_{{ segment.id }}_{{ criterion.id }}"
+                                            value="{{ score }}"
+                                            required>
+
+                                        <span>{{ score }}</span>
+
+                                    </label>
+
+                                    {% endfor %}
+
+                                </div>
+
+                            </div>
+
+                            {% endfor %}
+
+                        </div>
+
+                    {% elif test.mode == "pairwise" %}
+
+                        <div class="pairwise-container">
+
+                            <label class="pairwise-option">
+
+                                <input
+                                    type="radio"
+                                    name="preference_{{ segment.id }}"
+                                    value="a"
+                                    required>
+
+                                <span>Translation A is better</span>
+
+                            </label>
+
+                            <label class="pairwise-option">
+
+                                <input
+                                    type="radio"
+                                    name="preference_{{ segment.id }}"
+                                    value="tie"
+                                    required>
+
+                                <span>Both translations are equal</span>
+
+                            </label>
+
+                            <label class="pairwise-option">
+
+                                <input
+                                    type="radio"
+                                    name="preference_{{ segment.id }}"
+                                    value="b"
+                                    required>
+
+                                <span>Translation B is better</span>
+
+                            </label>
+
+                        </div>
+
+                    {% elif test.mode == "span_only" %}
+
+                        <div class="span-qual" data-segment-id="{{ segment.id }}">
+
+                            <p class="hint">
+                                Pick an error type below, then click and drag
+                                across the translation to mark the span. Remove
+                                a marked span with the × next to it in the list.
+                                If there are no errors, leave the text unmarked.
+                            </p>
+
+                            <div class="span-qual-categories" role="group" aria-label="Error type">
+
+                                {% for criterion in test.criteria %}
+
+                                <button
+                                    type="button"
+                                    class="span-qual-cat-btn"
+                                    data-criterion-id="{{ criterion.id }}"
+                                    data-criterion-name="{{ criterion.name }}"
+                                    data-color="{{ criterion.color }}">
+
+                                    <span
+                                        class="span-qual-cat-swatch"
+                                        style="background: {{ criterion.color }};"></span>
+
+                                    {{ criterion.name }}
+
+                                </button>
+
+                                {% endfor %}
+
+                            </div>
+
+                            <div
+                                class="span-qual-text"
+                                data-text="{{ segment.target }}"></div>
+
+                            <ul class="span-qual-list"></ul>
+
+                            <input
+                                type="hidden"
+                                name="spans_{{ segment.id }}"
+                                class="span-qual-input"
+                                value="{}">
+
+                        </div>
+
+                    {% elif test.mode == "post_edit" %}
+
+                        <div class="qualification-placeholder">
+
+                            <label
+                                for="edit_{{ segment.id }}"
+                                class="criterion-title">
+
+                                Post-edited Translation
+
+                            </label>
+
+                            <textarea
+                                id="edit_{{ segment.id }}"
+                                name="edited_text_{{ segment.id }}"
+                                rows="6"
+                                class="form-control"
+                                required></textarea>
+
+                        </div>
+
+                    {% endif %}
+
+                </section>
+
+            </article>
+
+            {% endfor %}
+
+            <div class="qualification-submit">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary btn-lg"
+                    id="submit-qualification">
+    
+                    Submit Qualification
+    
+                </button>
+    
+            </div>
+    
+            </form>
+    
+        </div>
+    
+    </section>
+    
+    {% endblock %}
+    
+    {% block scripts %}
+    
+    <script>
+
+    // -------------------------------------------------------------------
+    // Span-marking editor (span_only mode).
+    //
+    // Wraps each character of the target text in its own span so a
+    // click-and-drag selection can be turned into a [start, end)
+    // character-offset range, tagged with whichever error-type category
+    // (criterion) button is currently active. Offsets are 0-indexed,
+    // end-exclusive, matching how gold answers are authored (see the
+    // admin qualification form's segments-file help text).
+    // -------------------------------------------------------------------
+
+    function initSpanQualEditors() {
+
+        document.querySelectorAll(".span-qual").forEach(function (container) {
+
+            const textEl = container.querySelector(".span-qual-text");
+            const input = container.querySelector(".span-qual-input");
+            const listEl = container.querySelector(".span-qual-list");
+            const catButtons = container.querySelectorAll(".span-qual-cat-btn");
+
+            if (!textEl || !input) {
+                return;
+            }
+
+            const text = textEl.getAttribute("data-text") || "";
+
+            // spans: { criterionId: [[start, end], ...] }
+            let spans = {};
+
+            try {
+                const existing = JSON.parse(input.value || "{}");
+                if (existing && typeof existing === "object") {
+                    spans = existing;
+                }
+            } catch (e) {
+                spans = {};
+            }
+
+            let activeCriterionId = null;
+            let dragging = false;
+            let dragStartIdx = null;
+            let dragEndIdx = null;
+
+            // ---- build one <span> per character -------------------------
+
+            textEl.innerHTML = "";
+
+            const chars = [];
+
+            for (let i = 0; i < text.length; i++) {
+
+                const ch = document.createElement("span");
+
+                ch.className = "span-qual-char";
+                ch.dataset.idx = String(i);
+                ch.textContent = text[i];
+
+                textEl.appendChild(ch);
+                chars.push(ch);
+
+            }
+
+            function criterionColor(criterionId) {
+
+                let color = "#999";
+
+                catButtons.forEach(function (btn) {
+                    if (btn.dataset.criterionId === criterionId) {
+                        color = btn.dataset.color || color;
+                    }
+                });
+
+                return color;
+
+            }
+
+            function criterionName(criterionId) {
+
+                let name = criterionId;
+
+                catButtons.forEach(function (btn) {
+                    if (btn.dataset.criterionId === criterionId) {
+                        name = btn.dataset.criterionName || name;
+                    }
+                });
+
+                return name;
+
+            }
+
+            function hexToRgba(hex, alpha) {
+
+                const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || "");
+
+                if (!m) {
+                    return "rgba(153,153,153," + alpha + ")";
+                }
+
+                const r = parseInt(m[1], 16);
+                const g = parseInt(m[2], 16);
+                const b = parseInt(m[3], 16);
+
+                return "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
+
+            }
+
+            function renderHighlights() {
+
+                chars.forEach(function (ch) {
+                    ch.style.backgroundColor = "";
+                    ch.title = "";
+                });
+
+                Object.keys(spans).forEach(function (critId) {
+
+                    (spans[critId] || []).forEach(function (range) {
+
+                        const start = range[0];
+                        const end = range[1];
+                        const color = hexToRgba(criterionColor(critId), 0.35);
+
+                        for (let i = start; i < end && i < chars.length; i++) {
+                            chars[i].style.backgroundColor = color;
+                            chars[i].title = criterionName(critId);
+                        }
+
+                    });
+
+                });
+
+                if (dragging && activeCriterionId && dragStartIdx !== null && dragEndIdx !== null) {
+
+                    const lo = Math.min(dragStartIdx, dragEndIdx);
+                    const hi = Math.max(dragStartIdx, dragEndIdx);
+                    const color = hexToRgba(criterionColor(activeCriterionId), 0.55);
+
+                    for (let i = lo; i <= hi && i < chars.length; i++) {
+                        chars[i].style.backgroundColor = color;
+                    }
+
+                }
+
+            }
+
+            function renderList() {
+
+                listEl.innerHTML = "";
+
+                Object.keys(spans).forEach(function (critId) {
+
+                    (spans[critId] || []).forEach(function (range, idx) {
+
+                        const li = document.createElement("li");
+                        li.className = "span-qual-list-item";
+
+                        const label = document.createElement("span");
+                        label.textContent = criterionName(critId) + ": "
+                            + text.slice(range[0], range[1]);
+
+                        const removeBtn = document.createElement("button");
+                        removeBtn.type = "button";
+                        removeBtn.className = "link-btn span-qual-remove";
+                        removeBtn.textContent = "×";
+                        removeBtn.setAttribute("aria-label", "Remove span");
+                        removeBtn.addEventListener("click", function () {
+                            spans[critId].splice(idx, 1);
+                            if (spans[critId].length === 0) {
+                                delete spans[critId];
+                            }
+                            sync();
+                        });
+
+                        li.appendChild(label);
+                        li.appendChild(removeBtn);
+                        listEl.appendChild(li);
+
+                    });
+
+                });
+
+            }
+
+            function sync() {
+                renderHighlights();
+                renderList();
+                input.value = JSON.stringify(spans);
+            }
+
+            function addSpan(criterionId, start, end) {
+
+                if (start === end) {
+                    return;
+                }
+
+                const lo = Math.min(start, end);
+                const hi = Math.max(start, end) + 1; // end-exclusive
+
+                if (!spans[criterionId]) {
+                    spans[criterionId] = [];
+                }
+
+                spans[criterionId].push([lo, hi]);
+                spans[criterionId].sort(function (a, b) { return a[0] - b[0]; });
+
+            }
+
+            // ---- category selection --------------------------------------
+
+            catButtons.forEach(function (btn) {
+
+                btn.addEventListener("click", function () {
+
+                    const id = btn.dataset.criterionId;
+
+                    if (activeCriterionId === id) {
+                        activeCriterionId = null;
+                    } else {
+                        activeCriterionId = id;
+                    }
+
+                    catButtons.forEach(function (b) {
+                        b.classList.toggle("active", b.dataset.criterionId === activeCriterionId);
+                    });
+
+                });
+
+            });
+
+            // ---- click-and-drag selection over characters -----------------
+
+            textEl.addEventListener("mousedown", function (event) {
+
+                const target = event.target.closest(".span-qual-char");
+
+                if (!target || !activeCriterionId) {
+                    return;
+                }
+
+                dragging = true;
+                dragStartIdx = parseInt(target.dataset.idx, 10);
+                dragEndIdx = dragStartIdx;
+
+                renderHighlights();
+                event.preventDefault();
+
+            });
+
+            textEl.addEventListener("mouseover", function (event) {
+
+                if (!dragging) {
+                    return;
+                }
+
+                const target = event.target.closest(".span-qual-char");
+
+                if (!target) {
+                    return;
+                }
+
+                dragEndIdx = parseInt(target.dataset.idx, 10);
+                renderHighlights();
+
+            });
+
+            document.addEventListener("mouseup", function () {
+
+                if (!dragging) {
+                    return;
+                }
+
+                dragging = false;
+
+                if (activeCriterionId && dragStartIdx !== null && dragEndIdx !== null) {
+                    addSpan(activeCriterionId, dragStartIdx, dragEndIdx);
+                }
+
+                dragStartIdx = null;
+                dragEndIdx = null;
+
+                sync();
+
+            });
+
+            sync();
+
+        });
+
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+    
+        const form = document.getElementById("qualification-form");
+        const progress = document.getElementById("qualification-progress");
+    
+        if (!form) {
+            return;
+        }
+
+        initSpanQualEditors();
+    
+        const questions = document.querySelectorAll(".qualification-question");
+
+        // A question counts as answered once its mode-appropriate input has
+        // a value. span_only questions are always "answered" -- an empty
+        // selection is itself a valid response ("no errors found").
+        function questionAnswered(question) {
+
+            const radioChecked = question.querySelector("input[type='radio']:checked");
+            if (radioChecked) {
+                return true;
+            }
+
+            const textarea = question.querySelector("textarea[name^='edited_text_']");
+            if (textarea) {
+                return textarea.value.trim().length > 0;
+            }
+
+            if (question.querySelector(".span-qual-input")) {
+                return true;
+            }
+
+            return false;
+
+        }
+    
+        function updateProgress() {
+    
+            let completed = 0;
+    
+            questions.forEach(function (question) {
+
+                if (questionAnswered(question)) {
+                    completed++;
+                }
+    
+            });
+    
+            progress.value = completed;
+    
+        }
+    
+        form.addEventListener("change", updateProgress);
+        form.addEventListener("input", updateProgress);
+    
+        form.addEventListener("submit", function (event) {
+    
+            const unanswered = [];
+    
+            questions.forEach(function (question, index) {
+
+                if (!questionAnswered(question)) {
+                    unanswered.push(index + 1);
+                }
+    
+            });
+    
+            if (unanswered.length > 0) {
+    
+                event.preventDefault();
+    
+                alert(
+                    "Please answer all questions before submitting.\n\nMissing questions: "
+                    + unanswered.join(", ")
+                );
+    
+                return;
+            }
+    
+            const button = document.getElementById("submit-qualification");
+    
+            if (button) {
+    
+                button.disabled = true;
+                button.textContent = "Submitting...";
+    
+            }
+    
+        });
+    
+        updateProgress();
+    
+    });
+    
+    </script>
+    
+    {% endblock %}

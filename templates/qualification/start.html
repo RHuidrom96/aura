@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Qualification Test • Aura{% endblock %}
+
+{% block content %}
+<section class="page page-qualification-start">
+
+    <div class="container">
+
+        <!-- Hero --------------------------------------------------------- -->
+
+        <header class="qualification-hero">
+
+            <div class="qualification-hero__icon">
+                🎓
+            </div>
+
+            <div class="qualification-hero__content">
+
+                <h1>Qualification Test</h1>
+
+                <p class="qualification-hero__lead">
+                    Before participating in annotation campaigns, you must
+                    successfully complete the qualification test. This helps
+                    ensure consistent, high-quality annotations across all
+                    projects.
+                </p>
+
+            </div>
+
+        </header>
+
+
+        <!-- Test Overview ------------------------------------------------ -->
+
+        <section class="card qualification-card">
+
+            <div class="card-header">
+                <h2>Test Overview</h2>
+            </div>
+
+            <div class="card-body">
+
+                <dl class="qualification-summary">
+
+                    <div class="summary-row">
+                        <dt>Language</dt>
+                        <dd>{{ test.language }}</dd>
+                    </div>
+
+                    <div class="summary-row">
+                        <dt>Evaluation Mode</dt>
+                        <dd>{{ test.mode|replace("_", " ")|title }}</dd>
+                    </div>
+
+                    <div class="summary-row">
+                        <dt>Questions</dt>
+                        <dd>{{ test.num_segments }}</dd>
+                    </div>
+
+                    <div class="summary-row">
+                        <dt>Passing Score</dt>
+                        <dd>{{ "%.0f"|format(test.passing_score) }}%</dd>
+                    </div>
+
+                    {% if test.description %}
+                    <div class="summary-row summary-row-description">
+                        <dt>Description</dt>
+                        <dd>{{ test.description }}</dd>
+                    </div>
+                    {% endif %}
+
+                </dl>
+
+            </div>
+
+        </section>
+
+
+        <!-- Evaluation Criteria ------------------------------------------ -->
+
+        {% if test.criteria %}
+
+        <section class="card qualification-card">
+
+            <div class="card-header">
+                <h2>Evaluation Criteria</h2>
+            </div>
+
+            <div class="card-body">
+
+                <div class="criteria-list">
+
+                    {% for criterion in test.criteria %}
+
+                    <article class="criterion-card">
+
+                        <h3>{{ criterion.name }}</h3>
+
+                        {% if criterion.guide %}
+                        <p>
+                            {{ criterion.guide }}
+                        </p>
+                        {% endif %}
+
+                    </article>
+
+                    {% endfor %}
+
+                </div>
+
+            </div>
+
+        </section>
+
+        {% endif %}
+
+        <!-- Attempt history (only shown on a retry) ----------------------- -->
+
+        {% if retry %}
+
+        <section class="card qualification-card">
+
+            <div class="card-header">
+                <h2>Attempt History</h2>
+            </div>
+
+            <div class="card-body">
+
+                <p>
+                    You have used {{ retry.attempts_used }} of
+                    {{ retry.max_attempts }} attempt{{ "s" if retry.max_attempts != 1 else "" }}
+                    for this qualification test.
+                </p>
+
+            </div>
+
+        </section>
+
+        {% endif %}
+
+        <!-- Instructions ------------------------------------------------ -->
+
+        <section class="card qualification-card">
+
+            <div class="card-header">
+                <h2>Instructions</h2>
+            </div>
+
+            <div class="card-body">
+
+                <ul class="qualification-instructions">
+
+                    <li>
+                        Read every source and translation carefully before
+                        answering.
+                    </li>
+
+                    <li>
+                        Answer every question. Unanswered questions will be
+                        marked as incorrect.
+                    </li>
+
+                    <li>
+                        Once submitted, your answers cannot be modified.
+                    </li>
+
+                    <li>
+                        Your qualification result will be available
+                        immediately after submission.
+                    </li>
+
+                    <li>
+                        If you pass, you'll immediately be eligible to
+                        participate in annotation campaigns.
+                    </li>
+
+                </ul>
+
+            </div>
+
+        </section>
+
+
+        <!-- Start Action ----------------------------------------------- -->
+
+        <section class="qualification-actions">
+
+            <form method="post"
+                  action="{{ url_for('annotator_qualification.start_qualification') }}">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary btn-lg">
+
+                    {{ "Retake Qualification" if retry else "Start Qualification" }}
+
+                </button>
+
+            </form>
+
+        </section>
+
+    </div>
+
+</section>
+{% endblock %}

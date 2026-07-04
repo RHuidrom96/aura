@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Edit qualification test · {{ test.title }}{% endblock %}
+
+{% block content %}
+{% set mode = 'edit' %}
+<div class="page-header">
+  <div>
+    <h1>Edit qualification test</h1>
+    <p class="hint">{{ test.title }} · {{ test.num_segments }} question{{ '' if test.num_segments == 1 else 's' }}</p>
+  </div>
+  <a href="{{ url_for('admin_qualification.admin_qualification_list') }}" class="link-btn">← back to tests</a>
+</div>
+
+<div class="info-box" style="margin-bottom:16px;">
+  <strong>Renaming a criterion changes how gold answers are matched.</strong>
+  <p class="hint" style="margin-top:6px;">
+    Segment gold answers are keyed by criterion id (derived from the criterion name).
+    Renaming a criterion here means existing segments need to be re-uploaded with
+    matching gold keys, or grading will fail for that segment. Editing a criterion's
+    <em>definition</em> (not its name) is always safe.
+  </p>
+</div>
+
+<section class="card">
+  <form method="post"
+        action="{{ url_for('admin_qualification.admin_qualification_edit', test_id=test.id) }}"
+        enctype="multipart/form-data"
+        class="register-form">
+
+    {% include "_qualification_form_fields.html" %}
+
+    <hr class="form-divider">
+
+    <div class="field">
+      <label for="segments_file">Replace segments (optional)</label>
+      <input type="file" id="segments_file" name="segments_file" accept=".json,application/json">
+      <p class="hint">
+        Leave this and the paste box below empty to keep the current
+        {{ test.num_segments }} segment{{ '' if test.num_segments == 1 else 's' }} unchanged.
+        Uploading or pasting a new JSON array replaces all of them.
+        <a href="#" onclick="document.getElementById('qual-paste-toggle').open=true; document.getElementById('segments_paste').focus(); return false;">Paste instead.</a>
+      </p>
+    </div>
+
+    <details id="qual-paste-toggle">
+      <summary class="link-btn" style="display:inline-block;margin-bottom:6px;">Paste JSON instead</summary>
+      <div class="field">
+        <label for="segments_paste">Segments JSON</label>
+        <textarea id="segments_paste" name="segments_paste" rows="8"
+                  placeholder='[{"source": "...", "target": "...", "gold": {"scores": {"adequacy": 5}}}, ...]'>{{ form_data.get('segments_paste', '') }}</textarea>
+      </div>
+    </details>
+
+    <div class="form-actions">
+      <a href="{{ url_for('admin_qualification.admin_qualification_list') }}" class="btn">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save changes</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

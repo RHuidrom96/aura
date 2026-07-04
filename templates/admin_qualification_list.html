@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Qualification tests · Aura{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Qualification tests</h1>
+    <p class="hint">Annotators must pass the active test before joining any campaign.</p>
+  </div>
+  <a href="{{ url_for('admin_qualification.admin_qualification_new') }}" class="btn btn-primary">+ New test</a>
+</div>
+
+{% if not tests %}
+<section class="card">
+  <p class="muted">No qualification tests yet. Create one to start gating campaign access.</p>
+</section>
+{% else %}
+<section class="card">
+  <table class="annotator-table">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Language</th>
+        <th>Mode</th>
+        <th>Questions</th>
+        <th>Passing score</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for test in tests %}
+      <tr>
+        <td>{{ test.title }}</td>
+        <td class="muted">{{ test.language }}</td>
+        <td class="muted">{{ test.mode|replace("_", " ")|title }}</td>
+        <td class="muted">{{ test.num_segments }}</td>
+        <td class="muted">{{ "%.0f"|format(test.passing_score) }}%</td>
+        <td>
+          {% if test.is_active %}
+          <span class="status-badge status-success">Active</span>
+          {% else %}
+          <span class="status-badge status-danger">Inactive</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('admin_qualification.admin_qualification_edit', test_id=test.id) }}" class="btn btn-small">Edit</a>
+          <form method="post"
+                action="{{ url_for('admin_qualification.admin_qualification_toggle', test_id=test.id) }}"
+                style="display:inline;">
+            {% if test.is_active %}
+            <button type="submit" class="btn btn-small">Deactivate</button>
+            {% else %}
+            <button type="submit" class="btn btn-primary btn-small">Activate</button>
+            {% endif %}
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<section class="card">
+  <p class="hint">
+    Only one qualification test can be active at a time — activating a test automatically
+    deactivates any other. Annotators who already passed a previous test keep their
+    qualified status.
+  </p>
+</section>
+{% endblock %}
