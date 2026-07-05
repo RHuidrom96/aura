@@ -64,3 +64,7 @@ def register_components(app):
     @app.route("/healthz")
     def healthz():
         return jsonify({"ok": True, "admin_configured": ADMIN_EMAIL != "admin@example.com"})
+
+    @app.route("/favicon.ico")
+    def favicon():
+        return app.send_static_file("favicon.svg")
