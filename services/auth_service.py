@@ -47,6 +47,50 @@ def current_admin():
     return session.get("admin_email") if session.get("is_admin") else None
 
 
+def admin_owns(obj):
+    """True if the current admin may view/manage this campaign or group.
+
+    A campaign/group belongs to the admin whose email is stored in ``owner_email``.
+    Legacy rows created before ownership existed have an empty ``owner_email`` and remain
+    visible to any signed-in admin (so pre-existing data isn't orphaned)."""
+    me = (current_admin() or "").strip().lower()
+    owner = (getattr(obj, "owner_email", "") or "").strip().lower()
+    return (not owner) or (owner == me)
+
+
+def _admin_owns_email(owner_email):
+    me = (current_admin() or "").strip().lower()
+    owner = (owner_email or "").strip().lower()
+    return (not owner) or (owner == me)
+
+
+def owned_campaign_or_404(campaign_id):
+    """Fetch a campaign the current admin owns, else 404 (so foreign ids don't leak)."""
+    from flask import abort
+    c = Campaign.query.get_or_404(campaign_id)
+    if not admin_owns(c):
+        abort(404)
+    return c
+
+
+def owned_group_or_404(group_id):
+    from flask import abort
+    from models import CampaignGroup
+    g = CampaignGroup.query.get_or_404(group_id)
+    if not admin_owns(g):
+        abort(404)
+    return g
+
+
+def visible_campaigns_query():
+    """Campaigns query filtered to those the current admin owns (or legacy unowned)."""
+    me = (current_admin() or "").strip().lower()
+    return Campaign.query.filter(
+        db.or_(Campaign.owner_email.is_(None),
+               Campaign.owner_email == "",
+               db.func.lower(Campaign.owner_email) == me))
+
+
 def current_annotator():
     aid = session.get("annotator_id")
     if not aid:
@@ -165,6 +209,7 @@ def logout_admin():
 
 
 # ----- Annotator -------
+
 def login_annotator(annotator, campaign_id):
     session.clear()
     session["annotator_id"] = annotator.id
@@ -188,6 +233,36 @@ def get_resume_campaign(last_campaign_id):
 
     return None
 
+
+# # ---------- Annotator Signup / Email Verification ----------
+
+# def start_annotator_signup(email, password, confirm):
+#     """
+#     Sends an email verification OTP for a newly created annotator account.
+#     """
+#     otp = generate_otp()
+#     annotator.set_otp(otp)
+
+#     db.session.commit()
+
+#     send_otp(annotator.email, otp, role="annotator")
+
+
+# def verify_annotator_signup_otp(email, otp):
+#     """
+#     Verify an annotator's signup OTP and activate the account.
+#     """
+#     annotator = Annotator.query.filter_by(email=email).first()
+
+#     if not annotator or not annotator.check_otp(otp):
+#         return False
+
+#     annotator.email_verified = True
+#     annotator.clear_otp()
+
+#     db.session.commit()
+
+#     return True
 
 # ============================================================================
 # Shared password-reset / OTP / password-update helpers.
@@ -237,7 +312,7 @@ def start_admin_signup(email, password, confirm, invite_code):
         db.session.add(account)
     db.session.commit()
 
-    send_otp(email, otp, role="admin")
+    send_otp(email, otp)
 
     return account, []
 
@@ -255,14 +330,8 @@ def verify_admin_signup_otp(email, otp):
 def start_annotator_signup(annotator):
     otp = generate_otp()
     annotator.set_otp(otp)
-
     db.session.commit()
-
-    send_otp(
-        annotator.email,
-        otp,
-        role="annotator",
-    )
+    send_otp(annotator.email, otp, role="annotator")
 
 
 def verify_annotator_signup_otp(email, otp):
