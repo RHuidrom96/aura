@@ -92,6 +92,8 @@ closes and everything remains downloadable from the results page.
 
 ## Admin workflow
 
+> **Campaign visibility is per-admin.** Each campaign (and campaign group) belongs to the admin who created it, and only that admin can see or manage it — the dashboard, results, exports, editing, and deletion are all restricted to the owner; another admin requesting a campaign they don't own gets a 404. (Campaigns created before this restriction existed have no recorded owner and remain visible to any admin.)
+
 1. **Sign in** at `/admin/login` with the credentials in your env vars.
 2. **New campaign**: set name, source/target languages, optional script (Bengali / Meitei Mayek for Manipuri), and upload segments JSON.
 3. **Copy the share link** from the campaign detail page and send it to your annotators (e.g. by email).
@@ -208,7 +210,8 @@ When creating **or editing** a campaign, the admin first picks an **evaluation m
 
 1. **Likert scale rating** — annotators score each criterion on a scale. This is the original flow and keeps all the scale options below. Span annotation is *optional* here and, when enabled, can be marked in the **target only** or in **both source and target**.
 2. **Pairwise preference** — each segment shows **two candidate translations** (A and B); annotators choose which is better from a set of **preference options you define**. No scoring or spans.
-3. **Span annotation only** — annotators only mark error spans (no scoring). Your criteria become the **error-type categories**. A segment is complete once the annotator ticks "reviewed" (which also allows zero-error segments to be completed).
+3. **Preference Selection** — one source with **N candidate outputs**; annotators **rank** the candidates from best (1) to worst (**ties allowed**). Results report, per system, **win rate** (from pairwise decomposition of every ranking), **mean rank**, **top-1 rate**, **Borda score**, and an **Elo ranking** (starting from 1000, computed deterministically from all candidate-pair outcomes), plus inter-annotator agreement (share of candidate pairs ordered the same way, and mean Kendall τ-b). Provide a `candidates` list of two or more per segment (JSON array, or a CSV/TSV `candidates` column holding a JSON array or a `|`-separated list; `target_a`/`target_b` also works for two). A per-candidate `system` lets results aggregate by system. This mode is separate from Pairwise preference and leaves it unchanged.
+4. **Span annotation only** — annotators only mark error spans (no scoring). Your criteria become the **error-type categories**. A segment is complete once the annotator ticks "reviewed" (which also allows zero-error segments to be completed).
 
 ### Shared options (all modes)
 

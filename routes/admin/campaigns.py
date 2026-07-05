@@ -26,7 +26,8 @@ from utils.forms import (
     parse_scale_from_form, parse_criteria_from_form, parse_preferences_from_form,
 )
 from utils.ingest import parse_segments_upload, ACCEPT_ATTR as SEGMENTS_ACCEPT
-from services.auth_service import require_admin, ADMIN_EMAIL
+from services.auth_service import (require_admin, ADMIN_EMAIL, owned_campaign_or_404,
+    owned_group_or_404, visible_campaigns_query, admin_owns)
 from services.ai_assistant import task_label
 
 logger = logging.getLogger(__name__)
@@ -40,8 +41,8 @@ admin_campaign_bp = Blueprint(
 @admin_campaign_bp.route("/dashboard")
 @require_admin
 def admin_dashboard():
-    campaigns = Campaign.query.order_by(Campaign.created_at.desc()).all()
-    groups = CampaignGroup.query.order_by(CampaignGroup.created_at.desc()).all()
+    campaigns = visible_campaigns_query().order_by(Campaign.created_at.desc()).all()
+    groups = [g for g in CampaignGroup.query.order_by(CampaignGroup.created_at.desc()).all() if admin_owns(g)]
     # Annotator counts per campaign
     stats = {}
     for c in campaigns:
@@ -66,7 +67,7 @@ def admin_dashboard():
 @admin_campaign_bp.route("/dashboard.json")
 @require_admin
 def admin_dashboard_json():
-    campaigns = Campaign.query.order_by(Campaign.created_at.desc()).all()
+    campaigns = visible_campaigns_query().order_by(Campaign.created_at.desc()).all()
     out = []
     for c in campaigns:
         crit = get_criteria_for(c)
@@ -137,6 +138,11 @@ def _validate_segments_for_mode(segments, eval_mode, campaign_for_norm=None):
             if not a or not b:
                 errors.append(f"Segment {i+1}: pairwise mode needs two candidates "
                             "(provide 'target_a' and 'target_b', or a 'candidates' list of two).")
+        elif eval_mode == "preference_selection":
+            cands = [c for c in norm.selection_candidates(s) if (c.get("text") or "").strip()]
+            if len(cands) < 2:
+                errors.append(f"Segment {i+1}: Preference Selection needs at least two candidates "
+                              "(provide a 'candidates' list, or 'target_a'/'target_b').")
         else:
             if "target" not in s:
                 errors.append(f"Segment {i+1}: must have a 'target'.")
@@ -209,7 +215,7 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
         span_scope = form.get("span_scope", "").strip()
         if span_scope not in ("target", "both"):
             span_scope = ""   # validated below
-    elif eval_mode in ("pairwise", "post_edit"):
+    elif eval_mode in ("pairwise", "post_edit", "preference_selection"):
         enable_spans = False
         span_scope = "target"
     else:  # likert
@@ -568,7 +574,7 @@ def _render_new_campaign_form(form_data=None):
 @admin_campaign_bp.route("/campaign/<campaign_id>/edit", methods=["GET", "POST"])
 @require_admin
 def admin_campaign_edit(campaign_id):
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     if c.is_closed:
         flash("This campaign is closed and can no longer be edited.", "error")
         return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
@@ -662,7 +668,7 @@ def _render_edit_campaign_form(campaign, form_data):
 @require_admin
 def admin_campaign_detail(campaign_id):
     from models import CampaignAnnotator
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     crit_ids = [cr["id"] for cr in get_criteria_for(c)]
     # Gather per-annotator progress
     rows = []
@@ -694,7 +700,7 @@ def admin_campaign_detail(campaign_id):
     diff_label = {"auto": "Automatic (composite heuristic)", "length": "By input length",
                 "manual": "Manual labels only", "none": "None"}.get(
                     c.difficulty_method or "auto", "Automatic")
-    groups = CampaignGroup.query.order_by(CampaignGroup.name.asc()).all()
+    groups = [g for g in CampaignGroup.query.order_by(CampaignGroup.name.asc()).all() if admin_owns(g)]
     return render_template("admin_campaign_detail.html",
                         campaign=c, rows=rows, share_url=share_url,
                         criteria=get_criteria_for(c),
@@ -708,7 +714,7 @@ def admin_campaign_detail(campaign_id):
 @require_admin
 def admin_campaign_progress(campaign_id):
     from models import CampaignAnnotator
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     crit = get_criteria_for(c)
     rows = []
     annotator_ids = sorted({r.annotator_id for r in c.ratings})
@@ -754,7 +760,7 @@ def admin_campaign_progress(campaign_id):
 @require_admin
 def admin_evaluate_annotator(campaign_id, annotator_id):
     from models import CampaignAnnotator
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     link = CampaignAnnotator.query.filter_by(campaign_id=c.id, annotator_id=annotator_id).first()
     if not link:
         link = CampaignAnnotator(campaign_id=c.id, annotator_id=annotator_id)
@@ -773,7 +779,7 @@ def admin_evaluate_annotator(campaign_id, annotator_id):
 @admin_campaign_bp.route("/campaign/<campaign_id>/close", methods=["POST"])
 @require_admin
 def admin_campaign_close(campaign_id):
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     if c.is_closed:
         flash("Campaign is already closed.", "info")
     else:
@@ -837,7 +843,7 @@ def admin_campaign_close(campaign_id):
 @admin_campaign_bp.route("/campaign/<campaign_id>/delete", methods=["POST"])
 @require_admin
 def admin_campaign_delete(campaign_id):
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     # Require the admin to type the campaign name to confirm
     confirm = request.form.get("confirm_name", "").strip()
     if confirm != c.name:
@@ -896,14 +902,15 @@ def admin_group_new():
     if not name:
         flash("A group name is required.", "error")
         return redirect(url_for("admin_campaign.admin_dashboard"))
-    group = CampaignGroup(name=name, description=description, owner_email=ADMIN_EMAIL)
+    owner = (session.get("admin_email") or ADMIN_EMAIL or "").strip().lower()
+    group = CampaignGroup(name=name, description=description, owner_email=owner)
     db.session.add(group)
     db.session.commit()
     # Optionally attach a campaign immediately (from the campaign detail page).
     cid = (request.form.get("campaign_id") or "").strip()
     if cid:
         c = db.session.get(Campaign, cid)
-        if c:
+        if c and admin_owns(c):
             c.group_id = group.id
             db.session.commit()
         flash(f"Created group '{name}' and added this campaign to it.", "success")
@@ -915,7 +922,7 @@ def admin_group_new():
 @admin_campaign_bp.route("/groups/<group_id>/delete", methods=["POST"])
 @require_admin
 def admin_group_delete(group_id):
-    group = CampaignGroup.query.get_or_404(group_id)
+    group = owned_group_or_404(group_id)
     name = group.name
     # Detach campaigns first (deleting a group never deletes its campaigns).
     for c in group.ordered_campaigns():
@@ -930,7 +937,7 @@ def admin_group_delete(group_id):
 @require_admin
 def admin_campaign_set_group(campaign_id):
     """Assign this campaign to an existing group, or remove it from its group."""
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     group_id = (request.form.get("group_id") or "").strip()
     if not group_id:
         c.group_id = None
@@ -938,7 +945,7 @@ def admin_campaign_set_group(campaign_id):
         flash("Removed this campaign from its group.", "success")
         return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
     group = db.session.get(CampaignGroup, group_id)
-    if not group:
+    if not group or not admin_owns(group):
         flash("That group no longer exists.", "error")
         return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
     c.group_id = group.id
@@ -952,7 +959,7 @@ def admin_campaign_set_group(campaign_id):
 def admin_campaign_download_csv(campaign_id):
     """Download the master CSV directly from the server (alongside Drive)."""
     from flask import Response
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     crit = get_criteria_for(c)
     crit_ids = [cr["id"] for cr in crit]
     all_ratings = Rating.query.filter_by(campaign_id=c.id).all()

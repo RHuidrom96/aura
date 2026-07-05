@@ -56,6 +56,8 @@ EVAL_MODES = [
      "desc": "Annotators score each criterion on a scale. Optionally also mark error spans (target only, or both source and target)."},
     {"id": "pairwise", "name": "Pairwise preference",
      "desc": "Annotators compare two candidate outputs and choose which is better, using preference options you define."},
+    {"id": "preference_selection", "name": "Preference Selection",
+     "desc": "One source with N candidate outputs. Annotators rank the candidates best→worst (ties allowed). Results report per-system win rate, mean rank, top-1 rate and an Elo ranking."},
     {"id": "span_only", "name": "Span annotation only",
      "desc": "Annotators only mark error spans (no scoring). Your criteria become the error-type categories."},
     {"id": "post_edit", "name": "Post-editing",

@@ -370,6 +370,21 @@
   margin-top: 10px !important;
 }
 
+/* Preference Selection (one source, N ranked candidates) */
+.ranking-block { margin-top: 16px !important; display: flex !important; flex-direction: column !important; gap: 12px !important; }
+.ranking-help { font-size: 13px !important; color: var(--aura-text-muted) !important; line-height: 1.5 !important; margin-bottom: 2px !important; }
+.cand-card { border: 1px solid var(--aura-border) !important; border-radius: 10px !important; padding: 14px 16px !important; background: var(--aura-surface) !important; }
+.cand-card.ranked { border-color: var(--aura-accent) !important; }
+.cand-head { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; flex-wrap: wrap !important; margin-bottom: 8px !important; }
+.cand-name { font-size: 13px !important; font-weight: 600 !important; color: var(--aura-text) !important; }
+.cand-sys { display: inline-block !important; margin-left: 6px !important; font-size: 11px !important; font-weight: 600 !important; color: var(--aura-accent) !important; background: var(--aura-accent-pill) !important; padding: 2px 8px !important; border-radius: 999px !important; }
+.rank-picker { display: inline-flex !important; align-items: center !important; gap: 5px !important; flex-wrap: wrap !important; }
+.rank-picker-label { font-size: 11px !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; color: var(--aura-text-faint) !important; margin-right: 3px !important; }
+.rank-btn { min-width: 30px !important; height: 30px !important; padding: 0 8px !important; border: 1px solid var(--aura-border) !important; border-radius: 7px !important; background: transparent !important; color: var(--aura-text) !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; transition: background .12s, border-color .12s, color .12s !important; }
+.rank-btn:hover { border-color: var(--aura-accent) !important; }
+.rank-btn.selected { background: var(--aura-accent) !important; border-color: var(--aura-accent) !important; color: #fff !important; }
+.cand-text { font-size: 15px !important; line-height: 1.55 !important; color: var(--aura-text) !important; white-space: pre-wrap !important; }
+
 /* Card details & texts styling */
 .segment-card {
   background: var(--aura-surface) !important;

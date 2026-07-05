@@ -256,6 +256,8 @@ def compute_results(campaign, ratings, criteria):
                 out["likert"]["spans"] = sp
     elif mode == "pairwise":
         out["pairwise"] = _pairwise_stats(campaign, complete, annotators)
+    elif mode == "preference_selection":
+        out["preference_selection"] = _selection_stats(campaign, complete, annotators)
     elif mode == "span_only":
         out["span_only"] = _span_stats(campaign, complete, criteria, annotators)
     elif mode == "post_edit":
@@ -500,6 +502,29 @@ def _disagreement(campaign, complete, criteria, mode):
                 pl = {p["id"]: p["label"] for p in campaign.preferences}
                 detail = ", ".join(f"{pl.get(k, k)}×{v}" for k, v in Counter(prefs).items())
 
+        elif mode == "preference_selection":
+            cands = campaign.selection_candidates(seg_lookup.get(seg_id, {}))
+            keys = [c["key"] for c in cands]
+            rank_vecs = []
+            for r in rs:
+                rk = r.ranking_dict()
+                if keys and all(isinstance(rk.get(k), int) for k in keys):
+                    rank_vecs.append({k: rk[k] for k in keys})
+            if len(rank_vecs) >= 2 and len(keys) >= 2:
+                disagree_pairs = 0; total_pairs = 0
+                for i in range(len(keys)):
+                    for j in range(i + 1, len(keys)):
+                        signs = set()
+                        for v in rank_vecs:
+                            d = v[keys[i]] - v[keys[j]]
+                            signs.add((d > 0) - (d < 0))
+                        total_pairs += 1
+                        if len(signs) > 1:
+                            disagree_pairs += 1
+                if total_pairs:
+                    score = disagree_pairs / total_pairs
+                    detail = f"{disagree_pairs}/{total_pairs} candidate pairs contested"
+
         elif mode == "span_only":
             by_ann = {r.annotator_id: r.spans_dict() for r in rs}
             f1s = []
@@ -554,6 +579,7 @@ def _disagreement(campaign, complete, criteria, mode):
 
     metric = {"likert": "std of scores (0 = perfect agreement)",
               "pairwise": "fraction of votes outside the majority",
+              "preference_selection": "fraction of candidate pairs annotators order differently",
               "span_only": "1 − mean character F1",
               "post_edit": "std of normalised edit distance"}.get(mode, "")
     return {"by_criterion": by_criterion, "contested_segments": contested[:15],
@@ -616,6 +642,7 @@ def _performance(campaign, complete, criteria, mode):
 
     # pairwise: agreement with the majority preference per segment
     pref_majority = {}
+    rank_pair_majority = {}   # seg_id -> {(ki,kj): majority_sign}  (preference_selection)
     if mode == "pairwise":
         from collections import defaultdict, Counter
         by_seg = defaultdict(list)
@@ -625,6 +652,25 @@ def _performance(campaign, complete, criteria, mode):
             prefs = [p for _, p in lst if p]
             if prefs:
                 pref_majority[seg_id] = Counter(prefs).most_common(1)[0][0]
+    elif mode == "preference_selection":
+        from collections import defaultdict, Counter
+        by_seg = defaultdict(list); seg_keys = {}
+        for r in complete:
+            seg = campaign.segment_by_id(r.segment_id) or {}
+            keys = [c["key"] for c in campaign.selection_candidates(seg)]
+            rk = r.ranking_dict()
+            if keys and all(isinstance(rk.get(k), int) for k in keys):
+                by_seg[r.segment_id].append({k: rk[k] for k in keys}); seg_keys[r.segment_id] = keys
+        for seg_id, lst in by_seg.items():
+            keys = seg_keys[seg_id]; pm = {}
+            for i in range(len(keys)):
+                for j in range(i + 1, len(keys)):
+                    signs = Counter()
+                    for v in lst:
+                        d = v[keys[i]] - v[keys[j]]
+                        signs[(d > 0) - (d < 0)] += 1
+                    pm[(keys[i], keys[j])] = signs.most_common(1)[0][0]
+            rank_pair_majority[seg_id] = pm
 
     # group ratings + times by annotator
     by_ann = {}
@@ -645,6 +691,24 @@ def _performance(campaign, complete, criteria, mode):
             if shared:
                 hit = sum(1 for r in shared if (r.preference or "") == pref_majority[r.segment_id])
                 pref_agree = round(100.0 * hit / len(shared), 1)
+        elif mode == "preference_selection":
+            hits = 0; tot = 0
+            for r in rs:
+                pm = rank_pair_majority.get(r.segment_id)
+                if not pm:
+                    continue
+                seg = campaign.segment_by_id(r.segment_id) or {}
+                keys = [c["key"] for c in campaign.selection_candidates(seg)]
+                rk = r.ranking_dict()
+                if not (keys and all(isinstance(rk.get(k), int) for k in keys)):
+                    continue
+                for (ki, kj), maj in pm.items():
+                    d = rk[ki] - rk[kj]
+                    tot += 1
+                    if ((d > 0) - (d < 0)) == maj:
+                        hits += 1
+            if tot:
+                pref_agree = round(100.0 * hits / tot, 1)
         rows.append({
             "id": aid, "name": a["name"], "email": a["email"],
             "expertise": a.get("expertise", ""),
@@ -904,6 +968,145 @@ def _pref_groups(campaign):
         note = ("Outcomes inferred from option order: the first %d favour A, the "
                 "last %d favour B (no tie option)." % (half, half))
     return groups, note
+
+
+def _elo_ratings(comparisons, systems, k=32, base=1000.0, epochs=30, seed=42):
+    """Deterministic Elo from pairwise outcomes.
+
+    comparisons: list of (sys_a, sys_b, score_a) where score_a is 1.0 (a beats b),
+    0.5 (tie) or 0.0 (a loses). Runs several passes over a fixed seeded-shuffled order so
+    the result is stable and order-independent. Returns {system: elo}."""
+    rating = {s: base for s in systems}
+    if not comparisons:
+        return rating
+    import random as _random
+    rng = _random.Random(seed)
+    order = list(range(len(comparisons)))
+    for _ in range(epochs):
+        rng.shuffle(order)
+        for idx in order:
+            a, b, sa = comparisons[idx]
+            ea = 1.0 / (1.0 + 10 ** ((rating[b] - rating[a]) / 400.0))
+            rating[a] += k * (sa - ea)
+            rating[b] += k * ((1.0 - sa) - (1.0 - ea))
+    return rating
+
+
+def _selection_stats(campaign, ratings, annotators):
+    """Statistics for Preference Selection (one source, N ranked candidates).
+
+    Aggregates per-annotator rankings into per-system win rate (pairwise decomposition of
+    each ranking: lower rank wins, equal = tie), mean rank, top-1 rate, Borda score and an
+    Elo ranking. Also reports inter-annotator agreement (share of candidate pairs ordered
+    the same way across annotator pairs on co-rated segments, and mean Kendall tau-b).
+    Depends only on stored rankings + candidate systems, never on presentation order."""
+    from collections import defaultdict
+    seg_cands = {s.get("id"): campaign.selection_candidates(s) for s in campaign.segments}
+
+    rec = defaultdict(lambda: {"wins": 0, "losses": 0, "ties": 0, "n": 0,
+                               "rank_sum": 0, "rank_n": 0, "top1": 0, "borda": 0})
+    comparisons = []          # (sys_a, sys_b, score_a) for Elo
+    systems_seen = set()
+    n_judgements = 0
+    max_n = 0
+    for r in ratings:
+        cands = seg_cands.get(r.segment_id)
+        if not cands:
+            continue
+        ranks = r.ranking_dict()
+        keyrank = {c["key"]: ranks.get(c["key"]) for c in cands}
+        if any(not isinstance(v, int) for v in keyrank.values()):
+            continue
+        n_judgements += 1
+        N = len(cands)
+        max_n = max(max_n, N)
+        labels = {c["key"]: campaign.selection_system_label(c) for c in cands}
+        best = min(keyrank.values())
+        for c in cands:
+            lab = labels[c["key"]]
+            systems_seen.add(lab)
+            rk = keyrank[c["key"]]
+            rec[lab]["rank_sum"] += rk
+            rec[lab]["rank_n"] += 1
+            rec[lab]["borda"] += (N - rk)
+            if rk == best:
+                rec[lab]["top1"] += 1
+        for i in range(N):
+            for j in range(i + 1, N):
+                la, lb = labels[cands[i]["key"]], labels[cands[j]["key"]]
+                ra, rb = keyrank[cands[i]["key"]], keyrank[cands[j]["key"]]
+                rec[la]["n"] += 1
+                rec[lb]["n"] += 1
+                if ra < rb:
+                    rec[la]["wins"] += 1; rec[lb]["losses"] += 1
+                    comparisons.append((la, lb, 1.0))
+                elif ra > rb:
+                    rec[lb]["wins"] += 1; rec[la]["losses"] += 1
+                    comparisons.append((la, lb, 0.0))
+                else:
+                    rec[la]["ties"] += 1; rec[lb]["ties"] += 1
+                    comparisons.append((la, lb, 0.5))
+
+    elo = _elo_ratings(comparisons, sorted(systems_seen))
+    systems = []
+    for name, d in rec.items():
+        n = d["n"]
+        wr = (d["wins"] + 0.5 * d["ties"]) / n if n else None
+        mean_rank = d["rank_sum"] / d["rank_n"] if d["rank_n"] else None
+        top1_rate = 100.0 * d["top1"] / d["rank_n"] if d["rank_n"] else None
+        systems.append({
+            "system": name, "wins": d["wins"], "losses": d["losses"], "ties": d["ties"],
+            "n": n, "win_rate": _r(wr), "mean_rank": _r(mean_rank),
+            "borda": d["borda"], "top1_count": d["top1"], "top1_rate": _r(top1_rate),
+            "n_ranked": d["rank_n"], "elo": _r(elo.get(name), 1),
+        })
+    # Rank systems by Elo (desc), then win rate.
+    systems.sort(key=lambda x: ((x["elo"] if x["elo"] is not None else -1),
+                                (x["win_rate"] if x["win_rate"] is not None else -1)),
+                 reverse=True)
+
+    # inter-annotator agreement over co-rated segments
+    by_seg = defaultdict(list)
+    for r in ratings:
+        cands = seg_cands.get(r.segment_id)
+        if not cands:
+            continue
+        ranks = r.ranking_dict()
+        kr = {c["key"]: ranks.get(c["key"]) for c in cands}
+        if all(isinstance(v, int) for v in kr.values()):
+            by_seg[r.segment_id].append(kr)
+    overlap = {s: v for s, v in by_seg.items() if len(v) >= 2}
+    concordant = 0; comparable = 0; tau_list = []
+    for s, lst in overlap.items():
+        keys = list(lst[0].keys())
+        for a in range(len(lst)):
+            for b in range(a + 1, len(lst)):
+                ra, rb = lst[a], lst[b]
+                conc = 0; disc = 0
+                for i in range(len(keys)):
+                    for j in range(i + 1, len(keys)):
+                        da = ra[keys[i]] - ra[keys[j]]
+                        dbb = rb[keys[i]] - rb[keys[j]]
+                        sa = (da > 0) - (da < 0)
+                        sb = (dbb > 0) - (dbb < 0)
+                        comparable += 1
+                        if sa == sb:
+                            concordant += 1
+                        if da != 0 and dbb != 0:
+                            if sa == sb: conc += 1
+                            else: disc += 1
+                if (conc + disc) > 0:
+                    tau_list.append((conc - disc) / (conc + disc))
+
+    return {
+        "selection": True,
+        "n_candidates_max": max_n,
+        "n_judgements": n_judgements,
+        "systems": systems,
+        "percent_pair_agreement": _r(100.0 * concordant / comparable) if comparable else None,
+        "mean_kendall_tau": _r(float(np.mean(tau_list))) if tau_list else None,
+        "n_overlap_segments": len(overlap),
+    }
 
 
 def _pairwise_stats(campaign, ratings, annotators):
@@ -1588,6 +1791,35 @@ def build_charts(results):
             ax.set_title("System win rate")
             ax.tick_params(axis="x", rotation=15, length=0)
             charts["system_winrate"] = _fig_to_uri(fig)
+
+    elif mode == "preference_selection":
+        P = results["preference_selection"]
+        sysrows = P.get("systems") or []
+        if sysrows:
+            fig, ax = plt.subplots(figsize=(max(4, len(sysrows) * 1.2), 3.2))
+            bars = ax.bar([r["system"] for r in sysrows],
+                          [(r["win_rate"] or 0) * 100 for r in sysrows],
+                          color="#3a9b7a", alpha=0.92, width=0.55, edgecolor="white", linewidth=0.6)
+            _bar_labels(ax, bars, "{:.0f}%")
+            ax.set_ylabel("Win rate (%)"); ax.set_ylim(0, 105)
+            ax.set_title("System win rate")
+            ax.tick_params(axis="x", rotation=15, length=0)
+            charts["system_winrate"] = _fig_to_uri(fig)
+
+            elo_rows = [r for r in sysrows if r.get("elo") is not None]
+            if elo_rows:
+                fig, ax = plt.subplots(figsize=(max(4, len(elo_rows) * 1.2), 3.2))
+                bars = ax.bar([r["system"] for r in elo_rows],
+                              [r["elo"] for r in elo_rows],
+                              color=ACCENT, alpha=0.92, width=0.55, edgecolor="white", linewidth=0.6)
+                _bar_labels(ax, bars, "{:.0f}")
+                base = min(r["elo"] for r in elo_rows)
+                top = max(r["elo"] for r in elo_rows)
+                pad = max(20, (top - base) * 0.25)
+                ax.set_ylim(base - pad, top + pad)
+                ax.set_ylabel("Elo rating"); ax.set_title("System Elo ranking")
+                ax.tick_params(axis="x", rotation=15, length=0)
+                charts["system_elo"] = _fig_to_uri(fig)
 
     elif mode == "span_only":
         S = results["span_only"]

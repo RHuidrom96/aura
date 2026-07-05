@@ -171,11 +171,10 @@ class Annotator(db.Model):
     id = db.Column(db.String(32), primary_key=True, default=_uuid)
     name = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(200), unique=True, nullable=False, index=True)
-    email_verified = db.Column(db.Boolean, default=False, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
 
     otp_hash = db.Column(db.String(200), default="")
-    otp_expires_at = db.Column(db.DateTime) 
+    otp_expires_at = db.Column(db.DateTime)
     otp_attempts = db.Column(db.Integer, default=0)
 
     native_language = db.Column(db.String(100), default="")
@@ -896,6 +895,12 @@ class Campaign(db.Model):
         mode = self.mode
         if mode == "pairwise":
             return bool((rating.preference or "").strip())
+        if mode == "preference_selection":
+            keys = [c["key"] for c in self.selection_candidates(self.segment_by_id(rating.segment_id) or {})]
+            if not keys:
+                return False
+            ranks = rating.ranking_dict()
+            return all(isinstance(ranks.get(k), int) and ranks.get(k) >= 1 for k in keys)
         if mode == "span_only":
             return bool(rating.reviewed)
         if mode == "post_edit":
@@ -952,6 +957,43 @@ class Campaign(db.Model):
         return None
 
     @property
+    def is_selection(self):
+        """True for the Preference Selection mode (one source, N ranked candidates)."""
+        return self.mode == "preference_selection"
+
+    def selection_candidates(self, seg):
+        """Ordered candidate list for Preference Selection mode:
+            [{"key": "c0", "index": 0, "text": ..., "system": ...}, ...]
+
+        Reads a `candidates` list (strings or {target/text, system}); also accepts the
+        classic two-candidate `target_a`/`target_b` (+ system_a/system_b). The positional
+        ``key`` (c0, c1, …) is stable for a segment and is what rankings are keyed by."""
+        out = []
+        cands = seg.get("candidates")
+        if isinstance(cands, list) and len(cands) >= 1:
+            for i, x in enumerate(cands):
+                if isinstance(x, dict):
+                    text = x.get("target", x.get("text", "")) or ""
+                    system = x.get("system", "") or ""
+                else:
+                    text, system = (x or ""), ""
+                out.append({"key": f"c{i}", "index": i, "text": text, "system": system})
+            return out
+        # Fall back to two explicit candidate fields.
+        pairs = [(seg.get("target_a", "") or "", seg.get("system_a", "") or ""),
+                 (seg.get("target_b", "") or "", seg.get("system_b", "") or "")]
+        for i, (text, system) in enumerate(pairs):
+            out.append({"key": f"c{i}", "index": i, "text": text, "system": system})
+        return out
+
+    def selection_num_candidates(self, seg):
+        return len(self.selection_candidates(seg))
+
+    def selection_system_label(self, cand):
+        """Aggregation label for a candidate: its system name, else a position label."""
+        return cand.get("system") or f"Candidate {cand['index'] + 1}"
+
+    @property
     def num_segments(self):
         return len(self.segments)
 
@@ -973,6 +1015,8 @@ class Rating(db.Model):
     comments = db.Column(db.Text, default="")
     # Pairwise mode: the selected preference option id.
     preference = db.Column(db.String(100), default="")
+    # Preference Selection mode: JSON {candidate_key: rank_int} (1 = best; ties allowed).
+    ranking_json = db.Column(db.Text, default="")
     # Span-only mode: whether the annotator has confirmed they reviewed the segment.
     reviewed = db.Column(db.Boolean, default=False)
     # Post-editing mode: the annotator's corrected version of the output.
@@ -995,6 +1039,14 @@ class Rating(db.Model):
     def spans_dict(self):
         try:
             return json.loads(self.spans_json or "{}")
+        except json.JSONDecodeError:
+            return {}
+
+    def ranking_dict(self):
+        """Preference-Selection ranking as {candidate_key: rank}, or {} if unset/invalid."""
+        try:
+            d = json.loads(self.ranking_json or "{}")
+            return d if isinstance(d, dict) else {}
         except json.JSONDecodeError:
             return {}
 
