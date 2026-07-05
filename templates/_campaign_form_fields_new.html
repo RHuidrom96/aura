@@ -373,19 +373,99 @@
 <!-- Segments file -->
 {% if mode == 'new' %}
 <section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
-  <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Segments file <span style="color:#B0654F; font-size:18px;">*</span></h2></div>
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+    <span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span>
+    <h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">
+      Segments file <span style="color:#B0654F; font-size:18px;">*</span>
+    </h2>
+  </div>
+
   <div style="display:flex; align-items:center; gap:20px;">
     <label style="font-family:'Work Sans',sans-serif; font-weight:600; font-size:13px; padding:11px 18px; border-radius:6px; border:1px solid var(--aura-input-border); background:var(--aura-bg); color:var(--aura-text-muted); cursor:pointer; display:inline-block;">
       Browse…
-      <input type="file" id="segments_file" name="segments_file" accept=".json,.jsonl,.ndjson,.csv,.tsv,.txt,application/json,text/csv,text/tab-separated-values" style="display:none;" onchange="document.getElementById('file-selected-name').textContent = this.files[0] ? this.files[0].name : 'No file selected.'">
+      <input
+        type="file"
+        id="segments_file"
+        name="segments_file"
+        accept=".json,.jsonl,.ndjson,.csv,.tsv,.txt,application/json,text/csv,text/tab-separated-values"
+        style="display:none;"
+        onchange="document.getElementById('file-selected-name').textContent = this.files[0] ? this.files[0].name : 'No file selected.'">
     </label>
-    <span id="file-selected-name" style="font-size:13px; color:var(--aura-text-faint);">No file selected.</span>
+
+    <span id="file-selected-name" style="font-size:13px; color:var(--aura-text-faint);">
+      No file selected.
+    </span>
   </div>
-  <div style="font-size:12px; color:var(--aura-text-faint); margin-top:14px; line-height:1.6;"><strong>JSON, JSONL, CSV, or TSV.</strong> Each item/row needs a <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">id · source</span>. Likert / span only: also <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">target</span>. Pairwise: <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">target_a · target_b</span>. Optional: <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">reference · system · domain</span>. (CSV/TSV use these as column headers.) The “source” can be any text — a document, article, passage, dialogue, etc.</div>
-  <button type="button" onclick="const p = document.getElementById('paste-toggle'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; return false;" style="margin-top:14px; font-family:'Work Sans',sans-serif; font-weight:600; font-size:13px; color:var(--aura-accent); background:transparent; border:none; padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:3px;">Paste data instead</button>
+
+  <div style="font-size:12px; color:var(--aura-text-faint); margin-top:14px; line-height:1.6;">
+    <strong>Supported formats:</strong> JSON, JSONL, CSV, or TSV.<br>
+
+    <strong>Required fields:</strong><br>
+    • All tasks: <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">id</span>,
+    <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">source</span><br>
+
+    • Likert / Span:
+    <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">target</span><br>
+
+    • Pairwise:
+    <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">target_a</span>,
+    <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">target_b</span><br>
+
+    <strong>Optional:</strong>
+    <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">reference</span>,
+    <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">system</span>,
+    <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">domain</span>.
+
+    The <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">source</span> field may contain any text, such as a sentence, paragraph, dialogue, or document.
+  </div>
+
+  <details style="margin-top:12px;">
+    <summary style="cursor:pointer; font-size:13px; font-weight:600; color:var(--aura-accent);">
+      View sample file format
+    </summary>
+
+    <div style="margin-top:12px; font-size:12px; color:var(--aura-text-faint); line-height:1.6;">
+
+      <p><strong>Likert / Span (CSV)</strong></p>
+
+<pre style="margin:6px 0 16px; padding:12px; background:var(--aura-bg); border:1px solid var(--aura-border); border-radius:6px; overflow:auto;"><code>id,source,target
+1,Hello world.,Bonjour le monde.
+2,How are you?,Comment allez-vous ?</code></pre>
+
+      <p><strong>Pairwise (CSV)</strong></p>
+
+<pre style="margin:6px 0; padding:12px; background:var(--aura-bg); border:1px solid var(--aura-border); border-radius:6px; overflow:auto;"><code>id,source,target_a,target_b
+1,Hello world.,Bonjour le monde.,Salut le monde.
+2,How are you?,Comment allez-vous ?,Comment ça va ?</code></pre>
+
+      <p style="margin-top:12px;">
+        Optional columns:
+        <code>reference</code>,
+        <code>system</code>,
+        <code>domain</code>
+      </p>
+
+    </div>
+  </details>
+
+  <button
+    type="button"
+    onclick="const p = document.getElementById('paste-toggle'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; return false;"
+    style="margin-top:14px; font-family:'Work Sans',sans-serif; font-weight:600; font-size:13px; color:var(--aura-accent); background:transparent; border:none; padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:3px;">
+    Paste data instead
+  </button>
+
   <div id="paste-toggle" style="margin-top:14px; display:none;">
-    <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Segments (JSON, JSONL, CSV, or TSV)</label>
-    <textarea id="segments_paste" name="segments_paste" class="ff-in" rows="8" placeholder='[{"id": "seg_001", "source": "...", "target": "..."}, ...]  — or paste CSV/TSV rows with a header line'>{{ form_data.get('segments_paste', '') }}</textarea>
+    <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">
+      Segments (JSON, JSONL, CSV, or TSV)
+    </label>
+
+    <textarea
+      id="segments_paste"
+      name="segments_paste"
+      class="ff-in"
+      rows="8"
+      placeholder='[{"id":"seg_001","source":"...","target":"..."}] or paste CSV/TSV rows with a header line'>{{ form_data.get('segments_paste', '') }}</textarea>
   </div>
 </section>
 {% endif %}
