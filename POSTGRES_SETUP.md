@@ -1,11 +1,11 @@
 # PostgreSQL Setup Guide
 
-This project has been migrated from **SQLite** to **PostgreSQL**.
+This project uses **PostgreSQL** and **Alembic** for database migrations.
 
 ## Prerequisites
 
-* PostgreSQL installed and running
-* Python dependencies installed:
+- PostgreSQL installed and running
+- Python dependencies installed
 
 ```bash
 pip install -r requirements.txt
@@ -13,21 +13,9 @@ pip install -r requirements.txt
 
 ---
 
-## 1. Create a PostgreSQL Database
+## 1. Configure Environment Variables
 
-Create a new PostgreSQL database and user (if needed).
-
-Example:
-
-```sql
-CREATE DATABASE your_database_name;
-```
-
----
-
-## 2. Configure Environment Variables
-
-Create or update your `.env` file:
+Create a `.env` file:
 
 ```env
 POSTGRES_HOST=localhost
@@ -39,54 +27,98 @@ POSTGRES_PASSWORD=your_password
 
 ---
 
-## 3. Apply Database Schema
+## 2. Create the Database
 
-Run the Alembic migrations:
+### PostgreSQL CLI
+
+Using the PostgreSQL CLI:
 
 ```bash
-flask db upgrade
+psql -U your_username -d your_database_name
 ```
 
-This creates the PostgreSQL tables.
+```bash
+createdb your_database_name
+```
+
+### SQL
+
+```sql
+CREATE DATABASE your_database_name;
+```
 
 ---
 
-## 4. Migrate Existing SQLite Data (Optional)
+## 3. Fresh Installation
 
-If you have existing data in `data/app.db`, migrate it into PostgreSQL:
+```bash
+flask db upgrade
+python app.py
+```
+
+---
+
+## 4. After Pulling New Changes
+
+Always run:
+
+```bash
+git pull
+flask db upgrade
+```
+
+This applies any new database migrations (e.g. new columns such as `email_verified`).
+
+---
+
+## 5. Reset Local Development Database (Optional)
+
+If your local database becomes inconsistent during development:
+
+### PostgreSQL CLI
+
+```bash
+dropdb your_database_name
+createdb your_database_name
+```
+
+### SQL
+
+```sql
+DROP DATABASE your_database_name;
+CREATE DATABASE your_database_name;
+```
+
+Then recreate the schema:
+
+```bash
+flask db upgrade
+python app.py
+```
+
+> **Warning:** This permanently deletes all local development data.
+
+---
+
+## 6. Migrate Existing SQLite Data (Optional)
+
+Only required when migrating data from the old SQLite database.
 
 ```bash
 python scripts/migrate.py
 ```
 
-To preview the migration without writing data:
+Preview without writing:
 
 ```bash
 python scripts/migrate.py --dry-run
-```
-
-The migration script:
-
-* Copies only matching columns.
-* Preserves IDs and timestamps.
-* Skips the `alembic_version` table.
-* Ignores duplicate rows.
-* Prints a migration summary when finished.
-
-> **Note:** This step is only required when migrating data from an existing SQLite database. For a fresh installation, you can skip it.
-
----
-
-## 5. Run the Application
-
-```bash
-python app.py
 ```
 
 ---
 
 ## Notes
 
-* This guide is intended for **local development**.
-* Do **not** commit your `.env` file.
-* Ensure the PostgreSQL server is running before starting the application.
+- Never commit your `.env` file.
+- Always run `flask db upgrade` after pulling the latest changes.
+- Use `flask db migrate` **only** when creating a new migration.
+- Use `flask db upgrade` to apply existing migrations.
