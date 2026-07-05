@@ -172,14 +172,27 @@ def send_email(to_email, subject, body, attachments=None):
     return False, "no email transport configured (message logged to server only)"
 
 
-def send_otp(to_email, code):
-    subject = "Your Aura admin verification code"
-    body = (f"Your Aura admin verification code is: {code}\n\n"
-            "Enter this code to finish creating your admin account. "
-            "It expires in 15 minutes. If you didn't request this, you can ignore this email.")
-    ok, detail = send_email(to_email, subject, body)
+def send_otp(email, otp, role="admin"):
+    print(f"send_otp called: {email=} {otp=} {role=}")
+
+    if role == "annotator":
+        subject = "Verify your annotator account"
+        body = (
+            f"Your verification code is: {otp}\n\n"
+            "Enter this code to activate your annotator account."
+        )
+    else:
+        subject = "Verify your admin account"
+        body = (
+            f"Your verification code is: {otp}\n\n"
+            "Enter this code to activate your admin account."
+        )
+
+    ok, detail = send_email(email, subject, body)
+
     if not ok:
-        logger.info("OTP for %s not delivered (%s)", to_email, detail)
+        logger.info("Signup OTP for %s not delivered (%s)", email, detail)
+
     return ok, detail
 
 def send_password_reset_otp(to_email, code):

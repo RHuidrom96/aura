@@ -165,20 +165,61 @@ def annotator_register(campaign_id):
                 f"{campaign.target_language or 'the target language'}."
             )
 
+    # Stop here if any validation errors occurred
+    if errors:
+        for error in errors:
+            flash(error, "danger")
+
+        return redirect(
+            url_for(
+                "annotator_auth.annotator_login",
+                campaign_id=campaign_id,
+            )
+        )
+
     existing = Annotator.query.filter_by(email=email).first()
 
     if existing:
         if existing.email_verified:
-            errors.append("An account with that email already exists. Sign in instead.")
+            errors.append(
+                "An account with that email already exists. Sign in instead."
+            )
         else:
-            # allow resend OTP flow instead of blocking
+            # Update the existing unverified account
+            existing.name = name
+            existing.native_language = native_lang
+            existing.expertise = expertise
+            existing.source_fluency = source_fluency
+            existing.target_fluency = target_fluency
+            existing.location = location
+            existing.dialect = dialect
+            existing.age_group = age_group
+            existing.set_password(password)
+
+            db.session.commit()
+
+            # Generate and send a new OTP
             start_annotator_signup(existing)
+
             session["signup_email"] = existing.email
 
             flash("We resent your verification code.", "success")
             return redirect(
-                url_for("annotator_auth.annotator_signup_verify", campaign_id=campaign_id)
+                url_for(
+                    "annotator_auth.annotator_signup_verify",
+                    campaign_id=campaign_id,
+                )
             )
+    if errors:
+        for error in errors:
+            flash(error, "danger")
+
+        return redirect(
+            url_for(
+                "annotator_auth.annotator_login",
+                campaign_id=campaign_id,
+            )
+        )
 
     annotator = Annotator(
         name=name,
@@ -197,7 +238,7 @@ def annotator_register(campaign_id):
     db.session.add(annotator)
     db.session.commit()
 
-    start_annotator_signup(email, password, confirm,)
+    start_annotator_signup(annotator)
 
     session["signup_email"] = annotator.email
 
