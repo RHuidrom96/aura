@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}Aura 💫{% endblock %}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 <script>
   // Apply saved theme before paint to avoid a flash.
   (function () {
@@ -200,6 +201,6 @@
   dropdown.addEventListener('click', (e) => e.stopPropagation());
 })();
 </script>
-<script src="{{ url_for('static', filename='password_validation.js') }}"></script>
+<script src="{{ url_for('static', filename='password_validation.js') }}?v=1.2"></script>
 </body>
 </html>

@@ -46,12 +46,12 @@
     const container = document.getElementById('criteria-rows');
     const row = document.createElement('div');
     row.className = 'criterion-row';
-    row.setAttribute('style', 'border:1px solid var(--aura-border); border-radius:8px; padding:18px; background:var(--aura-bg);');
+    row.setAttribute('style', 'display:block; border:1px solid var(--aura-border); border-radius:8px; padding:18px; background:var(--aura-bg); position:relative;');
     row.innerHTML =
-      '<div class="criterion-row-fields" style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">' +
+      '<div style="margin-bottom:12px; margin-right:48px;">' +
         '<input type="text" name="crit_name" placeholder="Criterion name (e.g. Accuracy)" class="ff-in crit-name-input" style="font-weight:600;">' +
-        '<button type="button" class="btn-remove-row" title="Remove criterion" onclick="removeCriterionRow(this)" style="flex-shrink:0; width:36px; height:36px; border-radius:6px; border:1px solid #E2D6D1; background:#FFFFFF; color:#B07A6E; font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;">×</button>' +
       '</div>' +
+      '<button type="button" class="btn-remove-row" title="Remove criterion" onclick="removeCriterionRow(this)" style="position:absolute; top:18px; right:18px; width:36px; height:36px; border-radius:6px; border:1px solid #E2D6D1; background:#FFFFFF; color:#B07A6E; font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;">×</button>' +
       '<textarea name="crit_desc" placeholder="Describe what this criterion measures and how annotators should judge it…" class="ff-in crit-desc-input" style="min-height:128px;"></textarea>';
     container.appendChild(row);
     if (name) row.querySelector('.crit-name-input').value = name;

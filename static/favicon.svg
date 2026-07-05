@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="auraGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0072B2"/>
+      <stop offset="50%" stop-color="#009E73"/>
+      <stop offset="100%" stop-color="#CC79A7"/>
+    </linearGradient>
+  </defs>
+  <!-- White circle backplate for light/dark theme contrast -->
+  <circle cx="16" cy="16" r="15" fill="#FFFFFF"/>
+  <!-- Brand logo mark 'A' -->
+  <text x="15" y="24" 
+        font-family="'Libre Caslon Text', 'Georgia', 'Times New Roman', serif" 
+        font-weight="bold" 
+        font-size="23" 
+        text-anchor="middle" 
+        fill="url(#auraGrad)">A</text>
+  <!-- Sparkle/Dizzy star symbol -->
+  <path d="M23.5 5.5l0.7 1.3 1.3 0.2-1 0.9 0.3 1.3-1.3-0.7-1.3 0.7 0.3-1.3-1-0.9 1.3-0.2z" fill="#CC79A7"/>
+</svg>
