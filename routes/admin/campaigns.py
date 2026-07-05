@@ -568,6 +568,7 @@ def _render_new_campaign_form(form_data=None):
                         task_types=models.TASK_TYPES,
                         criterion_guides=models.CRITERION_GUIDES,
                         ai_providers=llm.PROVIDERS,
+                        default_likert_labels=Campaign.DEFAULT_LIKERT_LABELS_BY_POINTS,
                         form_data=fd)
 
 
@@ -661,6 +662,7 @@ def _render_edit_campaign_form(campaign, form_data):
                         task_types=models.TASK_TYPES,
                         criterion_guides=models.CRITERION_GUIDES,
                         ai_providers=llm.PROVIDERS,
+                        default_likert_labels=Campaign.DEFAULT_LIKERT_LABELS_BY_POINTS,
                         form_data=form_data)
 
 
@@ -683,12 +685,13 @@ def admin_campaign_detail(campaign_id):
             db.session.add(link)
             db.session.commit()
         rs = [r for r in c.ratings if r.annotator_id == aid]
-        completed = sum(1 for r in rs if c.rating_is_complete(r, get_criteria_for(c)))
+        completed, total = c.completion_for(ann, get_criteria_for(c), ratings=rs)
         last_update = max((r.updated_at for r in rs), default=None)
         rows.append({
             "annotator": ann,
             "completed": completed,
-            "total": c.num_segments,
+            "total": total,
+            "done": total > 0 and completed >= total,
             "last_update": last_update,
             "link": link,
         })
@@ -728,7 +731,7 @@ def admin_campaign_progress(campaign_id):
             db.session.add(link)
             db.session.commit()
         rs = [r for r in c.ratings if r.annotator_id == aid]
-        completed = sum(1 for r in rs if c.rating_is_complete(r, crit))
+        completed, total = c.completion_for(ann, crit, ratings=rs)
         last = max((r.updated_at for r in rs), default=None)
         rows.append({
             "id": ann.id,
@@ -739,7 +742,8 @@ def admin_campaign_progress(campaign_id):
             "profile_location": ann.location or "",
             "dialect": ann.dialect or "",
             "age_group": ann.age_group_label,
-            "completed": completed, "total": c.num_segments,
+            "completed": completed, "total": total,
+            "done": total > 0 and completed >= total,
             "last_update": last.strftime("%Y-%m-%d %H:%M UTC") if last else None,
             "annotator_id": ann.id,
             "has_star": bool(link.has_star),

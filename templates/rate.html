@@ -809,8 +809,11 @@
   border-radius: 12px !important;
   box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
   z-index: 100 !important;
-  display: flex !important;
+  display: none !important;
   flex-direction: column !important;
+}
+.assist-panel.open {
+  display: flex !important;
 }
 .assist-panel-head {
   padding: 16px 20px !important;
@@ -1164,7 +1167,7 @@
     <span class="assist-launcher-text">Ask the assistant</span>
   </button>
 
-  <div id="assist-panel" class="assist-panel" style="display:none;">
+  <div id="assist-panel" class="assist-panel">
     <div class="assist-panel-head">
       <div>
         <strong style="font-size:14px;">Guideline assistant</strong>

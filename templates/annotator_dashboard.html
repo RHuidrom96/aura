@@ -48,7 +48,7 @@
     {% endif %}
 
     {% if not c.is_closed %}
-      {% if row.completed == row.total %}
+      {% if row.done %}
         <a href="{{ url_for('annotator_rating.rate_view', campaign_id=c.id) }}" class="btn btn-ghost">
           Review my ratings
         </a>

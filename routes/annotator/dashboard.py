@@ -43,11 +43,7 @@ def annotator_dashboard():
 
         criteria = get_criteria_for(c)
 
-        completed = sum(
-            1
-            for r in ratings
-            if c.rating_is_complete(r, criteria)
-        )
+        completed, total = c.completion_for(ann, criteria, ratings=ratings)
 
         last_update = max(
             (r.updated_at for r in ratings),
@@ -58,10 +54,11 @@ def annotator_dashboard():
             {
                 "campaign": c,
                 "completed": completed,
-                "total": c.num_segments,
+                "total": total,
                 "last_update": last_update,
-                "pct": int(completed / c.num_segments * 100)
-                if c.num_segments
+                "done": total > 0 and completed >= total,
+                "pct": int(completed / total * 100)
+                if total
                 else 0,
             }
         )

@@ -41,6 +41,12 @@ def parse_scale_from_form(form, errors):
             txt = (form.get(f"scale_label_{v}") or "").strip()
             if txt:
                 labels[str(v)] = txt
+        # If the admin left every point label blank, persist sensible graded
+        # defaults so annotators always see a worded scale. Partial labelling is
+        # respected as-is (we don't mix admin wording with defaults).
+        if not labels:
+            from models import Campaign
+            labels = Campaign.default_likert_labels(scale_points)
     else:  # continuous
         try:
             scale_min = int(form.get("scale_min") or 0)
