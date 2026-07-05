@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, session, jsonify, current_app
+from flask import Blueprint, render_template, request, session, jsonify, current_app, redirect, url_for, flash
 import json
 from datetime import datetime
 
@@ -6,6 +6,7 @@ from models import Campaign, Rating, AssistantLog, AnnotatorCampaignPref
 from extensions import db
 from utils.constants import get_criteria_for, get_scale_for
 from services.auth_service import require_annotator, current_annotator
+from services.qualification import can_annotate
 from services.ai_assistant import _assist_system_prompt, _assist_user_prompt
 import llm
 
@@ -24,6 +25,9 @@ def rate_view(campaign_id):
         return render_template("campaign_closed.html", campaign=c)
     session["last_campaign_id"] = campaign_id
     ann = current_annotator()
+    if not can_annotate(ann):
+        flash("Please complete the qualification test before joining this campaign.", "info")
+        return redirect(url_for("annotator_qualification.qualification"))
     criteria = get_criteria_for(c)
     mode = c.mode
     link = CampaignAnnotator.query.filter_by(campaign_id=c.id, annotator_id=ann.id).first()
@@ -163,6 +167,8 @@ def api_submit(campaign_id):
     if c.is_closed:
         return jsonify({"ok": False, "error": "Campaign is closed."}), 403
     ann = current_annotator()
+    if not can_annotate(ann):
+        return jsonify({"ok": False, "error": "You must pass the qualification test before submitting ratings."}), 403
     criteria = get_criteria_for(c)
     data = request.get_json(silent=True) or {}
 

@@ -1,0 +1,884 @@
+/* ================================================================
+   Qualification Feature — dedicated stylesheet
+   Uses the design tokens defined in style.css (:root / [data-theme]).
+   Does not modify or duplicate rules in style.css.
+
+   Sections:
+     1. Layout
+     2. Hero (start page)
+     3. Panels & Overview
+     4. Criteria List (start page)
+     5. Checklist (start page)
+     6. Attempts / Info Banner
+     7. Call To Action
+     8. Progress (test page)
+     9. Question Cards (test page)
+    10. Source / Translation Blocks
+    11. Likert Scale
+    12. Pairwise Selection
+    13. Post-edit
+    14. Span-only Editor
+    15. Submit Bar
+    16. Result Page
+    17. Animations
+    18. Responsive
+    19. Accessibility
+   ================================================================ */
+
+/* ---------------------------------------------------------------
+   1. Layout
+   --------------------------------------------------------------- */
+
+.qual-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.qual-panel {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+.qual-panel + .qual-panel {
+  margin-top: 0;
+}
+
+.qual-panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 16px;
+  letter-spacing: -0.01em;
+}
+
+/* ---------------------------------------------------------------
+   2. Hero (start page)
+   --------------------------------------------------------------- */
+
+.qual-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 36px 32px;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.qual-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--aura-gradient);
+}
+
+.qual-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 16px;
+}
+
+.qual-hero h1 {
+  margin: 0 0 8px;
+}
+
+.qual-hero-subtitle {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 60ch;
+  line-height: 1.6;
+}
+
+/* ---------------------------------------------------------------
+   3. Panels & Overview
+   --------------------------------------------------------------- */
+
+.qual-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+}
+
+.qual-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+}
+
+.qual-stat dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+.qual-stat dd {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.qual-description {
+  margin: 18px 0 0;
+  padding-top: 18px;
+  border-top: 0.5px solid var(--border);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.qual-description dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+
+.qual-description dd { margin: 0; }
+
+/* ---------------------------------------------------------------
+   4. Criteria List (start page)
+   --------------------------------------------------------------- */
+
+.qual-criteria-grid {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qual-criteria-grid li {
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+}
+
+.qual-criteria-grid strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.qual-criteria-grid .hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ---------------------------------------------------------------
+   5. Checklist (start page)
+   --------------------------------------------------------------- */
+
+.qual-checklist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qual-checklist li {
+  position: relative;
+  padding-left: 28px;
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.qual-checklist li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.qual-checklist li::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 7px;
+  width: 8px;
+  height: 4px;
+  border-left: 2px solid var(--accent-dark);
+  border-bottom: 2px solid var(--accent-dark);
+  transform: rotate(-45deg);
+}
+
+/* ---------------------------------------------------------------
+   6. Attempts / Info Banner
+   --------------------------------------------------------------- */
+
+.qual-attempts-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--warning-soft);
+  border-left: 3px solid var(--warning);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.qual-attempts-banner strong { font-weight: 600; }
+
+/* ---------------------------------------------------------------
+   7. Call To Action
+   --------------------------------------------------------------- */
+
+.qual-cta {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0;
+}
+
+.qual-cta .btn {
+  margin: 0;
+}
+
+.qual-btn-lg {
+  padding: 13px 28px;
+  font-size: 15px;
+}
+
+/* ---------------------------------------------------------------
+   8. Progress (test page)
+   --------------------------------------------------------------- */
+
+.progress-group {
+  min-width: 220px;
+}
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.progress-group progress,
+#qualification-progress {
+  width: 100%;
+  height: 8px;
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+#qualification-progress::-webkit-progress-bar {
+  background: var(--surface-2);
+  border-radius: 999px;
+}
+
+#qualification-progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+#qualification-progress::-moz-progress-bar {
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+/* ---------------------------------------------------------------
+   9. Question Cards (test page)
+   --------------------------------------------------------------- */
+
+.qualification-question {
+  padding: 28px;
+  border-radius: var(--radius-lg);
+}
+
+.qualification-question + .qualification-question {
+  margin-top: 20px;
+}
+
+.qualification-question h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  padding: 4px 14px;
+  border-radius: 999px;
+  margin: 0 0 20px;
+}
+
+.segment-block + .segment-block {
+  margin-top: 20px;
+}
+
+.segment-block h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+/* ---------------------------------------------------------------
+   10. Source / Translation Blocks
+   --------------------------------------------------------------- */
+
+.segment-text {
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  line-height: 1.65;
+  font-size: 14.5px;
+  border-left: 3px solid transparent;
+}
+
+.source-text {
+  background: var(--source-soft);
+  border-left-color: var(--source-color);
+  color: var(--text);
+}
+
+.translation-text {
+  background: var(--target-soft);
+  border-left-color: var(--target-color);
+  color: var(--text);
+}
+
+/* ---------------------------------------------------------------
+   11. Likert Scale
+   --------------------------------------------------------------- */
+
+.criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.criterion-card {
+  padding: 16px 18px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.criterion-card:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.criterion-title {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.likert-scale {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.likert-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 0.5px solid var(--border-2);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.likert-option:hover {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+.likert-option input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.likert-option:has(input:checked) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.likert-option:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------
+   12. Pairwise Selection
+   --------------------------------------------------------------- */
+
+.pairwise-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pairwise-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 0.5px solid var(--border-2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text);
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pairwise-option:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+
+.pairwise-option input {
+  margin: 0;
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.pairwise-option:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-dark);
+  font-weight: 500;
+}
+
+.pairwise-option:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------
+   13. Post-edit
+   --------------------------------------------------------------- */
+
+.form-group {
+  margin-top: 8px;
+}
+
+.form-control,
+.form-group textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--surface);
+  border: 0.5px solid var(--border-2);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-control:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ---------------------------------------------------------------
+   14. Span-only Editor
+   --------------------------------------------------------------- */
+
+.span-qual {
+  margin-top: 10px;
+}
+
+.span-qual-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.span-qual-cat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border: 0.5px solid var(--border-2);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.span-qual-cat-btn:hover {
+  border-color: var(--text-faint);
+  background: var(--surface-2);
+}
+
+.span-qual-cat-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+}
+
+.span-qual-cat-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex: none;
+}
+
+.span-qual-text {
+  padding: 16px 18px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  user-select: none;
+  cursor: text;
+  min-height: 4rem;
+  font-size: 14.5px;
+}
+
+.span-qual-char {
+  white-space: pre;
+}
+
+.span-qual-list {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.span-qual-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.span-qual-remove {
+  color: #c4444a;
+}
+
+/* ---------------------------------------------------------------
+   15. Submit Bar
+   --------------------------------------------------------------- */
+
+.page-actions {
+  margin-top: 24px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---------------------------------------------------------------
+   16. Result Page
+   --------------------------------------------------------------- */
+
+.qual-result-page {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.qual-result-card {
+  width: 100%;
+  max-width: 640px;
+  padding: 40px 36px;
+}
+
+.qual-result-status {
+  text-align: center;
+  padding-bottom: 28px;
+}
+
+.qual-result-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+}
+
+.qual-result-status.is-success .qual-result-icon {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.qual-result-status.is-failed .qual-result-icon {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.qual-result-status h1 {
+  margin: 0 0 8px;
+}
+
+.qual-result-status p {
+  margin: 0 auto;
+  max-width: 44ch;
+  color: var(--text-muted);
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+.qual-divider {
+  border: none;
+  border-top: 0.5px solid var(--border);
+  margin: 0;
+}
+
+.qual-summary {
+  padding: 28px 0;
+}
+
+.qual-summary-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  margin: 0 0 16px;
+}
+
+.summary-list {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 0.5px solid var(--border);
+  font-size: 14px;
+}
+
+.summary-row:last-child { border-bottom: none; }
+
+.summary-row dt { color: var(--text-muted); }
+.summary-row dd { margin: 0; font-weight: 500; color: var(--text); }
+
+.summary-row.qual-score-row dd {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.status-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+.status-badge.status-success {
+  background: var(--success-soft);
+  color: #0a6044;
+}
+
+.status-badge.status-danger {
+  background: #fcebeb;
+  color: #791f1f;
+}
+
+.qual-actions {
+  padding-top: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.qual-actions .btn { margin: 0; }
+
+.btn-secondary {
+  background: var(--surface-2);
+  border-color: var(--border-2);
+  color: var(--text);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface);
+  border-color: var(--text-faint);
+}
+
+/* ---------------------------------------------------------------
+   17. Animations
+   --------------------------------------------------------------- */
+
+.qualification-question,
+.qual-hero,
+.qual-panel {
+  animation: qualFadeIn 0.3s ease-out both;
+}
+
+@keyframes qualFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.qual-result-icon {
+  animation: qualPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes qualPop {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ---------------------------------------------------------------
+   18. Responsive
+   --------------------------------------------------------------- */
+
+@media (max-width: 720px) {
+  .qual-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .qual-hero,
+  .qual-panel,
+  .qualification-question {
+    padding: 22px 18px;
+  }
+
+  .qual-result-card {
+    padding: 28px 20px;
+  }
+
+  .qual-cta {
+    justify-content: stretch;
+  }
+
+  .qual-cta .btn,
+  .page-actions .btn {
+    width: 100%;
+  }
+
+  .page-actions {
+    justify-content: stretch;
+  }
+
+  .likert-scale {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .qual-stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .summary-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+/* ---------------------------------------------------------------
+   19. Accessibility
+   --------------------------------------------------------------- */
+
+.span-qual-cat-btn:focus-visible,
+.likert-option:focus-within,
+.pairwise-option:focus-within,
+.btn:focus-visible,
+.span-qual-remove:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qualification-question,
+  .qual-hero,
+  .qual-panel,
+  .qual-result-icon {
+    animation: none;
+  }
+
+  #qualification-progress::-webkit-progress-value,
+  #qualification-progress::-moz-progress-bar {
+    transition: none;
+  }
+}

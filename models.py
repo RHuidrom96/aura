@@ -178,6 +178,7 @@ class Annotator(db.Model):
     otp_attempts = db.Column(db.Integer, default=0)
 
     native_language = db.Column(db.String(100), default="")
+
     expertise = db.Column(db.String(20), default="")   # "" | "easy" | "medium" | "hard"
     # Self-rated proficiency in the source and target languages of a cross-lingual task.
     # One of FLUENCY_IDS or "" (not provided). Collected once at registration for bilingual
@@ -190,6 +191,16 @@ class Annotator(db.Model):
     location = db.Column(db.String(120), default="")
     dialect = db.Column(db.String(120), default="")
     age_group = db.Column(db.String(20), default="")   # one of AGE_GROUP ids or ""
+
+    # Qualification status. Annotators must pass the qualification test
+    # before participating in annotation campaigns.
+    qualification_status = db.Column(
+        db.String(20),
+        nullable=False,
+        default="pending",
+    )
+    qualified_at = db.Column(db.DateTime, default=None)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     ratings = db.relationship("Rating", backref="annotator", lazy="dynamic")
@@ -205,6 +216,13 @@ class Annotator(db.Model):
     @property
     def age_group_label(self):
         return age_group_label(self.age_group)
+
+    qualification_attempts = db.relationship(
+        "QualificationAttempt",
+        backref="annotator",
+        lazy="dynamic",
+        cascade="all,delete-orphan",
+    )    
 
     def set_password(self, raw):
         self.password_hash = bcrypt.hashpw(raw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -1052,3 +1070,265 @@ class AnnotatorCampaignPref(db.Model):
         db.UniqueConstraint("annotator_id", "campaign_id",
                             name="uq_annotator_campaign_pref"),
     )
+# ---- QualificationTest -----
+
+class QualificationTest(db.Model):
+    """Qualification exam that annotators must pass before joining campaigns."""
+
+    __tablename__ = "qualification_tests"
+
+    id = db.Column(db.String(32), primary_key=True, default=_uuid)
+
+    title = db.Column(db.String(200), nullable=False)
+
+    language = db.Column(db.String(100), nullable=False)
+
+    description = db.Column(db.Text, default="")
+
+    passing_score = db.Column(db.Float, nullable=False, default=80.0)
+
+    time_limit_minutes = db.Column(db.Integer, default=30)
+
+    # Retry policy. Both are always stored as concrete positive integers (the
+    # admin form falls back to these class defaults when a field is left blank
+    # or set to zero -- see routes/admin/qualification.py). The DEFAULT_*
+    # constants / effective_* properties below are a defensive fallback only,
+    # for rows written before these columns existed (NULL in the DB).
+    max_attempts = db.Column(db.Integer, default=3)
+    retry_cooldown_hours = db.Column(db.Integer, default=24)
+
+    # Matches Campaign.eval_mode:
+    # "likert" "pairwise" "span_only" "post_edit"
+    eval_mode = db.Column(
+        db.String(20),
+        nullable=False,
+        default="likert",
+    )
+
+    criteria_json = db.Column(
+    db.Text,
+    default="",
+    )
+
+    is_active = db.Column(db.Boolean, default=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    segments = db.relationship(
+        "QualificationSegment",
+        backref="test",
+        lazy="dynamic",
+        cascade="all,delete-orphan",
+    )
+
+    attempts = db.relationship(
+        "QualificationAttempt",
+        backref="test",
+        lazy="dynamic",
+        cascade="all,delete-orphan",
+    )
+
+    DEFAULT_MAX_ATTEMPTS = 3
+    DEFAULT_COOLDOWN_HOURS = 24
+
+    @property
+    def mode(self):
+        return self.eval_mode or "likert"
+    
+    @property
+    def criteria(self):
+        if not self.criteria_json:
+            return []
+
+        try:
+            data = json.loads(self.criteria_json)
+            return data if isinstance(data, list) else []
+        except json.JSONDecodeError:
+            return []
+
+
+    @property
+    def num_segments(self):
+        return self.segments.count()
+
+    @property
+    def effective_max_attempts(self):
+        return self.max_attempts if self.max_attempts and self.max_attempts > 0 else self.DEFAULT_MAX_ATTEMPTS
+
+    @property
+    def effective_cooldown_hours(self):
+        return (self.retry_cooldown_hours if self.retry_cooldown_hours and self.retry_cooldown_hours > 0
+                else self.DEFAULT_COOLDOWN_HOURS)
+
+
+class QualificationSegment(db.Model):
+    """One question/item belonging to a qualification test.
+
+    Similar in spirit to campaign segments, but completely isolated from
+    production annotation. The expected ("gold") annotation is stored as
+    JSON so the same qualification framework works for all evaluation modes.
+    """
+
+    __tablename__ = "qualification_segments"
+
+    id = db.Column(db.String(32), primary_key=True, default=_uuid)
+
+    test_id = db.Column(
+        db.String(32),
+        db.ForeignKey("qualification_tests.id"),
+        nullable=False,
+        index=True,
+    )
+
+    position = db.Column(db.Integer, nullable=False)
+
+    source = db.Column(db.Text, default="")
+    target = db.Column(db.Text, default="")
+
+    # Optional pairwise candidates
+    target_a = db.Column(db.Text, default="")
+    target_b = db.Column(db.Text, default="")
+
+    reference = db.Column(db.Text, default="")
+
+    difficulty = db.Column(db.String(20), default="medium")
+
+    # Expected annotation.
+    #
+    # Examples:
+    #
+    # Likert:
+    # {
+    #   "scores": {"adequacy": 5, "fluency": 4}
+    # }
+    #
+    # Pairwise:
+    # {
+    #   "preference": "a_better"
+    # }
+    #
+    # Span:
+    # {
+    #   "spans": {
+    #       "grammar": [[12,18]]
+    #   }
+    # }
+    #
+    # Post-edit:
+    # {
+    #   "edited_text": "..."
+    # }
+    gold_json = db.Column(db.Text, nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    responses = db.relationship(
+        "QualificationResponse",
+        backref="segment",
+        lazy="dynamic",
+        cascade="all,delete-orphan",
+    )
+
+    @property
+    def gold(self):
+        try:
+            return json.loads(self.gold_json or "{}")
+        except json.JSONDecodeError:
+            return {}
+        
+class QualificationAttempt(db.Model):
+    """A single annotator attempt at a qualification test."""
+
+    __tablename__ = "qualification_attempts"
+
+    id = db.Column(db.String(32), primary_key=True, default=_uuid)
+
+    test_id = db.Column(
+        db.String(32),
+        db.ForeignKey("qualification_tests.id"),
+        nullable=False,
+        index=True,
+    )
+
+    annotator_id = db.Column(
+        db.String(32),
+        db.ForeignKey("annotators.id"),
+        nullable=False,
+        index=True,
+    )
+
+    started_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+    submitted_at = db.Column(db.DateTime)
+
+    score = db.Column(db.Float)
+
+    passed = db.Column(db.Boolean, default=False)
+
+    total_questions = db.Column(db.Integer, default=0)
+
+    correct_answers = db.Column(db.Integer, default=0)
+
+    time_spent_seconds = db.Column(db.Integer, default=0)
+
+    version = db.Column(db.Integer, default=1)
+
+    responses = db.relationship(
+        "QualificationResponse",
+        backref="attempt",
+        lazy="dynamic",
+        cascade="all,delete-orphan",
+    )
+
+
+class QualificationResponse(db.Model):
+    """One answer submitted for one qualification segment."""
+
+    __tablename__ = "qualification_responses"
+
+    id = db.Column(db.String(32), primary_key=True, default=_uuid)
+
+    attempt_id = db.Column(
+        db.String(32),
+        db.ForeignKey("qualification_attempts.id"),
+        nullable=False,
+        index=True,
+    )
+
+    segment_id = db.Column(
+        db.String(32),
+        db.ForeignKey("qualification_segments.id"),
+        nullable=False,
+        index=True,
+    )
+
+    # Annotator submission.
+    #
+    # Same structure as QualificationSegment.gold_json.
+    response_json = db.Column(
+        db.Text,
+        nullable=False,
+        default="{}",
+    )
+
+    is_correct = db.Column(db.Boolean)
+
+    score = db.Column(db.Float)
+
+    time_spent_seconds = db.Column(db.Integer, default=0)
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+    )
+
+    @property
+    def response(self):
+        try:
+            return json.loads(self.response_json or "{}")
+        except json.JSONDecodeError:
+            return {}
