@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Qualification • Aura{% endblock %}
+
+{% block content %}
+<div class="qual-page">
+
+    <header class="qual-hero">
+        <span class="qual-eyebrow">Qualification</span>
+
+        <h1>Complete the Qualification Test</h1>
+
+        <p class="qual-hero-subtitle">
+            Pass this qualification before participating in annotation campaigns.
+        </p>
+    </header>
+
+    <section class="qual-panel">
+        <h2 class="qual-panel-title">Test overview</h2>
+
+        <dl class="qual-stats-grid">
+
+            <div class="qual-stat">
+                <dt>Language</dt>
+                <dd>{{ test.language }}</dd>
+            </div>
+
+            <div class="qual-stat">
+                <dt>Evaluation</dt>
+                <dd>{{ test.mode|replace("_", " ")|title }}</dd>
+            </div>
+
+            <div class="qual-stat">
+                <dt>Questions</dt>
+                <dd>{{ test.num_segments }}</dd>
+            </div>
+
+            <div class="qual-stat">
+                <dt>Passing score</dt>
+                <dd>{{ "%.0f"|format(test.passing_score) }}%</dd>
+            </div>
+
+        </dl>
+
+        {% if test.description %}
+        <dl class="qual-description">
+            <dt>Description</dt>
+            <dd>{{ test.description }}</dd>
+        </dl>
+        {% endif %}
+    </section>
+
+    {% if test.criteria %}
+    <section class="qual-panel">
+        <h2 class="qual-panel-title">Evaluation criteria</h2>
+
+        <ul class="qual-criteria-grid">
+
+            {% for criterion in test.criteria %}
+            <li>
+                <strong>{{ criterion.name }}</strong>
+
+                {% if criterion.guide %}
+                <p class="hint">
+                    {{ criterion.guide }}
+                </p>
+                {% endif %}
+            </li>
+            {% endfor %}
+
+        </ul>
+    </section>
+    {% endif %}
+
+    <section class="qual-panel">
+        <h2 class="qual-panel-title">Before you begin</h2>
+
+        <ul class="qual-checklist">
+
+            <li>Read every source and translation carefully before answering.</li>
+
+            <li>Answer every question. Unanswered questions will be marked as incorrect.</li>
+
+            <li>Once submitted, your answers cannot be modified.</li>
+
+            <li>Your qualification result will be available immediately after submission.</li>
+
+            <li>Passing the qualification unlocks annotation campaigns.</li>
+
+        </ul>
+    </section>
+
+    {% if retry %}
+    <div class="qual-attempts-banner">
+        <span>
+            <strong>Attempts:</strong>
+            You have used {{ retry.attempts_used }} of
+            {{ retry.max_attempts }} attempt{{ "s" if retry.max_attempts != 1 else "" }}.
+        </span>
+    </div>
+    {% endif %}
+
+    <form
+        method="post"
+        action="{{ url_for('annotator_qualification.start_qualification') }}"
+        class="qual-cta">
+
+        <button
+            type="submit"
+            class="btn btn-primary qual-btn-lg">
+
+            {{ "Retake qualification →" if retry else "Start qualification →" }}
+
+        </button>
+
+    </form>
+
+</div>
+{% endblock %}
