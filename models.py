@@ -1148,7 +1148,7 @@ class QualificationTest(db.Model):
     # constants / effective_* properties below are a defensive fallback only,
     # for rows written before these columns existed (NULL in the DB).
     max_attempts = db.Column(db.Integer, default=3)
-    retry_cooldown_hours = db.Column(db.Integer, default=24)
+    retry_cooldown_minutes = db.Column(db.Integer, default=30)
 
     # Matches Campaign.eval_mode:
     # "likert" "pairwise" "span_only" "post_edit"
@@ -1182,7 +1182,7 @@ class QualificationTest(db.Model):
     )
 
     DEFAULT_MAX_ATTEMPTS = 3
-    DEFAULT_COOLDOWN_HOURS = 24
+    DEFAULT_COOLDOWN_MINUTES = 30
 
     @property
     def mode(self):
@@ -1208,10 +1208,15 @@ class QualificationTest(db.Model):
     def effective_max_attempts(self):
         return self.max_attempts if self.max_attempts and self.max_attempts > 0 else self.DEFAULT_MAX_ATTEMPTS
 
+    DEFAULT_COOLDOWN_MINUTES = 30
+
     @property
-    def effective_cooldown_hours(self):
-        return (self.retry_cooldown_hours if self.retry_cooldown_hours and self.retry_cooldown_hours > 0
-                else self.DEFAULT_COOLDOWN_HOURS)
+    def effective_cooldown_minutes(self):
+        return (
+            self.retry_cooldown_minutes
+            if self.retry_cooldown_minutes and self.retry_cooldown_minutes > 0
+            else self.DEFAULT_COOLDOWN_MINUTES
+        )
 
 
 class QualificationSegment(db.Model):
