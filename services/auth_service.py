@@ -165,9 +165,10 @@ def logout_admin():
 
 
 # ----- Annotator -------
-def login_annotator(annotator):
+def login_annotator(annotator, campaign_id):
     session.clear()
     session["annotator_id"] = annotator.id
+    session["last_campaign_id"] = campaign_id
 
 
 def logout_annotator():
@@ -236,7 +237,7 @@ def start_admin_signup(email, password, confirm, invite_code):
         db.session.add(account)
     db.session.commit()
 
-    send_otp(email, otp)
+    send_otp(email, otp, role="admin")
 
     return account, []
 
@@ -249,6 +250,35 @@ def verify_admin_signup_otp(email, otp):
     account.is_verified = True
     account.clear_otp()
     db.session.commit()
+    return True
+
+def start_annotator_signup(annotator):
+    otp = generate_otp()
+    annotator.set_otp(otp)
+
+    db.session.commit()
+
+    send_otp(
+        annotator.email,
+        otp,
+        role="annotator",
+    )
+
+
+def verify_annotator_signup_otp(email, otp):
+    """
+    Verify an annotator's signup OTP and activate the account.
+    """
+    annotator = Annotator.query.filter_by(email=email).first()
+
+    if not annotator or not annotator.check_otp(otp):
+        return False
+
+    annotator.email_verified = True
+    annotator.clear_otp()
+
+    db.session.commit()
+
     return True
 
 

@@ -171,10 +171,11 @@ class Annotator(db.Model):
     id = db.Column(db.String(32), primary_key=True, default=_uuid)
     name = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(200), unique=True, nullable=False, index=True)
+    email_verified = db.Column(db.Boolean, default=False, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
 
     otp_hash = db.Column(db.String(200), default="")
-    otp_expires_at = db.Column(db.DateTime)
+    otp_expires_at = db.Column(db.DateTime) 
     otp_attempts = db.Column(db.Integer, default=0)
 
     native_language = db.Column(db.String(100), default="")
