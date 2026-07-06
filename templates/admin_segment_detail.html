@@ -18,16 +18,16 @@
   <table class="annotator-table">
     <tbody>
       <tr><td class="muted" style="width:130px; vertical-align:top;">{{ campaign.io_labels()[0] }}{% if campaign.source_script_label %} ({{ campaign.source_script_label }}){% endif %}</td>
-          <td style="white-space:pre-wrap;">{{ seg.source or '—' }}</td></tr>
+          <td style="white-space:pre-wrap;">{{ seg.source or '–' }}</td></tr>
       <tr><td class="muted" style="vertical-align:top;">{{ campaign.io_labels()[1] }}{% if campaign.target_script_label %} ({{ campaign.target_script_label }}){% endif %}</td>
-          <td style="white-space:pre-wrap;">{{ seg.target or '—' }}</td></tr>
+          <td style="white-space:pre-wrap;">{{ seg.target or '–' }}</td></tr>
       {% if campaign.is_selection %}
       {% for cd in campaign.selection_candidates(seg) %}
-      <tr><td class="muted">Candidate {{ cd.index + 1 }}{% if cd.system %} · {{ cd.system }}{% endif %}</td><td style="white-space:pre-wrap;">{{ cd.text or '—' }}</td></tr>
+      <tr><td class="muted">Candidate {{ cd.index + 1 }}{% if cd.system %} · {{ cd.system }}{% endif %}</td><td style="white-space:pre-wrap;">{{ cd.text or '–' }}</td></tr>
       {% endfor %}
       {% elif seg.target_a or seg.target_b %}
-      <tr><td class="muted">Candidate A</td><td style="white-space:pre-wrap;">{{ seg.target_a or '—' }}</td></tr>
-      <tr><td class="muted">Candidate B</td><td style="white-space:pre-wrap;">{{ seg.target_b or '—' }}</td></tr>
+      <tr><td class="muted">Candidate A</td><td style="white-space:pre-wrap;">{{ seg.target_a or '–' }}</td></tr>
+      <tr><td class="muted">Candidate B</td><td style="white-space:pre-wrap;">{{ seg.target_b or '–' }}</td></tr>
       {% endif %}
       {% if seg.reference %}
       <tr><td class="muted">Reference</td><td style="white-space:pre-wrap;">{{ seg.reference }}</td></tr>
@@ -65,14 +65,14 @@
         <thead><tr><th class="num">Rank</th><th>Candidate</th><th>Text</th></tr></thead>
         <tbody>
           {% for cd in r.ranking %}
-          <tr><td class="num">{{ cd.rank if cd.rank is not none else '—' }}</td>
+          <tr><td class="num">{{ cd.rank if cd.rank is not none else '–' }}</td>
               <td>{{ cd.label }}</td>
               <td style="white-space:pre-wrap;">{{ cd.text }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
     {% elif campaign.mode == 'pairwise' %}
-      <p style="margin:6px 0;">Preference: <strong>{{ pref_labels.get(r.preference, r.preference) or '—' }}</strong></p>
+      <p style="margin:6px 0;">Preference: <strong>{{ pref_labels.get(r.preference, r.preference) or '–' }}</strong></p>
     {% endif %}
 
     {% if r.criteria %}
@@ -82,11 +82,11 @@
         {% for cr in r.criteria %}
         <tr>
           <td>{{ cr.criterion }}</td>
-          {% if campaign.mode == 'likert' %}<td class="num">{{ cr.score if cr.score is not none else '—' }}</td>{% endif %}
+          {% if campaign.mode == 'likert' %}<td class="num">{{ cr.score if cr.score is not none else '–' }}</td>{% endif %}
           <td>
             {% if cr.spans %}
               {% for sp in cr.spans %}<span style="background:#F4E2DD; border-radius:3px; padding:1px 5px; margin:0 3px 3px 0; display:inline-block;">“{{ sp.text }}” <span class="muted" style="font-size:11px;">({{ sp.chars }} ch)</span></span>{% endfor %}
-            {% else %}<span class="muted">—</span>{% endif %}
+            {% else %}<span class="muted">–</span>{% endif %}
           </td>
         </tr>
         {% endfor %}

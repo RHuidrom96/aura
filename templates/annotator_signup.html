@@ -285,18 +285,19 @@
         <div class="field">
 
             <label for="reg-lang">
-                Native language
+                Native language <span class="req">*</span>
             </label>
 
             <input
                 type="text"
                 id="reg-lang"
                 name="native_language"
+                required
                 placeholder="e.g. Manipuri"
             >
 
             <p class="hint">
-                Optional but helpful.
+                Your first or native language.
             </p>
 
         </div>
@@ -406,27 +407,27 @@
 
         {% endif %}
 
-        <!-- Optional background (helps interpret results; you can skip any of these) -->
+        <!-- Background (helps interpret results) -->
         <div class="field">
-            <label for="reg-location">Location <span class="hint-inline">(optional)</span></label>
-            <input type="text" id="reg-location" name="location" maxlength="120"
+            <label for="reg-location">Location <span class="req">*</span></label>
+            <input type="text" id="reg-location" name="location" maxlength="120" required
                    placeholder="e.g. Guwahati, Assam">
-            <p class="hint">Region/city — helps interpret dialectal variation.</p>
+            <p class="hint">Region/city, helps interpret dialectal variation.</p>
         </div>
 
         <div class="field">
-            <label for="reg-dialect">Dialect / variety <span class="hint-inline">(optional)</span></label>
-            <input type="text" id="reg-dialect" name="dialect" maxlength="120"
+            <label for="reg-dialect">Dialect / variety <span class="req">*</span></label>
+            <input type="text" id="reg-dialect" name="dialect" maxlength="120" required
                    placeholder="e.g. Eastern Assamese">
-            <p class="hint">The specific variety you speak, if relevant.</p>
+            <p class="hint">The specific variety you speak.</p>
         </div>
 
         <div class="field">
-            <label for="reg-age-group">Age group <span class="hint-inline">(optional)</span></label>
-            <select id="reg-age-group" name="age_group">
-                <option value="" selected>Prefer not to say</option>
+            <label for="reg-age-group">Age group <span class="req">*</span></label>
+            <select id="reg-age-group" name="age_group" required>
+                <option value="" disabled selected>Select your age group…</option>
                 {% for g in age_groups %}
-                {% if g.id != 'na' %}<option value="{{ g.id }}">{{ g.label }}</option>{% endif %}
+                <option value="{{ g.id }}">{{ g.label }}</option>
                 {% endfor %}
             </select>
             <p class="hint">Recorded as a range, never an exact age.</p>

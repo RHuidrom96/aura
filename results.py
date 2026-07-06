@@ -373,7 +373,7 @@ def combine_group_results(items):
             "n_segments": int(summ.get("n_segments", 0) or 0),
             "n_complete_ratings": int(summ.get("n_complete_ratings", 0) or 0),
             "n_overlap_segments": int(summ.get("n_overlap_segments", 0) or 0),
-            "headline": headline or "—",
+            "headline": headline or "–",
         })
 
     likert_pooled = []
@@ -1456,7 +1456,7 @@ def _post_edit_stats(campaign, ratings, annotators):
             n_changed += 1
         norm_all.append(norm)
         sysname = seg_system.get(r.segment_id, "")
-        by_system.setdefault(sysname or "—", []).append(norm)
+        by_system.setdefault(sysname or "–", []).append(norm)
         rows.append({"segment_id": r.segment_id, "system": sysname,
                      "char_edits": dist, "norm_distance": _r(norm), "changed": changed})
 

@@ -27,7 +27,7 @@
     <div class="field">
       <label for="a-expertise">Expertise level</label>
       <select id="a-expertise" name="expertise">
-        <option value="" {% if not annotator.expertise %}selected{% endif %}>—</option>
+        <option value="" {% if not annotator.expertise %}selected{% endif %}>–</option>
         <option value="easy" {% if annotator.expertise == 'easy' %}selected{% endif %}>Beginner</option>
         <option value="medium" {% if annotator.expertise == 'medium' %}selected{% endif %}>Intermediate</option>
         <option value="hard" {% if annotator.expertise == 'hard' %}selected{% endif %}>Advanced</option>
@@ -38,7 +38,7 @@
       <div class="field">
         <label for="a-src-fluency">Source-language fluency</label>
         <select id="a-src-fluency" name="source_fluency">
-          <option value="" {% if not annotator.source_fluency %}selected{% endif %}>—</option>
+          <option value="" {% if not annotator.source_fluency %}selected{% endif %}>–</option>
           {% for lvl in fluency_levels %}
           <option value="{{ lvl.id }}" {% if annotator.source_fluency == lvl.id %}selected{% endif %}>{{ lvl.label }}</option>
           {% endfor %}
@@ -47,7 +47,7 @@
       <div class="field">
         <label for="a-tgt-fluency">Target-language fluency</label>
         <select id="a-tgt-fluency" name="target_fluency">
-          <option value="" {% if not annotator.target_fluency %}selected{% endif %}>—</option>
+          <option value="" {% if not annotator.target_fluency %}selected{% endif %}>–</option>
           {% for lvl in fluency_levels %}
           <option value="{{ lvl.id }}" {% if annotator.target_fluency == lvl.id %}selected{% endif %}>{{ lvl.label }}</option>
           {% endfor %}
@@ -72,7 +72,7 @@
     <div class="field">
       <label for="a-age">Age group</label>
       <select id="a-age" name="age_group">
-        <option value="" {% if not annotator.age_group %}selected{% endif %}>—</option>
+        <option value="" {% if not annotator.age_group %}selected{% endif %}>–</option>
         {% for g in age_groups %}
         <option value="{{ g.id }}" {% if annotator.age_group == g.id %}selected{% endif %}>{{ g.label }}</option>
         {% endfor %}

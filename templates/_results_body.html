@@ -1,7 +1,7 @@
 {# Renders the mode-aware results: summary, charts (with per-figure download),
    and tables (with copy-as Markdown/LaTeX/Word + CSV). Expects `results`, `charts`. #}
 {% set s = results.summary %}
-{% macro num(v) %}{% if v is none %}—{% else %}{{ v }}{% endif %}{% endmacro %}
+{% macro num(v) %}{% if v is none %}–{% else %}{{ v }}{% endif %}{% endmacro %}
 {% macro figure(uri, alt, name, chartkey="") %}
 <figure class="result-figure"{% if chartkey %} data-chart="{{ chartkey }}" data-chart-name="{{ name }}"{% endif %}>
   <img class="result-chart" src="{{ uri }}" alt="{{ alt }}">
@@ -33,14 +33,14 @@
     <tr>
       <td>{{ a.name }}{% if a.has_star %} ⭐{% endif %}</td>
       <td>{{ a.email }}</td>
-      <td>{{ _exp_label.get(a.expertise, '—') }}</td>
+      <td>{{ _exp_label.get(a.expertise, '–') }}</td>
       <td class="num">{{ a.n_complete }}</td>
       {% if campaign is defined and (campaign.incentive_money or campaign.incentive_co_authorship) %}
       <td>
         {% if a.has_star %}
           <span style="font-weight:600; color:#34433A;">⭐ Star &amp; Acknowledgement</span>
         {% else %}
-          <span class="muted">—</span>
+          <span class="muted">–</span>
         {% endif %}
       </td>
       {% endif %}
@@ -88,15 +88,15 @@
     <tr>
       <td>{{ r.name }}</td>
       <td class="num">{{ r.n_complete }}</td>
-      <td class="num">{{ r.mean_time_sec if r.mean_time_sec is not none else '—' }}</td>
+      <td class="num">{{ r.mean_time_sec if r.mean_time_sec is not none else '–' }}</td>
       {% if results.mode in ['pairwise', 'preference_selection'] %}
-        <td class="num">{{ (r.pref_agreement_pct ~ '%') if r.pref_agreement_pct is not none else '—' }}</td>
+        <td class="num">{{ (r.pref_agreement_pct ~ '%') if r.pref_agreement_pct is not none else '–' }}</td>
       {% else %}
-        <td class="num">{{ r.mean_deviation if r.mean_deviation is not none else '—' }}</td>
+        <td class="num">{{ r.mean_deviation if r.mean_deviation is not none else '–' }}</td>
       {% endif %}
       <td class="num">{{ r.ai_used }}</td>
       <td class="num">{{ r.ai_helpful }}</td>
-      <td>{% for f in r.flags %}<span class="perf-flag perf-flag-{{ f.split(' ')|join('-') }}">{{ f }}</span> {% else %}<span class="muted">—</span>{% endfor %}</td>
+      <td>{% for f in r.flags %}<span class="perf-flag perf-flag-{{ f.split(' ')|join('-') }}">{{ f }}</span> {% else %}<span class="muted">–</span>{% endfor %}</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -175,12 +175,12 @@
       <td>{{ seg.source }}{% if seg.source and seg.source|length >= 140 %}…{% endif %}</td>
       <td class="num">{{ seg.n_raters }}</td>
       <td class="num">{{ seg.disagreement }}</td>
-      <td class="num">{% if seg.readability %}{{ seg.readability.reading_ease }}{% else %}—{% endif %}</td>
+      <td class="num">{% if seg.readability %}{{ seg.readability.reading_ease }}{% else %}–{% endif %}</td>
       <td>
         {% if seg.comments %}
           {% for cm in seg.comments[:3] %}<div style="margin-bottom:3px; font-size:12px;"><span class="muted">{{ cm.annotator }}:</span> “{{ cm.text[:120] }}{% if cm.text|length > 120 %}…{% endif %}”</div>{% endfor %}
           {% if seg.n_comments > 3 %}<div class="muted">+{{ seg.n_comments - 3 }} more</div>{% endif %}
-        {% else %}<span class="muted">—</span>{% endif %}
+        {% else %}<span class="muted">–</span>{% endif %}
       </td>
       <td class="muted">{{ seg.detail }}</td>
     </tr>
@@ -254,7 +254,7 @@
   <thead><tr><th>Criterion</th><th class="num">Spans marked</th><th class="num">Characters</th><th class="num">Mean span (chars)</th><th class="num">Mean span (words)</th><th class="num">% text flagged</th><th class="num">Marked instances</th></tr></thead>
   <tbody>
     {% for c in SP.criteria %}
-    <tr><td>{{ c.name }}</td><td class="num">{{ c.n_spans }}</td><td class="num">{{ c.char_count }}</td><td class="num">{{ num(c.mean_span_chars) }}</td><td class="num">{{ num(c.mean_span_words) }}</td><td class="num">{% if c.char_density is not none %}{{ c.char_density }}%{% else %}—{% endif %}</td><td class="num">{{ c.marked_instances }}</td></tr>
+    <tr><td>{{ c.name }}</td><td class="num">{{ c.n_spans }}</td><td class="num">{{ c.char_count }}</td><td class="num">{{ num(c.mean_span_chars) }}</td><td class="num">{{ num(c.mean_span_words) }}</td><td class="num">{% if c.char_density is not none %}{{ c.char_density }}%{% else %}–{% endif %}</td><td class="num">{{ c.marked_instances }}</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -306,7 +306,7 @@
   <tbody>
     {% for r in P.systems %}
     <tr><td>{{ r.system }}</td><td class="num">{{ r.wins }}</td><td class="num">{{ r.losses }}</td><td class="num">{{ r.ties }}</td><td class="num">{{ r.n }}</td>
-      <td class="num">{% if r.win_rate is not none %}{{ (r.win_rate * 100)|round(1) }}%{% else %}—{% endif %}</td></tr>
+      <td class="num">{% if r.win_rate is not none %}{{ (r.win_rate * 100)|round(1) }}%{% else %}–{% endif %}</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -336,9 +336,9 @@
     {% for r in P.systems %}
     <tr><td>{{ r.system }}</td>
       <td class="num">{{ num(r.elo) }}</td>
-      <td class="num">{% if r.win_rate is not none %}{{ (r.win_rate * 100)|round(1) }}%{% else %}—{% endif %}</td>
+      <td class="num">{% if r.win_rate is not none %}{{ (r.win_rate * 100)|round(1) }}%{% else %}–{% endif %}</td>
       <td class="num">{{ num(r.mean_rank) }}</td>
-      <td class="num">{% if r.top1_rate is not none %}{{ r.top1_rate }}%{% else %}—{% endif %}</td>
+      <td class="num">{% if r.top1_rate is not none %}{{ r.top1_rate }}%{% else %}–{% endif %}</td>
       <td class="num">{{ r.borda }}</td>
       <td class="num">{{ r.wins }}</td><td class="num">{{ r.losses }}</td><td class="num">{{ r.ties }}</td><td class="num">{{ r.n }}</td></tr>
     {% endfor %}
@@ -359,7 +359,7 @@
   <thead><tr><th>Error type</th><th class="num">Spans marked</th><th class="num">Characters</th><th class="num">Mean span (chars)</th><th class="num">Mean span (words)</th><th class="num">% text flagged</th><th class="num">Marked instances</th></tr></thead>
   <tbody>
     {% for c in S.criteria %}
-    <tr><td>{{ c.name }}</td><td class="num">{{ c.n_spans }}</td><td class="num">{{ c.char_count }}</td><td class="num">{{ num(c.mean_span_chars) }}</td><td class="num">{{ num(c.mean_span_words) }}</td><td class="num">{% if c.char_density is not none %}{{ c.char_density }}%{% else %}—{% endif %}</td><td class="num">{{ c.marked_instances }}</td></tr>
+    <tr><td>{{ c.name }}</td><td class="num">{{ c.n_spans }}</td><td class="num">{{ c.char_count }}</td><td class="num">{{ num(c.mean_span_chars) }}</td><td class="num">{{ num(c.mean_span_words) }}</td><td class="num">{% if c.char_density is not none %}{{ c.char_density }}%{% else %}–{% endif %}</td><td class="num">{{ c.marked_instances }}</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -389,7 +389,7 @@
   <thead><tr><th>System</th><th class="num">Spans</th><th class="num">Characters</th><th class="num">Instances</th><th class="num">Spans / segment</th><th class="num">Mean span (chars)</th><th class="num">% text flagged</th></tr></thead>
   <tbody>
     {% for r in S.systems %}
-    <tr><td>{{ r.system }}</td><td class="num">{{ r.spans }}</td><td class="num">{{ r.chars }}</td><td class="num">{{ r.n }}</td><td class="num">{{ num(r.spans_per_segment) }}</td><td class="num">{{ num(r.mean_span_chars) }}</td><td class="num">{% if r.char_density is not none %}{{ r.char_density }}%{% else %}—{% endif %}</td></tr>
+    <tr><td>{{ r.system }}</td><td class="num">{{ r.spans }}</td><td class="num">{{ r.chars }}</td><td class="num">{{ r.n }}</td><td class="num">{{ num(r.spans_per_segment) }}</td><td class="num">{{ num(r.mean_span_chars) }}</td><td class="num">{% if r.char_density is not none %}{{ r.char_density }}%{% else %}–{% endif %}</td></tr>
     {% endfor %}
   </tbody>
 </table>

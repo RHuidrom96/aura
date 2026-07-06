@@ -113,7 +113,7 @@
     <option value="manual" {{ 'selected' if form_data.get('difficulty_method')=='manual' else '' }}>Manual: use only the per-segment "difficulty" labels you provide</option>
     <option value="none" {{ 'selected' if form_data.get('difficulty_method')=='none' else '' }}>None: don't group by difficulty</option>
   </select>
-  <p class="hint">Every segment is placed in one of three tiers — <strong>easy / medium / hard</strong>. The method only decides how segments are ranked; the split is always deterministic (equal thirds, or your custom length thresholds), so the same data groups the same way — it isn't a random choice. A per-segment
+  <p class="hint">Every segment is placed in one of three tiers: <strong>easy / medium / hard</strong>. The method only decides how segments are ranked; the split is always deterministic (equal thirds, or your custom length thresholds), so the same data groups the same way; it isn't a random choice. A per-segment
     <code>difficulty</code> field in your data overrides the computed tier (except when set to None). The campaign page shows the resulting easy/medium/hard counts.</p>
   <div id="difficulty-length-row" class="form-row" style="margin-top:8px;">
     <div class="field">
@@ -355,7 +355,7 @@
   <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
     <input type="checkbox" id="shuffle_segments" name="shuffle_segments" value="1" {{ 'checked' if form_data.get('shuffle_segments') else '' }}>
     <span><strong>Shuffle segment order for annotators</strong><br>
-      <span class="hint">Each annotator sees segments in a randomised order (stable per annotator across reloads), to reduce ordering/fatigue effects. Presentation only — results are keyed by segment id and are unaffected. Off keeps your original data order.</span></span>
+      <span class="hint">Each annotator sees segments in a randomised order (stable per annotator across reloads), to reduce ordering/fatigue effects. Presentation only; results are keyed by segment id and are unaffected. Off keeps your original data order.</span></span>
   </label>
 </div>
 
@@ -394,10 +394,13 @@
   </div>
 
   <div class="field" style="margin-top:12px;">
-    <label for="span_instructions">Span annotation instructions <span class="optional">(optional)</span></label>
+    <label for="span_instructions">Span annotation instructions
+      <span class="req" id="span-instructions-required">*</span>
+      <span class="optional" id="span-instructions-optional" style="display:none">(optional)</span>
+    </label>
     <textarea id="span_instructions" name="span_instructions" rows="4"
               placeholder="Shown in the span-annotation section on the rating page. Explain how to mark spans, what each error type means, examples, etc.">{{ form_data.get('span_instructions', '') }}</textarea>
-    <p class="hint">Plain text; line breaks preserved. If left blank, a default explanation is shown.</p>
+    <p class="hint">Plain text; line breaks preserved. Required while error span annotation is enabled.</p>
   </div>
 </div>
 

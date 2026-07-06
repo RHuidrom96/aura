@@ -165,6 +165,18 @@ def annotator_register(campaign_id):
                 f"{campaign.target_language or 'the target language'}."
             )
 
+    if not native_lang:
+        errors.append("Native language is required.")
+
+    if not location:
+        errors.append("Location is required.")
+
+    if not dialect:
+        errors.append("Dialect / variety is required.")
+
+    if not age_group:
+        errors.append("Please select your age group.")
+
     # Stop here if any validation errors occurred
     if errors:
         for error in errors:

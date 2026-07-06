@@ -108,7 +108,7 @@
         <td>{{ r.level|capitalize }}</td>
         <td class="num">{{ r.n_segments }}</td>
         <td class="num">{{ r.n_ratings }}</td>
-        <td class="num">{{ r.metric if r.metric is not none else '—' }}</td>
+        <td class="num">{{ r.metric if r.metric is not none else '–' }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -124,7 +124,7 @@
 
 <section class="card">
   <h3 style="margin-top:0;">Danger zone</h3>
-  <p class="hint" style="margin-top:0;">Deleting this group keeps all its campaigns and their ratings — they are simply un-grouped.</p>
+  <p class="hint" style="margin-top:0;">Deleting this group keeps all its campaigns and their ratings; they are simply un-grouped.</p>
   <form method="post" action="{{ url_for('admin_campaign.admin_group_delete', group_id=group.id) }}"
         onsubmit="return confirm('Delete this group? The campaigns in it are kept and un-grouped.');">
     <button type="submit" class="btn">Delete group</button>

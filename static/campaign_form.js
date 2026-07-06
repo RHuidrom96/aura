@@ -39,6 +39,7 @@
       const block = document.getElementById("span-scope-block");
       if (block && mode === "span_only") block.style.display = "";
     }
+    syncSpanInstructionsRequired();
   };
 
   // --- criterion rows -------------------------------------------------------
@@ -83,9 +84,35 @@
 
   // --- span scope -----------------------------------------------------------
   window.toggleSpanScope = function () {
-    if (currentMode() !== "likert") return;
+    if (currentMode() !== "likert") { syncSpanInstructionsRequired(); return; }
     const enabled = document.getElementById('enable_spans').checked;
     document.getElementById('span-scope-block').style.display = enabled ? '' : 'none';
+    syncSpanInstructionsRequired();
+  };
+
+  // Span annotation instructions are required whenever span annotation is on:
+  // in span_only mode (always on) or in likert mode with the enable toggle checked.
+  // Only mark it required while the field is actually visible, so a hidden required
+  // field never blocks submission.
+  function spansEnabled() {
+    const mode = currentMode();
+    if (mode === "span_only") return true;
+    if (mode === "likert") {
+      const cb = document.getElementById('enable_spans');
+      return !!(cb && cb.checked);
+    }
+    return false;
+  }
+
+  window.syncSpanInstructionsRequired = function () {
+    const ta = document.getElementById('span_instructions');
+    if (!ta) return;
+    const on = spansEnabled();
+    ta.required = on;
+    const req = document.getElementById('span-instructions-required');
+    const opt = document.getElementById('span-instructions-optional');
+    if (req) req.style.display = on ? '' : 'none';
+    if (opt) opt.style.display = on ? 'none' : '';
   };
 
   // --- scale type switching -------------------------------------------------
@@ -399,6 +426,16 @@
             const hint = document.getElementById('span-scope-required-hint');
             if (hint) hint.style.display = '';
             document.getElementById('span-scope-block').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+          }
+        }
+        // Span annotation instructions are required whenever spans are enabled.
+        if (spansEnabled()) {
+          const ta = document.getElementById('span_instructions');
+          if (ta && !ta.value.trim()) {
+            e.preventDefault();
+            ta.focus();
+            ta.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }
       });

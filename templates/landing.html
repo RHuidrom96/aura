@@ -138,6 +138,40 @@
     border-bottom: 1px solid rgba(194, 200, 195, 0.3);
   }
 
+  .hero-eyebrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 12px;
+    margin: 0 auto 28px;
+    color: var(--primary);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+  }
+
+  .hero-eyebrow::before,
+  .hero-eyebrow::after {
+    content: "";
+    align-self: center;
+    width: 36px;
+    height: 1px;
+    background: var(--outline-variant);
+  }
+
+  .hero-eyebrow-aside {
+    font-family: var(--font-playfair);
+    font-style: italic;
+    font-size: 17px;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    color: var(--secondary);
+  }
+
   .hero-title {
     margin: 0 0 16px;
     color: var(--on-background);
@@ -584,10 +618,14 @@
     <div class="hero-content">
       <div class="corner corner-top" aria-hidden="true"></div>
       <div class="corner corner-bottom" aria-hidden="true"></div>
+      <p class="hero-eyebrow">
+        For Indigenous Languages
+        <span class="hero-eyebrow-aside">(not&nbsp;limited&nbsp;to)</span>
+      </p>
       <h1 class="hero-title">A.U.R.A</h1>
       <h2 class="hero-subtitle">Annotation Utility for Reliable Assessment</h2>
       <p class="hero-copy">
-        Run rigorous human-evaluation studies. Create campaigns, share a link, and get live agreement statistics. Minimal friction, maximum clarity.
+        A.U.R.A was built first for the languages the world too often overlooks: the Indigenous and low-resource tongues that carry entire worlds of meaning, yet rarely meet the tools that could serve them. Gather rigorous human judgment from the people who speak them, watch agreement unfold live, and let their voices shape fairer, truer language technology.
       </p>
       <div class="hero-actions">
         {% if is_admin %}

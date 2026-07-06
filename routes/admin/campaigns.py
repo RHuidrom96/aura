@@ -311,6 +311,10 @@ def _collect_campaign_form(form, files, *, parse_segments, existing_segments=Non
     if eval_mode == "span_only":
         if span_scope not in ("target", "both"):
             errors.append("Please select whether spans are marked in the target only or in both source and target.")
+    # When span annotation is enabled (either via the Likert toggle or in span-only
+    # mode), the span-annotation instructions are required.
+    if enable_spans and not span_instructions:
+        errors.append("Span annotation instructions are required when error span annotation is enabled.")
     if eval_mode == "pairwise":
         if len(preferences) < 2:
             errors.append("Please define at least two preference options for pairwise comparison.")

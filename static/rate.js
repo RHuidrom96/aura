@@ -497,7 +497,7 @@
     block.innerHTML =
       '<div class="ranking-help">Rank the ' + N + ' ' + escapeHtml(outLabel.toLowerCase()) +
       ' candidates from best (<strong>1</strong>) to worst (<strong>' + N + '</strong>). ' +
-      'Ties are allowed — give equally good candidates the same rank.</div>' +
+      'Ties are allowed: give equally good candidates the same rank.</div>' +
       cands.map((c, i) =>
         '<div class="cand-card" data-key="' + escapeHtml(c.key) + '">' +
           '<div class="cand-head">' +
@@ -883,7 +883,7 @@
       return (r.edited === orig) ? "reviewed; left unchanged" : "post-edited (changed)";
     }
     return "scores: " + CRITERIA.map(c =>
-      c.name + "=" + (r.scores[c.id] == null ? "—" : r.scores[c.id])).join(", ");
+      c.name + "=" + (r.scores[c.id] == null ? "–" : r.scores[c.id])).join(", ");
   }
 
   function assistGeneralPresets() {
