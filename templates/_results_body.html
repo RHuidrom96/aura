@@ -6,7 +6,7 @@
 <figure class="result-figure"{% if chartkey %} data-chart="{{ chartkey }}" data-chart-name="{{ name }}"{% endif %}>
   <img class="result-chart" src="{{ uri }}" alt="{{ alt }}">
   <figcaption><span class="fig-cap">{{ alt }}</span>
-    <a class="fig-dl" href="{{ uri }}" download="{{ name }}.png">⬇&nbsp;PNG</a></figcaption>
+    <a class="fig-dl" href="#" data-download="{{ name }}.png"> ⬇ PNG </a></figcaption>
 </figure>
 {% endmacro %}
 
