@@ -82,3 +82,8 @@ data/*.db
 # Local PostgreSQL data directory (if running PostgreSQL locally)
 postgres_data/
 pgdata/
+
+# data
+data/segments/
+wmt/
+samples/

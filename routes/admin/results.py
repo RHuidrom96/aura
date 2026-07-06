@@ -8,7 +8,8 @@ import results
 import exporter
 from models import Campaign, Rating, CampaignGroup
 from utils.constants import get_criteria_for
-from services.auth_service import require_admin
+from services.auth_service import (require_admin, owned_campaign_or_404,
+    owned_group_or_404, visible_campaigns_query, admin_owns)
 
 admin_results_bp = Blueprint(
     "admin_results",
@@ -39,7 +40,7 @@ def _results_signature(c):
 @admin_results_bp.route("/campaign/<campaign_id>/results.json")
 @require_admin
 def admin_campaign_results_json(campaign_id):
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     res, _ = _campaign_results(c)
     payload = json.dumps(res, ensure_ascii=False, indent=2)
     fname = exporter._safe_filename(c.name) + "_results.json"
@@ -50,7 +51,7 @@ def admin_campaign_results_json(campaign_id):
 @admin_results_bp.route("/campaign/<campaign_id>/results.html")
 @require_admin
 def admin_campaign_results_report(campaign_id):
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     res, frozen = _campaign_results(c)
     charts = results.build_charts(res)
     # Inline the export JS so the downloaded report works offline.
@@ -73,7 +74,7 @@ def admin_campaign_results_report(campaign_id):
 @admin_results_bp.route("/campaign/<campaign_id>/results")
 @require_admin
 def admin_campaign_results(campaign_id):
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     res, frozen = _campaign_results(c)
     charts = results.build_charts(res)
     return render_template("admin_campaign_results.html",
@@ -83,14 +84,14 @@ def admin_campaign_results(campaign_id):
 @admin_results_bp.route("/campaign/<campaign_id>/results-version")
 @require_admin
 def admin_campaign_results_version(campaign_id):
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     return jsonify({"ok": True, "version": _results_signature(c), "frozen": c.is_closed})
 
 
 @admin_results_bp.route("/groups/<group_id>/results")
 @require_admin
 def admin_group_results(group_id):
-    group = CampaignGroup.query.get_or_404(group_id)
+    group = owned_group_or_404(group_id)
     campaigns = group.ordered_campaigns()
     items = []
     for c in campaigns:
@@ -108,7 +109,7 @@ def admin_group_results(group_id):
 @require_admin
 def admin_group_download_csv(group_id):
     """Combined master CSV across every campaign in the group (completed ratings only)."""
-    group = CampaignGroup.query.get_or_404(group_id)
+    group = owned_group_or_404(group_id)
     items = []
     for c in group.ordered_campaigns():
         crit = get_criteria_for(c)
@@ -130,7 +131,7 @@ def admin_campaign_segment(campaign_id, segment_id):
     (scores, marked error spans with the exact substrings, comments, and any post-edit).
     Linked from the 'Linguistic diagnosis' section so admins can jump straight to the
     segments annotators disagree on most."""
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     seg = c.segment_by_id(segment_id)
     if not seg:
         from flask import abort
@@ -165,11 +166,22 @@ def admin_campaign_segment(campaign_id, segment_id):
                     "score": scores.get(cid),
                     "spans": marked,
                 })
+        ranking_view = None
+        if c.mode == "preference_selection":
+            cands = c.selection_candidates(seg)
+            rk = r.ranking_dict()
+            ranking_view = [{
+                "label": (cd.get("system") or f"Candidate {cd['index']+1}"),
+                "text": cd.get("text", ""),
+                "rank": rk.get(cd["key"]),
+            } for cd in cands]
+            ranking_view.sort(key=lambda x: (x["rank"] is None, x["rank"] if x["rank"] is not None else 0))
         rows.append({
             "annotator": (ann.name if ann else r.annotator_id),
             "annotator_id": r.annotator_id,
             "email": (ann.email if ann else ""),
             "preference": (r.preference or ""),
+            "ranking": ranking_view,
             "criteria": span_view,
             "comment": (r.comments or "").strip(),
             "edited_text": (r.edited_text or "").strip(),
@@ -188,7 +200,7 @@ def admin_campaign_segment(campaign_id, segment_id):
 @admin_results_bp.route("/campaign/<campaign_id>/results-fragment")
 @require_admin
 def admin_campaign_results_fragment(campaign_id):
-    c = Campaign.query.get_or_404(campaign_id)
+    c = owned_campaign_or_404(campaign_id)
     res, frozen = _campaign_results(c)
     charts = results.build_charts(res)
     html = render_template("_results_body.html",

@@ -126,11 +126,20 @@
     const existing = {};
     grid.querySelectorAll('input[data-point]').forEach(inp => { existing[inp.dataset.point] = inp.value; });
     const prefill = window.SCALE_LABELS_PREFILL || {};
+    const defaultsByPts = window.SCALE_DEFAULT_LABELS_BY_POINTS || {};
+    const defaults = defaultsByPts[pts] || defaultsByPts[String(pts)] || [];
     grid.innerHTML = '';
     for (let v = 1; v <= pts; v++) {
       const wrap = document.createElement('div');
       wrap.className = 'likert-label-cell';
-      const val = (existing[v] != null && existing[v] !== '') ? existing[v] : (prefill[v] || '');
+      let val;
+      if (existing[v] != null && existing[v] !== '') {
+        val = existing[v];
+      } else if (prefill[v] != null && prefill[v] !== '') {
+        val = prefill[v];
+      } else {
+        val = defaults[v - 1] || '';
+      }
       wrap.innerHTML =
         '<span class="likert-label-num">' + v + '</span>' +
         '<input type="text" name="scale_label_' + v + '" data-point="' + v + '" ' +

@@ -157,41 +157,44 @@ def attempts_used(annotator, test):
     )
 
 
+from datetime import datetime, timedelta
+
 def retry_status(annotator, test):
-    """
-    Whether `annotator` may start a new attempt at `test` right now, given
-    the test's max_attempts / retry_cooldown_hours policy.
-
-    Returns a dict:
-        allowed        bool
-        reason         None | "max_attempts" | "cooldown"
-        attempts_used  int
-        max_attempts   int (effective, i.e. defaulted if unset)
-        cooldown_hours int (effective)
-        retry_at       datetime | None -- when the cooldown lifts, if that's
-                       the blocking reason
-    """
-
     used = attempts_used(annotator, test)
     max_attempts = test.effective_max_attempts
-    cooldown_hours = test.effective_cooldown_hours
+    cooldown_minutes = test.effective_cooldown_minutes
 
     base = {
         "attempts_used": used,
         "max_attempts": max_attempts,
-        "cooldown_hours": cooldown_hours,
+        "cooldown_minutes": cooldown_minutes,
     }
 
     if used >= max_attempts:
-        return {**base, "allowed": False, "reason": "max_attempts", "retry_at": None}
+        return {
+            **base,
+            "allowed": False,
+            "reason": "max_attempts",
+            "retry_at": None,
+        }
 
     last = latest_attempt_for_test(annotator, test)
     if last and last.submitted_at:
-        retry_at = last.submitted_at + timedelta(hours=cooldown_hours)
+        retry_at = last.submitted_at + timedelta(minutes=cooldown_minutes)
         if datetime.utcnow() < retry_at:
-            return {**base, "allowed": False, "reason": "cooldown", "retry_at": retry_at}
+            return {
+                **base,
+                "allowed": False,
+                "reason": "cooldown",
+                "retry_at": retry_at,
+            }
 
-    return {**base, "allowed": True, "reason": None, "retry_at": None}
+    return {
+        **base,
+        "allowed": True,
+        "reason": None,
+        "retry_at": None,
+    }
 
 # ---------------------------------------------------------------------------
 # Submission

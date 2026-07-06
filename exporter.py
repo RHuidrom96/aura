@@ -17,6 +17,10 @@ def _safe_filename(name):
     return "".join(keep).strip() or "campaign"
 
 
+def _max_selection_candidates(campaign):
+    return max((campaign.selection_num_candidates(s) for s in campaign.segments), default=2)
+
+
 def _csv_header(campaign, criteria):
     mode = campaign.mode
     header = [
@@ -31,6 +35,11 @@ def _csv_header(campaign, criteria):
     if mode == "pairwise":
         header += ["candidate_a", "candidate_b", "system_a", "system_b", "reference",
                    "preference_id", "preference_label"]
+    elif mode == "preference_selection":
+        header += ["reference"]
+        for i in range(_max_selection_candidates(campaign)):
+            header += [f"cand{i+1}_system", f"cand{i+1}_text", f"cand{i+1}_rank"]
+        header += ["ranking_json"]
     else:
         header += ["target", "reference"]
         if mode == "likert":
@@ -92,6 +101,17 @@ def master_rows(campaign, ratings, criteria):
             a, b, sa, sb = campaign.pairwise_candidates(seg)
             row += [a, b, sa, sb, seg.get("reference", ""),
                     r.preference or "", pref_labels.get(r.preference or "", "")]
+        elif mode == "preference_selection":
+            cands = campaign.selection_candidates(seg)
+            rk = r.ranking_dict()
+            row += [seg.get("reference", "")]
+            for i in range(_max_selection_candidates(campaign)):
+                if i < len(cands):
+                    cd = cands[i]
+                    row += [cd["system"], cd["text"], rk.get(cd["key"], "")]
+                else:
+                    row += ["", "", ""]
+            row += [json.dumps(rk, ensure_ascii=False)]
         else:
             row += [seg.get("target", ""), seg.get("reference", "")]
             if mode == "likert":

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}Aura 💫{% endblock %}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='qualification/qualification.css') }}">
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 <script>
   // Apply saved theme before paint to avoid a flash.
@@ -108,10 +109,12 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
               My campaigns
             </a>
-            <a href="{{ url_for('annotator_auth.annotator_update_password') }}" class="avatar-dropdown-item">
+            {% if session.get('last_campaign_id') %}
+            <a href="{{ url_for('annotator_auth.annotator_reset_password', campaign_id=session.get('last_campaign_id')) }}" class="avatar-dropdown-item">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               Update password
             </a>
+            {% endif %}
             <div class="avatar-dropdown-divider"></div>
             <form action="{{ url_for('annotator_auth.annotator_logout') }}" method="post">
               <button type="submit" class="avatar-dropdown-item avatar-dropdown-signout">

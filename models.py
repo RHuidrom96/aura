@@ -171,6 +171,7 @@ class Annotator(db.Model):
     id = db.Column(db.String(32), primary_key=True, default=_uuid)
     name = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(200), unique=True, nullable=False, index=True)
+    email_verified = db.Column(db.Boolean,nullable=False,default=False,)
     password_hash = db.Column(db.String(200), nullable=False)
 
     otp_hash = db.Column(db.String(200), default="")
@@ -657,6 +658,30 @@ class Campaign(db.Model):
         """
         return [s.get("id") for s in self.served_segments_for(annotator)]
 
+    def completion_for(self, annotator, criteria=None, ratings=None):
+        """Return ``(completed, total)`` for an annotator.
+
+        ``total`` is the number of segments actually *served* to this annotator
+        (after any difficulty/expertise filtering), not the campaign-wide segment
+        count. ``completed`` counts how many of those served segments have a
+        complete rating. Measuring against the served set means an annotator who
+        is only served a subset (e.g. 21 of 30 under expertise matching) can still
+        reach 100% and be marked complete.
+
+        Pass ``ratings`` (an iterable of this annotator's Rating rows for the
+        campaign) to avoid an extra query when the caller already has them.
+        """
+        served_ids = {s.get("id") for s in self.served_segments_for(annotator)}
+        total = len(served_ids)
+        if ratings is None:
+            ratings = Rating.query.filter_by(
+                campaign_id=self.id, annotator_id=annotator.id).all()
+        completed = sum(
+            1 for r in ratings
+            if r.segment_id in served_ids and self.rating_is_complete(r, criteria)
+        )
+        return completed, total
+
     def difficulty_for_segments(self):
         """Return {segment_id: 'easy'|'medium'|'hard'}.
 
@@ -810,6 +835,37 @@ class Campaign(db.Model):
         "1": "Very poor", "2": "Poor", "3": "Acceptable", "4": "Good", "5": "Excellent",
     }
 
+    # Sensible graded-quality default labels for every valid Likert point count
+    # (2-11). Used when a campaign is created/edited without custom point labels so
+    # annotators always see a worded scale rather than bare numbers.
+    DEFAULT_LIKERT_LABELS_BY_POINTS = {
+        2:  ["Poor", "Good"],
+        3:  ["Poor", "Acceptable", "Good"],
+        4:  ["Very poor", "Poor", "Good", "Excellent"],
+        5:  ["Very poor", "Poor", "Acceptable", "Good", "Excellent"],
+        6:  ["Very poor", "Poor", "Mediocre", "Fair", "Good", "Excellent"],
+        7:  ["Very poor", "Poor", "Mediocre", "Acceptable", "Fair", "Good", "Excellent"],
+        8:  ["Very poor", "Poor", "Weak", "Mediocre", "Fair", "Good", "Very good", "Excellent"],
+        9:  ["Very poor", "Poor", "Weak", "Mediocre", "Acceptable", "Fair", "Good", "Very good", "Excellent"],
+        10: ["Very poor", "Poor", "Weak", "Mediocre", "Fair", "Adequate", "Good", "Very good", "Great", "Excellent"],
+        11: ["Very poor", "Poor", "Weak", "Mediocre", "Fair", "Acceptable", "Adequate", "Good", "Very good", "Great", "Excellent"],
+    }
+
+    @classmethod
+    def default_likert_labels(cls, points):
+        """Default per-point label map ({"1": "...", ...}) for a Likert scale of
+        `points` points. Falls back to the nearest sensible set for out-of-range
+        counts so callers always get a full, non-empty mapping."""
+        try:
+            pts = int(points)
+        except (TypeError, ValueError):
+            pts = 5
+        pts = max(2, min(11, pts))
+        words = cls.DEFAULT_LIKERT_LABELS_BY_POINTS.get(pts)
+        if not words:
+            words = cls.DEFAULT_LIKERT_LABELS_BY_POINTS[5]
+        return {str(i + 1): w for i, w in enumerate(words)}
+
     @property
     def scale_labels(self):
         """Decoded scale label mapping (may be empty)."""
@@ -851,9 +907,10 @@ class Campaign(db.Model):
         # likert
         pts = self.scale_points or 5
         design = self.scale_design or "circles"
-        # Fall back to the classic 1-5 wording only for the default 5-point scale.
-        if not labels and pts == 5:
-            labels = dict(self.DEFAULT_LIKERT_LABELS)
+        # Fall back to sensible graded default labels for any point count so
+        # annotators always see a worded scale rather than bare numbers.
+        if not labels:
+            labels = self.default_likert_labels(pts)
         return {
             "type": "likert",
             "design": design,
@@ -951,6 +1008,43 @@ class Campaign(db.Model):
         return None
 
     @property
+    def is_selection(self):
+        """True for the Preference Selection mode (one source, N ranked candidates)."""
+        return self.mode == "preference_selection"
+
+    def selection_candidates(self, seg):
+        """Ordered candidate list for Preference Selection mode:
+            [{"key": "c0", "index": 0, "text": ..., "system": ...}, ...]
+
+        Reads a `candidates` list (strings or {target/text, system}); also accepts the
+        classic two-candidate `target_a`/`target_b` (+ system_a/system_b). The positional
+        ``key`` (c0, c1, …) is stable for a segment and is what rankings are keyed by."""
+        out = []
+        cands = seg.get("candidates")
+        if isinstance(cands, list) and len(cands) >= 1:
+            for i, x in enumerate(cands):
+                if isinstance(x, dict):
+                    text = x.get("target", x.get("text", "")) or ""
+                    system = x.get("system", "") or ""
+                else:
+                    text, system = (x or ""), ""
+                out.append({"key": f"c{i}", "index": i, "text": text, "system": system})
+            return out
+        # Fall back to two explicit candidate fields.
+        pairs = [(seg.get("target_a", "") or "", seg.get("system_a", "") or ""),
+                 (seg.get("target_b", "") or "", seg.get("system_b", "") or "")]
+        for i, (text, system) in enumerate(pairs):
+            out.append({"key": f"c{i}", "index": i, "text": text, "system": system})
+        return out
+
+    def selection_num_candidates(self, seg):
+        return len(self.selection_candidates(seg))
+
+    def selection_system_label(self, cand):
+        """Aggregation label for a candidate: its system name, else a position label."""
+        return cand.get("system") or f"Candidate {cand['index'] + 1}"
+
+    @property
     def num_segments(self):
         return len(self.segments)
 
@@ -972,6 +1066,9 @@ class Rating(db.Model):
     comments = db.Column(db.Text, default="")
     # Pairwise mode: the selected preference option id.
     preference = db.Column(db.String(100), default="")
+
+    # Preference Selection mode: {candidate_key: rank}
+    ranking_json = db.Column(db.Text, default="{}")
     # Span-only mode: whether the annotator has confirmed they reviewed the segment.
     reviewed = db.Column(db.Boolean, default=False)
     # Post-editing mode: the annotator's corrected version of the output.
@@ -988,6 +1085,12 @@ class Rating(db.Model):
     def scores_dict(self):
         try:
             return json.loads(self.scores_json or "{}")
+        except json.JSONDecodeError:
+            return {}
+        
+    def ranking_dict(self):
+        try:
+            return json.loads(self.ranking_json or "{}")
         except json.JSONDecodeError:
             return {}
 
@@ -1095,7 +1198,7 @@ class QualificationTest(db.Model):
     # constants / effective_* properties below are a defensive fallback only,
     # for rows written before these columns existed (NULL in the DB).
     max_attempts = db.Column(db.Integer, default=3)
-    retry_cooldown_hours = db.Column(db.Integer, default=24)
+    retry_cooldown_minutes = db.Column(db.Integer, default=30)
 
     # Matches Campaign.eval_mode:
     # "likert" "pairwise" "span_only" "post_edit"
@@ -1129,7 +1232,7 @@ class QualificationTest(db.Model):
     )
 
     DEFAULT_MAX_ATTEMPTS = 3
-    DEFAULT_COOLDOWN_HOURS = 24
+    DEFAULT_COOLDOWN_MINUTES = 30
 
     @property
     def mode(self):
@@ -1155,10 +1258,15 @@ class QualificationTest(db.Model):
     def effective_max_attempts(self):
         return self.max_attempts if self.max_attempts and self.max_attempts > 0 else self.DEFAULT_MAX_ATTEMPTS
 
+    DEFAULT_COOLDOWN_MINUTES = 30   
+
     @property
-    def effective_cooldown_hours(self):
-        return (self.retry_cooldown_hours if self.retry_cooldown_hours and self.retry_cooldown_hours > 0
-                else self.DEFAULT_COOLDOWN_HOURS)
+    def effective_cooldown_minutes(self):
+        return (
+            self.retry_cooldown_minutes
+            if self.retry_cooldown_minutes and self.retry_cooldown_minutes > 0
+            else self.DEFAULT_COOLDOWN_MINUTES
+        )
 
 
 class QualificationSegment(db.Model):

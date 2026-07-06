@@ -370,6 +370,21 @@
   margin-top: 10px !important;
 }
 
+/* Preference Selection (one source, N ranked candidates) */
+.ranking-block { margin-top: 16px !important; display: flex !important; flex-direction: column !important; gap: 12px !important; }
+.ranking-help { font-size: 13px !important; color: var(--aura-text-muted) !important; line-height: 1.5 !important; margin-bottom: 2px !important; }
+.cand-card { border: 1px solid var(--aura-border) !important; border-radius: 10px !important; padding: 14px 16px !important; background: var(--aura-surface) !important; }
+.cand-card.ranked { border-color: var(--aura-accent) !important; }
+.cand-head { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; flex-wrap: wrap !important; margin-bottom: 8px !important; }
+.cand-name { font-size: 13px !important; font-weight: 600 !important; color: var(--aura-text) !important; }
+.cand-sys { display: inline-block !important; margin-left: 6px !important; font-size: 11px !important; font-weight: 600 !important; color: var(--aura-accent) !important; background: var(--aura-accent-pill) !important; padding: 2px 8px !important; border-radius: 999px !important; }
+.rank-picker { display: inline-flex !important; align-items: center !important; gap: 5px !important; flex-wrap: wrap !important; }
+.rank-picker-label { font-size: 11px !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; color: var(--aura-text-faint) !important; margin-right: 3px !important; }
+.rank-btn { min-width: 30px !important; height: 30px !important; padding: 0 8px !important; border: 1px solid var(--aura-border) !important; border-radius: 7px !important; background: transparent !important; color: var(--aura-text) !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer !important; transition: background .12s, border-color .12s, color .12s !important; }
+.rank-btn:hover { border-color: var(--aura-accent) !important; }
+.rank-btn.selected { background: var(--aura-accent) !important; border-color: var(--aura-accent) !important; color: #fff !important; }
+.cand-text { font-size: 15px !important; line-height: 1.55 !important; color: var(--aura-text) !important; white-space: pre-wrap !important; }
+
 /* Card details & texts styling */
 .segment-card {
   background: var(--aura-surface) !important;
@@ -436,6 +451,18 @@
 }
 .segment-saved-badge.saved::before {
   background: var(--aura-accent) !important;
+}
+
+ /* Segment Missing Message */
+.segment-missing {
+  animation: missingPulse 2.5s ease;
+}
+
+@keyframes missingPulse {
+  0%   { box-shadow: 0 0 0 rgba(255,0,0,0); }
+  25%  { box-shadow: 0 0 0 4px rgba(220,53,69,.35); }
+  75%  { box-shadow: 0 0 0 4px rgba(220,53,69,.35); }
+  100% { box-shadow: 0 0 0 rgba(255,0,0,0); }
 }
 
 /* Two-column layout grid inside segments */
@@ -794,8 +821,11 @@
   border-radius: 12px !important;
   box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
   z-index: 100 !important;
-  display: flex !important;
+  display: none !important;
   flex-direction: column !important;
+}
+.assist-panel.open {
+  display: flex !important;
 }
 .assist-panel-head {
   padding: 16px 20px !important;
@@ -918,27 +948,45 @@
 
 /* Save status alert toast overlay */
 .save-status {
-  position: fixed !important;
-  bottom: 24px !important;
-  left: 24px !important;
-  padding: 10px 16px !important;
-  border-radius: 6px !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  z-index: 1000 !important;
-  display: none !important;
+  position: fixed;
+  top: 50%;
+  right: 50%;
+
+  min-width: 200px
+  max-width: 400px;
+  padding: 18px 26px;
+
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+
+  box-shadow: 0 12px 30px rgba(0,0,0,.18);
+
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.95);
+  pointer-events: none;
+
+  transition: all .25s ease;
+
+  z-index: 9999;
 }
+
+.save-status.show {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
 .save-status.success {
-  display: block !important;
-  background: #def7ec !important;
-  color: #03543f !important;
-  border: 1px solid #bcf0da !important;
+  background: #def7ec;
+  color: #03543f;
+  border: 1px solid #bcf0da;
 }
+
 .save-status.error {
-  display: block !important;
-  background: #fde8e8 !important;
-  color: #9b1c1c !important;
-  border: 1px solid #f8b4b4 !important;
+  background: #fde8e8;
+  color: #9b1c1c;
+  border: 1px solid #f8b4b4;
 }
 
 /* Done screen styling */
@@ -1149,7 +1197,7 @@
     <span class="assist-launcher-text">Ask the assistant</span>
   </button>
 
-  <div id="assist-panel" class="assist-panel" style="display:none;">
+  <div id="assist-panel" class="assist-panel">
     <div class="assist-panel-head">
       <div>
         <strong style="font-size:14px;">Guideline assistant</strong>

@@ -49,6 +49,10 @@ def _interface_help(campaign):
     elif mode == "pairwise":
         L.append(f"This is a pairwise task: two candidate {out_label.lower()} outputs (A and B) "
                 "are shown; the annotator picks one preference option comparing them.")
+    elif mode == "preference_selection":
+        L.append(f"This is a preference-selection task: one source with several candidate "
+                f"{out_label.lower()} outputs is shown; the annotator ranks the candidates from "
+                "best (1) to worst (ties allowed).")
     elif mode == "span_only":
         L.append("This is a span-annotation task: pick an error type, select the words that "
                 "contain the error, then tick \"reviewed\" when done (even if there are no errors).")

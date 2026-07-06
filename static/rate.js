@@ -8,6 +8,22 @@
 (function () {
   "use strict";
 
+  let statusTimer = null;
+
+  function showStatus(message, type = "error") {
+    const status = $("save-status");
+    if (!status) return;
+
+    clearTimeout(statusTimer);
+
+    status.textContent = message;
+    status.className = `save-status ${type} show`;
+
+    statusTimer = setTimeout(() => {
+      status.className = "save-status";
+    }, 2500);
+  }
+
   const CAMPAIGN    = window.CAMPAIGN || {};
   const SEGMENTS    = window.SEGMENTS || [];
   const EXISTING    = window.EXISTING || {};
@@ -77,6 +93,7 @@
     segmentStartTs: SEGMENTS.map(() => 0),
     ratings: SEGMENTS.map(seg => {
       const ex = EXISTING[seg.id];
+      const candKeys = (seg._candidates || []).map(c => c.key);
       function normIncoming(spansObj) {
         const out = {};
         CRITERIA.forEach(c => {
@@ -94,6 +111,8 @@
           spans:  normIncoming(ex.spans),
           comments: ex.comments || "",
           preference: ex.preference || null,
+          ranking: (ex.ranking && typeof ex.ranking === "object") ? { ...ex.ranking } : {},
+          _candKeys: candKeys,
           reviewed: !!ex.reviewed,
           edited: (ex.edited_text != null ? ex.edited_text : null),
           peTouched: (ex.edited_text != null && ex.edited_text !== ""),
@@ -106,6 +125,8 @@
         spans:  Object.fromEntries(CRITERIA.map(c => [c.id, []])),
         comments: "",
         preference: null,
+        ranking: {},
+        _candKeys: candKeys,
         reviewed: false,
         edited: null,
         peTouched: false,
@@ -169,6 +190,10 @@
   }
 
   function isComplete(r) {
+    if (EVAL_MODE === "preference_selection") {
+      return !!(r._candKeys && r._candKeys.length &&
+                r.ranking && r._candKeys.every(k => Number.isInteger(r.ranking[k])));
+    }
     if (EVAL_MODE === "pairwise") return !!r.preference;
     if (EVAL_MODE === "span_only") return !!r.reviewed;
     if (EVAL_MODE === "post_edit") return !!r.peTouched && !!(r.edited && r.edited.trim());
@@ -189,12 +214,24 @@
     return true;
   }
 
+  function firstIncompleteOnCurrentPage() {
+    const { start, end } = pageBounds(state.currentPage);
+    for (let idx = start; idx < end; idx++) {
+      if (!isComplete(state.ratings[idx])) return idx;
+    }
+    return -1;
+  }
+
   function refreshNextEnabled() {
     const btn = $("btn-next");
     if (!btn) return;
+  
     const complete = currentPageComplete();
-    btn.disabled = !complete;
-    btn.title = complete ? "" : "Rate every criterion on every segment of this page before continuing.";
+  
+    // Keep the button clickable so we can guide the annotator
+    btn.disabled = false;
+  
+    btn.title = `Complete Segment ${missing + 1} first.`;
   }
 
   /* ===================== per-card builders ===================== */
@@ -440,9 +477,74 @@
     card.classList.toggle("segment-complete", isComplete(r));
   }
 
-  function paneText(idx, pane) {
-    const seg = SEGMENTS[idx];
-    return (pane === "source" ? seg.source : seg.target) || "";
+  /* ---- preference selection (one source, N ranked candidates) ---- */
+  function buildSelectionUI(card, idx, seg) {
+    const left = card.querySelector(".segment-left");
+    if (!left) return;
+    const outLabel = (window.IO_LABELS && window.IO_LABELS.output) || "Translation";
+    const cands = seg._candidates || [];
+    const N = cands.length;
+    const r = state.ratings[idx];
+    if (!r.ranking || typeof r.ranking !== "object") r.ranking = {};
+
+    let block = card.querySelector(".ranking-block");
+    if (!block) {
+      block = document.createElement("div");
+      block.className = "ranking-block";
+      const refT = left.querySelector(".reference-toggle");
+      if (refT) left.insertBefore(block, refT); else left.appendChild(block);
+    }
+    block.innerHTML =
+      '<div class="ranking-help">Rank the ' + N + ' ' + escapeHtml(outLabel.toLowerCase()) +
+      ' candidates from best (<strong>1</strong>) to worst (<strong>' + N + '</strong>). ' +
+      'Ties are allowed — give equally good candidates the same rank.</div>' +
+      cands.map((c, i) =>
+        '<div class="cand-card" data-key="' + escapeHtml(c.key) + '">' +
+          '<div class="cand-head">' +
+            '<span class="cand-name">' + escapeHtml(outLabel + " " + (i + 1)) +
+              (c.system ? ' <span class="cand-sys">' + escapeHtml(c.system) + '</span>' : '') +
+            '</span>' +
+            '<div class="rank-picker" role="group" aria-label="Rank">' +
+              '<span class="rank-picker-label">Rank</span>' +
+              Array.from({ length: N }, (_, k) =>
+                '<button type="button" class="rank-btn" data-rank="' + (k + 1) + '">' +
+                (k + 1) + '</button>').join("") +
+            '</div>' +
+          '</div>' +
+          '<div class="cand-text"></div>' +
+        '</div>').join("");
+    block.querySelectorAll(".cand-card").forEach((cardEl, i) => {
+      cardEl.querySelector(".cand-text").textContent = (cands[i] && cands[i].text) || "";
+    });
+    block.addEventListener("click", (e) => {
+      const btn = e.target.closest(".rank-btn");
+      if (!btn) return;
+      const cc = btn.closest(".cand-card");
+      const key = cc && cc.dataset.key;
+      if (!key) return;
+      const rank = parseInt(btn.dataset.rank, 10);
+      if (r.ranking[key] !== rank) {
+        r.ranking[key] = rank;
+        r.dirty = true;
+      }
+      refreshSelectionUI(card, idx);
+      updateGlobalProgress();
+      refreshNextEnabled();
+      refreshSavedBadge(card, idx);
+    });
+  }
+
+  function refreshSelectionUI(card, idx) {
+    const r = state.ratings[idx];
+    card.querySelectorAll(".ranking-block .cand-card").forEach(cardEl => {
+      const key = cardEl.dataset.key;
+      const sel = r.ranking ? r.ranking[key] : undefined;
+      cardEl.classList.toggle("ranked", Number.isInteger(sel));
+      cardEl.querySelectorAll(".rank-btn").forEach(btn => {
+        btn.classList.toggle("selected", parseInt(btn.dataset.rank, 10) === sel);
+      });
+    });
+    card.classList.toggle("segment-complete", isComplete(r));
   }
 
   function paneEl(card, pane) {
@@ -760,6 +862,13 @@
   function judgmentSummary(idx) {
     const r = state.ratings[idx];
     if (!r) return "";
+    if (EVAL_MODE === "preference_selection") {
+      const keys = r._candKeys || [];
+      const done = keys.filter(k => Number.isInteger(r.ranking && r.ranking[k])).length;
+      return keys.length && done === keys.length
+        ? ("ranked " + keys.length + " candidates")
+        : ("ranked " + done + " / " + keys.length + " candidates");
+    }
     if (EVAL_MODE === "pairwise") {
       const p = PREFERENCES.find(x => x.id === r.preference);
       return p ? ("preference: " + p.label) : "no preference chosen yet";
@@ -985,10 +1094,17 @@
     card.querySelector(".text-reference").textContent = seg.reference || "(no reference provided)";
 
     const isPairwise = (EVAL_MODE === "pairwise");
+    const isSelection = (EVAL_MODE === "preference_selection");
     const isSpanOnly = (EVAL_MODE === "span_only");
     const isPostEdit = (EVAL_MODE === "post_edit");
 
-    if (isPairwise) {
+    if (isSelection) {
+      // The ranking UI renders all N candidates itself; hide the two fixed panels.
+      const tPanel = card.querySelector(".text-target").closest(".text-panel");
+      if (tPanel) tPanel.hidden = true;
+      const bPanel = card.querySelector(".text-panel-b");
+      if (bPanel) bPanel.hidden = true;
+    } else if (isPairwise) {
       // Two candidate panels: A (reuse .text-target) and B.
       const outLabel = (window.IO_LABELS && window.IO_LABELS.output) || "Translation";
       card.querySelector(".target-panel-label").textContent = outLabel + " A";
@@ -1007,7 +1123,12 @@
     // RIGHT column: ratings (likert) vs preference (pairwise) vs nothing (span_only)
     const right = card.querySelector(".segment-right");
     const prefBlock = card.querySelector(".preference-block");
-    if (isPairwise) {
+    if (isSelection) {
+      if (right) right.style.display = "none";
+      const grid = card.querySelector(".segment-grid");
+      if (grid) grid.style.gridTemplateColumns = "1fr";
+      buildSelectionUI(card, idx, seg);
+    } else if (isPairwise) {
       // hide criteria ratings, show preference selector
       const rl = right.querySelector(".rating-block-label");
       if (rl) rl.style.display = "none";
@@ -1056,7 +1177,7 @@
 
     // span section
     const spanSection = card.querySelector(".span-section");
-    const spansActive = ENABLE_SPANS && !isPairwise && !isPostEdit;
+    const spansActive = ENABLE_SPANS && !isPairwise && !isSelection && !isPostEdit;
     if (spansActive) {
       if (SPAN_SCOPE === "both") {
         const srcWrap = card.querySelector(".span-source-wrap");
@@ -1099,7 +1220,8 @@
     });
 
     // initial paint
-    if (isPairwise) refreshPreferenceUI(card, idx);
+    if (isSelection) refreshSelectionUI(card, idx);
+    else if (isPairwise) refreshPreferenceUI(card, idx);
     else if (!isSpanOnly) refreshCriteriaUIFor(card, idx);
     if (spansActive) {
       renderSpanTargetFor(card, idx);
@@ -1301,6 +1423,7 @@
       spans: r.spans,
       comments: r.comments,
       preference: r.preference || "",
+      ranking: r.ranking || {},
       reviewed: !!r.reviewed,
       edited_text: (r.edited != null ? r.edited : ""),
       time_spent_seconds: Math.round((Date.now() - (state.segmentStartTs[idx] || Date.now())) / 1000),
@@ -1361,9 +1484,24 @@
   $("btn-next").addEventListener("click", async () => {
     const btn = $("btn-next");
     if (!currentPageComplete()) {
-      const status = $("save-status");
-      status.textContent = "Please rate every criterion on every segment of this page before continuing.";
-      status.className = "save-status error";
+      const missing = firstIncompleteOnCurrentPage();
+
+      showStatus(`⚠ Please complete Segment ${missing + 1} first.`, "error");
+    
+      const card = cards[missing];
+      if (card) {
+        card.scrollIntoView({
+          behavior: "smooth",
+          block: "center"
+        });
+    
+        card.classList.add("segment-missing");
+    
+        setTimeout(() => {
+          card.classList.remove("segment-missing");
+        }, 2500);
+      }
+    
       return;
     }
     btn.disabled = true;

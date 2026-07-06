@@ -178,11 +178,11 @@ def _collect_qualification_form(form, files, *, parse_segments, existing_segment
     max_attempts = max_attempts if max_attempts > 0 else QualificationTest.DEFAULT_MAX_ATTEMPTS
 
     try:
-        retry_cooldown_hours = int(form.get("retry_cooldown_hours") or 0)
+        retry_cooldown_minutes = int(form.get("retry_cooldown_minutes") or 0)
     except (TypeError, ValueError):
-        retry_cooldown_hours = 0
-    retry_cooldown_hours = (retry_cooldown_hours if retry_cooldown_hours > 0
-                             else QualificationTest.DEFAULT_COOLDOWN_HOURS)
+        retry_cooldown_minutes = 0
+    retry_cooldown_minutes = (retry_cooldown_minutes if retry_cooldown_minutes > 0
+                             else QualificationTest.DEFAULT_COOLDOWN_MINUTES)
 
     is_active = form.get("is_active") == "on"
 
@@ -245,7 +245,7 @@ def _collect_qualification_form(form, files, *, parse_segments, existing_segment
         "passing_score": passing_score,
         "time_limit_minutes": time_limit_minutes,
         "max_attempts": max_attempts,
-        "retry_cooldown_hours": retry_cooldown_hours,
+        "retry_cooldown_minutes": retry_cooldown_minutes,
         "eval_mode": eval_mode,
         "criteria_json": json.dumps(criteria, ensure_ascii=False),
         "is_active": is_active,
@@ -259,7 +259,7 @@ def _collect_qualification_form(form, files, *, parse_segments, existing_segment
         "passing_score": passing_score,
         "time_limit_minutes": time_limit_minutes,
         "max_attempts": max_attempts,
-        "retry_cooldown_hours": retry_cooldown_hours,
+        "retry_cooldown_minutes": retry_cooldown_minutes,
         "is_active": is_active,
         "criteria": [{"name": c["name"], "desc": c["guide"]} for c in criteria],
         "segments_paste": form_segments_paste,
@@ -277,7 +277,7 @@ def _default_qualification_form_view():
         "passing_score": 80,
         "time_limit_minutes": 30,
         "max_attempts": QualificationTest.DEFAULT_MAX_ATTEMPTS,
-        "retry_cooldown_hours": QualificationTest.DEFAULT_COOLDOWN_HOURS,
+        "retry_cooldown_minutes": QualificationTest.DEFAULT_COOLDOWN_MINUTES,
         "is_active": True,
         "criteria": [],
         "segments_paste": "",
@@ -411,7 +411,7 @@ def admin_qualification_edit(test_id):
         "passing_score": test.passing_score,
         "time_limit_minutes": test.time_limit_minutes,
         "max_attempts": test.max_attempts or QualificationTest.DEFAULT_MAX_ATTEMPTS,
-        "retry_cooldown_hours": test.retry_cooldown_hours or QualificationTest.DEFAULT_COOLDOWN_HOURS,
+        "retry_cooldown_minutes": test.retry_cooldown_minutes or QualificationTest.DEFAULT_COOLDOWN_MINUTES,
         "is_active": test.is_active,
         "criteria": [
             {"name": c.get("name", ""), "desc": c.get("guide", "")}

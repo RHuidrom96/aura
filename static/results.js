@@ -106,6 +106,71 @@
   /* ---------------- interactive charts (Chart.js) ---------------- */
   const PALETTE = ["#34433A", "#C99A3F", "#A24B3B", "#5B8C6E", "#3E4C5E", "#5A4632", "#8e9e94"];
 
+  const ValueLabelPlugin = {
+    id: "valueLabels",
+  
+    afterDatasetsDraw(chart) {
+      if (!chart.options.plugins.valueLabels) return;
+  
+      const { ctx, chartArea } = chart;
+  
+      ctx.save();
+  
+      ctx.font = "bold 11px sans-serif";
+      ctx.fillStyle =
+        getComputedStyle(document.documentElement)
+          .getPropertyValue("--aura-text")
+          .trim() || "#2A2A24";
+  
+      ctx.textAlign = "center";
+  
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const meta = chart.getDatasetMeta(datasetIndex);
+  
+        meta.data.forEach((bar, index) => {
+  
+          const value = dataset.data[index];
+  
+          if (value == null) return;
+  
+          const label = Number.isInteger(value)
+            ? value
+            : Number(value).toFixed(2);
+  
+          // Default: draw above the bar
+          let y = bar.y - 8;
+          let baseline = "bottom";
+  
+          // If too close to the top of the chart,
+          // draw inside the bar instead.
+          if (y < chartArea.top + 14) {
+            y = bar.y + 14;
+            baseline = "middle";
+  
+            ctx.fillStyle =
+              getComputedStyle(document.documentElement)
+                .getPropertyValue("--aura-surface")
+                .trim() || "#ffffff";
+          } else {
+            ctx.fillStyle =
+              getComputedStyle(document.documentElement)
+                .getPropertyValue("--aura-text")
+                .trim() || "#2A2A24";
+          }
+  
+          ctx.textBaseline = baseline;
+          ctx.fillText(label, bar.x, y);
+        });
+      });
+  
+      ctx.restore();
+    }
+  };
+
+  if (typeof Chart !== "undefined") {
+    Chart.register(ValueLabelPlugin);
+  }
+
   function getAccent() {
     return getComputedStyle(document.documentElement).getPropertyValue('--aura-accent').trim() || "#34433A";
   }
@@ -219,21 +284,44 @@
     var DIFFC = { easy: "#5B8C6E", medium: "#C99A3F", hard: "#A24B3B" };
     if (key === "difficulty_metric" && R.difficulty) {
       const rows = (R.difficulty.rows || []).filter(r => r.metric != null);
-      return { type: "bar",
-        data: { labels: rows.map(r => r.level.charAt(0).toUpperCase() + r.level.slice(1)),
-                datasets: [{ label: R.difficulty.metric_label || "Metric", data: rows.map(r => r.metric),
-                             backgroundColor: rows.map(r => DIFFC[r.level] || "#888"), borderRadius: 4 }] },
-        options: clone(common) };
+    
+      cfg.plugins.valueLabels = {};
+    
+      return {
+        type: "bar",
+        data: {
+          labels: rows.map(r => r.level.charAt(0).toUpperCase() + r.level.slice(1)),
+          datasets: [{
+            label: R.difficulty.metric_label || "Metric",
+            data: rows.map(r => r.metric),
+            backgroundColor: rows.map(r => DIFFC[r.level] || "#888"),
+            borderRadius: 4
+          }]
+        },
+        options: cfg
+      };
     }
+    
     if (key === "difficulty_by_criterion" && R.difficulty && R.difficulty.by_criterion) {
       const bc = R.difficulty.by_criterion;
-      return { type: "bar",
-        data: { labels: bc.criteria,
-                datasets: bc.levels.map(lv => ({ label: lv.charAt(0).toUpperCase() + lv.slice(1),
-                  data: bc.data[lv].map(v => (v == null ? 0 : v)),
-                  backgroundColor: DIFFC[lv] || "#888", borderRadius: 4 })) },
-        options: clone(common) };
+    
+      cfg.plugins.valueLabels = {};
+    
+      return {
+        type: "bar",
+        data: {
+          labels: bc.criteria,
+          datasets: bc.levels.map(lv => ({
+            label: lv.charAt(0).toUpperCase() + lv.slice(1),
+            data: bc.data[lv].map(v => (v == null ? 0 : v)),
+            backgroundColor: DIFFC[lv] || "#888",
+            borderRadius: 4
+          }))
+        },
+        options: cfg
+      };
     }
+    
     return null;
   }
 
@@ -260,4 +348,24 @@
 
   // Allow the live-refresh poller to rebuild charts after swapping in a new results body.
   window.renderResultCharts = build;
+
+  // Download the displayed Chart.js canvas instead of the original PNG
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest(".fig-dl");
+    if (!btn) return;
+  
+    const figure = btn.closest(".result-figure");
+    const canvas = figure.querySelector("canvas");
+  
+    // No interactive chart? Fall back to the original PNG.
+    if (!canvas) return;
+  
+    e.preventDefault();
+  
+    const link = document.createElement("a");
+    link.download = btn.dataset.download;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  });
 })();
+

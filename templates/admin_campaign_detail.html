@@ -208,7 +208,7 @@
   <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
     {% set ns = namespace(completed_count=0) %}
     {% for r in rows %}
-      {% if r.completed >= campaign.num_segments %}
+      {% if r.done %}
         {% set ns.completed_count = ns.completed_count + 1 %}
       {% endif %}
     {% endfor %}

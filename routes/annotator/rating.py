@@ -42,6 +42,7 @@ def rate_view(campaign_id):
         seg_id: {"scores": r.scores_dict(), "spans": r.spans_dict(),
                 "comments": r.comments or "",
                 "preference": r.preference or "",
+                "ranking": r.ranking_dict(),
                 "reviewed": bool(r.reviewed),
                 "edited_text": (r.edited_text or "")}
         for seg_id, r in existing.items()
@@ -72,6 +73,9 @@ def rate_view(campaign_id):
             a, b, sa, sb = c.pairwise_candidates(s)
             s["_cand_a"], s["_cand_b"] = a, b
             s["_sys_a"], s["_sys_b"] = sa, sb
+    elif mode == "preference_selection":
+        for s in segments:
+            s["_candidates"] = c.selection_candidates(s)
 
     in_label, out_label = c.io_labels()
     return render_template(
@@ -84,7 +88,7 @@ def rate_view(campaign_id):
         scale=scale, scale_legend=scale_legend,
         existing=existing_payload, completed_count=completed_count,
         span_scope=c.span_scope or "target",
-        enable_spans=(c.enable_spans if c.enable_spans is not None else True) if mode != "pairwise" else False,
+        enable_spans=(c.enable_spans if c.enable_spans is not None else True) if mode not in ("pairwise", "preference_selection") else False,
         instructions=c.instructions or "",
         span_instructions=c.span_instructions or "",
         segments_per_page=c.per_page_for(ann),
@@ -113,6 +117,15 @@ def api_config(campaign_id):
             {"value": scale["min"], "label": scale.get("min_label") or "minimum"},
             {"value": scale["max"], "label": scale.get("max_label") or "maximum"},
         ]
+    segs_out = [dict(s) for s in c.served_segments_for(ann)]
+    if c.mode == "preference_selection":
+        for s in segs_out:
+            s["_candidates"] = c.selection_candidates(s)
+    elif c.mode == "pairwise":
+        for s in segs_out:
+            a, b, sa, sb = c.pairwise_candidates(s)
+            s["_cand_a"], s["_cand_b"] = a, b
+            s["_sys_a"], s["_sys_b"] = sa, sb
     return jsonify({
         "ok": True,
         "version": c.config_fingerprint(),
@@ -122,7 +135,7 @@ def api_config(campaign_id):
         "scale": scale,
         "scale_legend": scale_legend,
         "preferences": c.preferences,
-        "enable_spans": (c.enable_spans if c.enable_spans is not None else True) if c.mode != "pairwise" else False,
+        "enable_spans": (c.enable_spans if c.enable_spans is not None else True) if c.mode not in ("pairwise", "preference_selection") else False,
         "span_scope": c.span_scope or "target",
         "span_instructions": c.span_instructions or "",
         "segments_per_page": c.per_page_for(ann),
@@ -131,7 +144,7 @@ def api_config(campaign_id):
         "instructions": c.instructions or "",
         "rating_position": c.rating_position or "side",
         "span_position": c.span_position or "below",
-        "segments": [dict(s) for s in c.served_segments_for(ann)],
+        "segments": segs_out,
     })
 
 
@@ -191,6 +204,7 @@ def api_submit(campaign_id):
     clean_scores = {}
     clean_spans = {}
     clean_pref = ""
+    clean_ranking = None
 
     if mode == "likert":
         # Validate scores against this campaign's scale bounds
@@ -207,9 +221,22 @@ def api_submit(campaign_id):
             return jsonify({"ok": False, "error": "Please choose a preference option."}), 400
         clean_pref = preference
 
+    if mode == "preference_selection":
+        cand_keys = [cc["key"] for cc in c.selection_candidates(seg)]
+        n = len(cand_keys)
+        raw = data.get("ranking") or {}
+        if not isinstance(raw, dict) or n < 2:
+            return jsonify({"ok": False, "error": "Invalid ranking."}), 400
+        clean_ranking = {}
+        for k in cand_keys:
+            v = raw.get(k)
+            if not isinstance(v, int) or v < 1 or v > n:
+                return jsonify({"ok": False, "error": "Please rank every candidate (1 = best)."}), 400
+            clean_ranking[k] = v
+
     # Spans apply in likert (if enabled) and span_only modes.
     span_enabled = (c.enable_spans if c.enable_spans is not None else True)
-    if mode == "pairwise":
+    if mode in ("pairwise", "preference_selection"):
         span_enabled = False
     if mode == "span_only":
         span_enabled = True
@@ -252,6 +279,8 @@ def api_submit(campaign_id):
     rating.spans_json = json.dumps(clean_spans, ensure_ascii=False)
     rating.comments = comments
     rating.preference = clean_pref
+    if clean_ranking is not None:
+        rating.ranking_json = json.dumps(clean_ranking)
     if mode == "span_only":
         rating.reviewed = reviewed
     if mode == "post_edit" and edited_text is not None:

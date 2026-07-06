@@ -6,7 +6,7 @@
 <figure class="result-figure"{% if chartkey %} data-chart="{{ chartkey }}" data-chart-name="{{ name }}"{% endif %}>
   <img class="result-chart" src="{{ uri }}" alt="{{ alt }}">
   <figcaption><span class="fig-cap">{{ alt }}</span>
-    <a class="fig-dl" href="{{ uri }}" download="{{ name }}.png">⬇&nbsp;PNG</a></figcaption>
+    <a class="fig-dl" href="#" data-download="{{ name }}.png"> ⬇ PNG </a></figcaption>
 </figure>
 {% endmacro %}
 
@@ -77,7 +77,7 @@
     <th>Name</th>
     <th class="num">Complete</th>
     <th class="num">Mean time (s)</th>
-    {% if results.mode == 'pairwise' %}<th class="num">Agreement w/ majority</th>
+    {% if results.mode in ['pairwise', 'preference_selection'] %}<th class="num">Agreement w/ majority</th>
     {% else %}<th class="num">Mean deviation</th>{% endif %}
     <th class="num">AI used</th>
     <th class="num">AI marked helpful</th>
@@ -89,7 +89,7 @@
       <td>{{ r.name }}</td>
       <td class="num">{{ r.n_complete }}</td>
       <td class="num">{{ r.mean_time_sec if r.mean_time_sec is not none else '—' }}</td>
-      {% if results.mode == 'pairwise' %}
+      {% if results.mode in ['pairwise', 'preference_selection'] %}
         <td class="num">{{ (r.pref_agreement_pct ~ '%') if r.pref_agreement_pct is not none else '—' }}</td>
       {% else %}
         <td class="num">{{ r.mean_deviation if r.mean_deviation is not none else '—' }}</td>
@@ -310,6 +310,41 @@
     {% endfor %}
   </tbody>
 </table>
+{% endif %}
+{% endif %}
+
+{# ===================== PREFERENCE SELECTION ===================== #}
+{% if results.mode == 'preference_selection' %}
+{% set P = results.preference_selection %}
+<h3 class="result-h3">Ranking &amp; agreement</h3>
+<div class="result-summary-row">
+  <div class="result-stat"><span class="result-stat-num">{{ P.n_judgements }}</span><span class="result-stat-label">Ranked segments</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ P.n_candidates_max }}</span><span class="result-stat-label">Candidates / source</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ num(P.percent_pair_agreement) }}%</span><span class="result-stat-label">Pairwise-order agreement</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ num(P.mean_kendall_tau) }}</span><span class="result-stat-label">Mean Kendall τ</span></div>
+</div>
+<p class="result-note">Each annotator ranks the candidates for a source (1 = best; ties allowed). Per-system figures come from decomposing every ranking into its candidate pairs (lower rank wins; equal = tie). Agreement is over co-rated segments ({{ P.n_overlap_segments }}): the share of candidate pairs two annotators order the same way, and mean Kendall τ-b of their rankings.</p>
+{% if P.systems %}
+<h3 class="result-h3">System comparison &amp; Elo ranking</h3>
+<div class="result-figures">
+  {% if charts.system_elo %}{{ figure(charts.system_elo, "System Elo ranking", "system_elo", "system_elo") }}{% endif %}
+  {% if charts.system_winrate %}{{ figure(charts.system_winrate, "System win rate", "system_win_rates", "system_winrate") }}{% endif %}
+</div>
+<table class="result-table" data-table-name="system_ranking">
+  <thead><tr><th>System</th><th class="num">Elo</th><th class="num">Win rate</th><th class="num">Mean rank</th><th class="num">Top-1 rate</th><th class="num">Borda</th><th class="num">Wins</th><th class="num">Losses</th><th class="num">Ties</th><th class="num">Comparisons</th></tr></thead>
+  <tbody>
+    {% for r in P.systems %}
+    <tr><td>{{ r.system }}</td>
+      <td class="num">{{ num(r.elo) }}</td>
+      <td class="num">{% if r.win_rate is not none %}{{ (r.win_rate * 100)|round(1) }}%{% else %}—{% endif %}</td>
+      <td class="num">{{ num(r.mean_rank) }}</td>
+      <td class="num">{% if r.top1_rate is not none %}{{ r.top1_rate }}%{% else %}—{% endif %}</td>
+      <td class="num">{{ r.borda }}</td>
+      <td class="num">{{ r.wins }}</td><td class="num">{{ r.losses }}</td><td class="num">{{ r.ties }}</td><td class="num">{{ r.n }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="result-note">Systems are ordered by <strong>Elo</strong> (starting from 1000; computed from all candidate-pair outcomes across rankings). Win rate = (wins + ½·ties) / comparisons. Mean rank is the average position assigned (lower is better). Top-1 rate is how often the system was ranked best. Borda sums (N − rank).</p>
 {% endif %}
 {% endif %}
 

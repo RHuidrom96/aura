@@ -570,6 +570,7 @@
 
 <script>
   window.SCALE_LABELS_PREFILL = {{ form_data.scale.labels | tojson }};
+  window.SCALE_DEFAULT_LABELS_BY_POINTS = {{ default_likert_labels | tojson }};
   window.SCALE_DESIGN_PREFILL = {{ form_data.scale.design | tojson }};
   window.SCALE_LIKERT_DESC_MAP = {
     {% for d in scale_designs.likert %}{{ d.id | tojson }}: {{ d.desc | tojson }}{% if not loop.last %},{% endif %}{% endfor %}
