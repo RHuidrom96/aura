@@ -12,6 +12,7 @@
   }
   .annotator-table td:nth-child(2), .annotator-table th:nth-child(2) {
     max-width: 240px;
+    min-width: 120px;
     word-break: break-all;
     white-space: normal;
   }
@@ -133,6 +134,56 @@
   .link-btn:hover {
     color: var(--accent);
   }
+
+  /* Custom overrides for campaign detail layout */
+  .card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .card-header-flex h3 {
+    margin: 0 !important;
+  }
+  .card-header-flex .btn {
+    margin: 0;
+  }
+
+  /* Group Section Styling */
+  .group-form {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .group-form label {
+    min-width: 180px;
+    font-weight: 600;
+  }
+  .group-form select,
+  .group-form input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+    max-width: 320px;
+    width: auto;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border: 0.5px solid var(--border-2);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .group-form select:focus,
+  .group-form input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .group-form .btn {
+    margin: 0;
+  }
 </style>
 {% endblock %}
 
@@ -182,7 +233,7 @@
 {% endif %}
 
 <section class="card">
-  <div class="page-header" style="margin-bottom:8px;">
+  <div class="card-header-flex">
     <h3 style="margin:0;">Configuration</h3>
     {% if not campaign.is_closed %}
     <a href="{{ url_for('admin_campaign.admin_campaign_edit', campaign_id=campaign.id) }}" class="btn btn-primary btn-small">Edit configuration</a>
@@ -428,7 +479,7 @@
   <p class="hint" style="margin-top:0;">Grouping lets you view combined results across related campaigns — for example, easy / medium / hard difficulty variants of the same study.</p>
   {% if groups %}
   <form method="post" action="{{ url_for('admin_campaign.admin_campaign_set_group', campaign_id=campaign.id) }}"
-        style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 10px;">
+        class="group-form" style="margin:0 0 12px;">
     <label for="group-select" class="muted">Add to an existing group:</label>
     <select id="group-select" name="group_id" required>
       <option value="" disabled selected>Select a group…</option>
@@ -440,7 +491,7 @@
   </form>
   {% endif %}
   <form method="post" action="{{ url_for('admin_campaign.admin_group_new') }}"
-        style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0;">
+        class="group-form" style="margin:0;">
     <input type="hidden" name="campaign_id" value="{{ campaign.id }}">
     <label for="new-group-name" class="muted">Or create a new group:</label>
     <input type="text" id="new-group-name" name="name" placeholder="e.g. Adequacy study (by difficulty)" required>

@@ -88,9 +88,11 @@ def upgrade():
         batch_op.create_index(batch_op.f('ix_qualification_responses_attempt_id'), ['attempt_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_qualification_responses_segment_id'), ['segment_id'], unique=False)
 
+    op.add_column('annotators', sa.Column('qualification_status', sa.String(length=20), nullable=True))
+    op.add_column('annotators', sa.Column('qualified_at', sa.DateTime(), nullable=True))
+    op.execute("UPDATE annotators SET qualification_status = 'pending'")
     with op.batch_alter_table('annotators', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('qualification_status', sa.String(length=20), nullable=False))
-        batch_op.add_column(sa.Column('qualified_at', sa.DateTime(), nullable=True))
+        batch_op.alter_column('qualification_status', nullable=False)
 
     # ### end Alembic commands ###
 
