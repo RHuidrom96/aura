@@ -453,6 +453,18 @@
   background: var(--aura-accent) !important;
 }
 
+ /* Segment Missing Message */
+.segment-missing {
+  animation: missingPulse 2.5s ease;
+}
+
+@keyframes missingPulse {
+  0%   { box-shadow: 0 0 0 rgba(255,0,0,0); }
+  25%  { box-shadow: 0 0 0 4px rgba(220,53,69,.35); }
+  75%  { box-shadow: 0 0 0 4px rgba(220,53,69,.35); }
+  100% { box-shadow: 0 0 0 rgba(255,0,0,0); }
+}
+
 /* Two-column layout grid inside segments */
 .segment-grid {
   display: grid !important;
@@ -936,27 +948,45 @@
 
 /* Save status alert toast overlay */
 .save-status {
-  position: fixed !important;
-  bottom: 24px !important;
-  left: 24px !important;
-  padding: 10px 16px !important;
-  border-radius: 6px !important;
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  z-index: 1000 !important;
-  display: none !important;
+  position: fixed;
+  top: 50%;
+  right: 50%;
+
+  min-width: 200px
+  max-width: 400px;
+  padding: 18px 26px;
+
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+
+  box-shadow: 0 12px 30px rgba(0,0,0,.18);
+
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.95);
+  pointer-events: none;
+
+  transition: all .25s ease;
+
+  z-index: 9999;
 }
+
+.save-status.show {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
 .save-status.success {
-  display: block !important;
-  background: #def7ec !important;
-  color: #03543f !important;
-  border: 1px solid #bcf0da !important;
+  background: #def7ec;
+  color: #03543f;
+  border: 1px solid #bcf0da;
 }
+
 .save-status.error {
-  display: block !important;
-  background: #fde8e8 !important;
-  color: #9b1c1c !important;
-  border: 1px solid #f8b4b4 !important;
+  background: #fde8e8;
+  color: #9b1c1c;
+  border: 1px solid #f8b4b4;
 }
 
 /* Done screen styling */

@@ -8,6 +8,22 @@
 (function () {
   "use strict";
 
+  let statusTimer = null;
+
+  function showStatus(message, type = "error") {
+    const status = $("save-status");
+    if (!status) return;
+
+    clearTimeout(statusTimer);
+
+    status.textContent = message;
+    status.className = `save-status ${type} show`;
+
+    statusTimer = setTimeout(() => {
+      status.className = "save-status";
+    }, 2500);
+  }
+
   const CAMPAIGN    = window.CAMPAIGN || {};
   const SEGMENTS    = window.SEGMENTS || [];
   const EXISTING    = window.EXISTING || {};
@@ -198,12 +214,24 @@
     return true;
   }
 
+  function firstIncompleteOnCurrentPage() {
+    const { start, end } = pageBounds(state.currentPage);
+    for (let idx = start; idx < end; idx++) {
+      if (!isComplete(state.ratings[idx])) return idx;
+    }
+    return -1;
+  }
+
   function refreshNextEnabled() {
     const btn = $("btn-next");
     if (!btn) return;
+  
     const complete = currentPageComplete();
-    btn.disabled = !complete;
-    btn.title = complete ? "" : "Rate every criterion on every segment of this page before continuing.";
+  
+    // Keep the button clickable so we can guide the annotator
+    btn.disabled = false;
+  
+    btn.title = `Complete Segment ${missing + 1} first.`;
   }
 
   /* ===================== per-card builders ===================== */
@@ -1456,9 +1484,24 @@
   $("btn-next").addEventListener("click", async () => {
     const btn = $("btn-next");
     if (!currentPageComplete()) {
-      const status = $("save-status");
-      status.textContent = "Please rate every criterion on every segment of this page before continuing.";
-      status.className = "save-status error";
+      const missing = firstIncompleteOnCurrentPage();
+
+      showStatus(`⚠ Please complete Segment ${missing + 1} first.`, "error");
+    
+      const card = cards[missing];
+      if (card) {
+        card.scrollIntoView({
+          behavior: "smooth",
+          block: "center"
+        });
+    
+        card.classList.add("segment-missing");
+    
+        setTimeout(() => {
+          card.classList.remove("segment-missing");
+        }, 2500);
+      }
+    
       return;
     }
     btn.disabled = true;
