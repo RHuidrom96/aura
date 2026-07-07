@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 from extensions import db
 from models import (
     Annotator,
-    CampaignAnnotator,
     QualificationAttempt,
     QualificationResponse,
     QualificationSegment,
@@ -21,54 +20,43 @@ from models import (
 # Test lookup
 # ---------------------------------------------------------------------------
 
-def get_active_test(language=None, campaign_id=None):
+def get_test_for_campaign(campaign):
     """
-    Return the active qualification test.
-
-    Prefer a campaign-specific test when a campaign_id is supplied.
-    If no campaign-specific test exists, fall back to a global active test.
-    If a language is supplied, prefer that language.
+    Return the qualification test belonging to this specific campaign, or None
+    if the campaign has no qualification configured (e.g. a campaign created
+    before per-campaign qualification existed).
     """
-    if campaign_id:
-        campaign_tests = QualificationTest.query.filter_by(
-            is_active=True,
-            campaign_id=campaign_id,
-        )
-        if language:
-            test = campaign_tests.filter_by(language=language).first()
-            if test:
-                return test
-        test = campaign_tests.first()
-        if test:
-            return test
-
-    q = QualificationTest.query.filter_by(is_active=True, campaign_id=None)
-    if language:
-        test = q.filter_by(language=language).first()
-        if test:
-            return test
-    return q.first()
+    if campaign is None:
+        return None
+    return campaign.qualification_test
 
 
 # ---------------------------------------------------------------------------
 # Eligibility
 # ---------------------------------------------------------------------------
 
-def can_annotate(annotator, campaign=None):
+def can_annotate(annotator, campaign):
     """
-    Whether an annotator may participate in a campaign.
-    """
-    if campaign is None:
-        return annotator.qualification_status == "qualified"
+    Whether an annotator may participate in THIS campaign.
 
-    if not campaign.qualification:
+    Qualification is per-campaign: passing campaign A's qualification never
+    qualifies an annotator for campaign B. A campaign with no qualification
+    configured (or one whose qualification is turned off) has no gate.
+    """
+    test = get_test_for_campaign(campaign)
+
+    if test is None or not test.is_active:
         return True
 
-    link = CampaignAnnotator.query.filter_by(
-        campaign_id=campaign.id,
-        annotator_id=annotator.id,
-    ).first()
-    return bool(link and link.qualification_status == "qualified")
+    return (
+        QualificationAttempt.query
+        .filter_by(
+            annotator_id=annotator.id,
+            test_id=test.id,
+            passed=True,
+        )
+        .first() is not None
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -421,40 +409,16 @@ def qualify_annotator(attempt):
     """
 
     annotator = attempt.annotator
-    campaign = attempt.test.campaign
 
     if attempt.passed:
-        if campaign:
-            link = CampaignAnnotator.query.filter_by(
-                campaign_id=campaign.id,
-                annotator_id=annotator.id,
-            ).first()
-            if not link:
-                link = CampaignAnnotator(
-                    campaign_id=campaign.id,
-                    annotator_id=annotator.id,
-                )
-                db.session.add(link)
-            link.qualification_status = "qualified"
-            link.qualified_at = datetime.utcnow()
 
-        if annotator.qualification_status != "qualified":
-            annotator.qualification_status = "qualified"
-            annotator.qualified_at = datetime.utcnow()
+        annotator.qualification_status = "qualified"
+
+        annotator.qualified_at = datetime.utcnow()
 
     else:
-        if campaign:
-            link = CampaignAnnotator.query.filter_by(
-                campaign_id=campaign.id,
-                annotator_id=annotator.id,
-            ).first()
-            if not link:
-                link = CampaignAnnotator(
-                    campaign_id=campaign.id,
-                    annotator_id=annotator.id,
-                )
-                db.session.add(link)
-            link.qualification_status = "failed"
+
+        annotator.qualification_status = "failed"
 
     return annotator
 

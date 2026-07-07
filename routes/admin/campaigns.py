@@ -1,13 +1,11 @@
-import csv
 import os
 import json
 import logging
 from datetime import datetime
-from io import StringIO
 
 from flask import (
     Blueprint, render_template, request, redirect, url_for, flash, session,
-    jsonify, current_app, Response,
+    jsonify, current_app,
 )
 
 import models
@@ -16,14 +14,9 @@ import llm
 import exporter
 import mailer
 import seed_data
-from models import (db, Campaign, Annotator, Rating, AssistantLog, CampaignGroup,
-                    QualificationAttempt, QualificationTest)
+from models import db, Campaign, Annotator, Rating, AssistantLog, CampaignGroup, QualificationTest, QualificationAttempt
 from models import (
     normalize_fluency, FLUENCY_LEVELS, normalize_age_group, AGE_GROUPS, fluency_label,
-)
-from routes.admin.qualification import (
-    _collect_qualification_form, _default_qualification_form_view,
-    _deactivate_other_tests, _write_segments,
 )
 from utils.constants import (
     get_criteria_for, EVAL_MODES, SCALE_TYPES, SCALE_DESIGNS, SCRIPT_OPTIONS,
@@ -31,11 +24,16 @@ from utils.constants import (
 )
 from utils.forms import (
     parse_scale_from_form, parse_criteria_from_form, parse_preferences_from_form,
+    extract_prefixed_subform, extract_prefixed_subfiles,
 )
 from utils.ingest import parse_segments_upload, ACCEPT_ATTR as SEGMENTS_ACCEPT
 from services.auth_service import (require_admin, ADMIN_EMAIL, owned_campaign_or_404,
     owned_group_or_404, visible_campaigns_query, admin_owns)
 from services.ai_assistant import task_label
+from routes.admin.qualification import (
+    _collect_qualification_form, _write_segments, _segments_as_dicts,
+    _default_qualification_form_view,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -501,30 +499,35 @@ def admin_campaign_new():
     if request.method == "POST":
         config, segments, errors, form_view = _collect_campaign_form(
             request.form, request.files, parse_segments=True)
+
+        # The qualification form is embedded at the bottom of this same page/form
+        # (its fields are prefixed "qual_" so they never collide with the campaign's
+        # own eval_mode/criteria/segments fields in the same <form>). A campaign can't
+        # be created until its qualification is filled out and valid.
+        qual_form = extract_prefixed_subform(request.form, "qual_")
+        qual_files = extract_prefixed_subfiles(request.files, "qual_")
         qual_config, qual_segments, qual_errors, qual_form_view = _collect_qualification_form(
-            request.form, request.files, parse_segments=True,
-            field_prefix="qual_",
-            segments_file_key="qual_segments_file",
-            segments_paste_key="qual_segments_paste",
-        )
-        errors.extend(qual_errors)
-        form_view.update(qual_form_view)
-        if errors:
-            for e in errors:
+            qual_form, qual_files, parse_segments=True)
+
+        all_errors = errors + qual_errors
+        if all_errors:
+            for e in all_errors:
                 flash(e, "error")
-            return _render_new_campaign_form(form_data=form_view)
+            return _render_new_campaign_form(form_data=form_view, qual_form_data=qual_form_view)
+
         c = Campaign(segments_json=json.dumps(segments, ensure_ascii=False), **config)
         c.owner_email = (session.get("admin_email") or ADMIN_EMAIL or "").strip().lower()
         db.session.add(c)
-        db.session.commit()
+        db.session.flush()  # assign c.id so the qualification test can reference it
+
         test = QualificationTest(campaign_id=c.id, **qual_config)
         db.session.add(test)
-        db.session.flush()
+        db.session.flush()  # assign test.id so its segments can reference it
         _write_segments(test, qual_segments)
-        if test.is_active:
-            _deactivate_other_tests(test.id, campaign_id=c.id)
+
         db.session.commit()
-        flash(f"Campaign '{config['name']}' created.", "success")
+        flash(f"Campaign '{config['name']}' created, with its qualification test ready for candidates.",
+              "success")
         return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
 
     return _render_new_campaign_form()
@@ -552,7 +555,7 @@ def _default_scale_view():
             "min": 0, "max": 100, "labels": {}}
 
 
-def _render_new_campaign_form(form_data=None):
+def _render_new_campaign_form(form_data=None, qual_form_data=None):
     fd = form_data or {}
     # Provide default criteria for a fresh form
     if "criteria" not in fd:
@@ -585,18 +588,6 @@ def _render_new_campaign_form(form_data=None):
     fd.setdefault("incentive_level", 1.0)
     fd.setdefault("incentive_intensity", 1.0)
     fd.setdefault("incentive_bonus_amount", 0.0)
-    if "qual_criteria" not in fd:
-        fd["qual_criteria"] = []
-    fd.setdefault("qual_eval_mode", "likert")
-    fd.setdefault("qual_title", "")
-    fd.setdefault("qual_language", "")
-    fd.setdefault("qual_description", "")
-    fd.setdefault("qual_passing_score", 80)
-    fd.setdefault("qual_time_limit_minutes", 30)
-    fd.setdefault("qual_max_attempts", QualificationTest.DEFAULT_MAX_ATTEMPTS)
-    fd.setdefault("qual_retry_cooldown_minutes", QualificationTest.DEFAULT_COOLDOWN_MINUTES)
-    fd.setdefault("qual_is_active", True)
-    fd.setdefault("qual_segments_paste", "")
     return render_template("admin_campaign_new.html",
                         scripts=SCRIPT_OPTIONS,
                         language_scripts=LANGUAGE_SCRIPTS,
@@ -607,7 +598,8 @@ def _render_new_campaign_form(form_data=None):
                         criterion_guides=models.CRITERION_GUIDES,
                         ai_providers=llm.PROVIDERS,
                         default_likert_labels=Campaign.DEFAULT_LIKERT_LABELS_BY_POINTS,
-                        form_data=fd)
+                        form_data=fd,
+                        qual_form_data=qual_form_data or _default_qualification_form_view())
 
 
 @admin_campaign_bp.route("/campaign/<campaign_id>/edit", methods=["GET", "POST"])
@@ -707,8 +699,34 @@ def _render_edit_campaign_form(campaign, form_data):
 @admin_campaign_bp.route("/campaign/<campaign_id>")
 @require_admin
 def admin_campaign_detail(campaign_id):
-    from models import CampaignAnnotator
     c = owned_campaign_or_404(campaign_id)
+    return _render_campaign_detail(c)
+
+
+def _qualification_form_view_for(test):
+    """Build the prefilled form_data dict for a campaign's qualification editor."""
+    if test is None:
+        return _default_qualification_form_view()
+    return {
+        "title": test.title,
+        "language": test.language,
+        "description": test.description or "",
+        "eval_mode": test.eval_mode,
+        "passing_score": test.passing_score,
+        "time_limit_minutes": test.time_limit_minutes,
+        "max_attempts": test.max_attempts or QualificationTest.DEFAULT_MAX_ATTEMPTS,
+        "retry_cooldown_minutes": test.retry_cooldown_minutes or QualificationTest.DEFAULT_COOLDOWN_MINUTES,
+        "is_active": test.is_active,
+        "criteria": [
+            {"name": c.get("name", ""), "desc": c.get("guide", "")}
+            for c in test.criteria
+        ],
+        "segments_paste": "",
+    }
+
+
+def _render_campaign_detail(c, qual_form_data=None):
+    from models import CampaignAnnotator
     crit_ids = [cr["id"] for cr in get_criteria_for(c)]
     # Gather per-annotator progress
     rows = []
@@ -742,20 +760,13 @@ def admin_campaign_detail(campaign_id):
                 "manual": "Manual labels only", "none": "None"}.get(
                     c.difficulty_method or "auto", "Automatic")
     groups = [g for g in CampaignGroup.query.order_by(CampaignGroup.name.asc()).all() if admin_owns(g)]
-    qual_status = None
-    qual_export_count = 0
-    qual_passed = 0
-    qual_failed = 0
-    qual_attempts = 0
-    if c.qualification:
-        qual_attempts = QualificationAttempt.query.filter_by(test_id=c.qualification.id).count()
-        qual_passed = QualificationAttempt.query.filter_by(test_id=c.qualification.id, passed=True).count()
-        qual_failed = QualificationAttempt.query.filter_by(test_id=c.qualification.id, passed=False).count()
-        qual_export_count = qual_attempts
-        if c.qualification.is_active:
-            qual_status = "Active"
-        else:
-            qual_status = "Inactive"
+    test = c.qualification_test
+    qual_attempt_count = 0
+    if test is not None:
+        qual_attempt_count = (QualificationAttempt.query
+                               .filter_by(test_id=test.id)
+                               .filter(QualificationAttempt.submitted_at.isnot(None))
+                               .count())
     return render_template("admin_campaign_detail.html",
                         campaign=c, rows=rows, share_url=share_url,
                         criteria=get_criteria_for(c),
@@ -763,12 +774,97 @@ def admin_campaign_detail(campaign_id):
                         input_label=in_label, output_label=out_label,
                         difficulty_label=diff_label,
                         groups=groups,
-                        qualification_status=qual_status,
-                        qualification_attempts=qual_attempts,
-                        qualification_passed=qual_passed,
-                        qualification_failed=qual_failed,
-                        qualification_export_count=qual_export_count,
-                        )
+                        qualification_test=test,
+                        qual_attempt_count=qual_attempt_count,
+                        eval_modes=EVAL_MODES,
+                        qual_form_data=qual_form_data or _qualification_form_view_for(test))
+
+
+@admin_campaign_bp.route("/campaign/<campaign_id>/qualification/edit", methods=["POST"])
+@require_admin
+def admin_campaign_qualification_edit(campaign_id):
+    c = owned_campaign_or_404(campaign_id)
+    if c.is_closed:
+        flash("This campaign is closed and its qualification can no longer be edited.", "error")
+        return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
+
+    test = c.qualification_test
+    if test is None:
+        flash("This campaign has no qualification test to edit.", "error")
+        return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
+
+    upload = request.files.get("segments_file")
+    has_upload = bool(upload and upload.filename)
+    has_paste = bool((request.form.get("segments_paste") or "").strip())
+    replacing_segments = has_upload or has_paste
+    existing_segments = None if replacing_segments else _segments_as_dicts(test)
+
+    config, segments, errors, form_view = _collect_qualification_form(
+        request.form, request.files,
+        parse_segments=replacing_segments,
+        existing_segments=existing_segments,
+    )
+
+    if errors:
+        for e in errors:
+            flash(e, "error")
+        return _render_campaign_detail(c, qual_form_data=form_view)
+
+    for key, value in config.items():
+        setattr(test, key, value)
+    if segments is not None:
+        _write_segments(test, segments)
+    db.session.commit()
+
+    flash("Qualification updated.", "success")
+    return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
+
+
+@admin_campaign_bp.route("/campaign/<campaign_id>/qualification/results.csv")
+@require_admin
+def admin_campaign_qualification_results_csv(campaign_id):
+    """Download every candidate's qualification results for this campaign only."""
+    import csv
+    import io
+    from flask import Response
+
+    c = owned_campaign_or_404(campaign_id)
+    test = c.qualification_test
+    if test is None:
+        flash("This campaign has no qualification test.", "error")
+        return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
+
+    attempts = (QualificationAttempt.query
+                .filter_by(test_id=test.id)
+                .filter(QualificationAttempt.submitted_at.isnot(None))
+                .order_by(QualificationAttempt.submitted_at.desc())
+                .all())
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["Annotator name", "Annotator email", "Attempt #", "Score (%)", "Passed",
+                    "Correct answers", "Total questions", "Started at (UTC)",
+                    "Submitted at (UTC)", "Time spent (s)"])
+    for a in attempts:
+        ann = a.annotator
+        writer.writerow([
+            ann.name if ann else "",
+            ann.email if ann else "",
+            a.version,
+            f"{a.score:.1f}" if a.score is not None else "",
+            "Yes" if a.passed else "No",
+            a.correct_answers,
+            a.total_questions,
+            a.started_at.strftime("%Y-%m-%d %H:%M:%S") if a.started_at else "",
+            a.submitted_at.strftime("%Y-%m-%d %H:%M:%S") if a.submitted_at else "",
+            a.time_spent_seconds or 0,
+        ])
+
+    filename = exporter._safe_filename(c.name) + "_qualification_results.csv"
+    return Response(
+        buf.getvalue(), mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @admin_campaign_bp.route("/campaign/<campaign_id>/progress.json")
@@ -1020,6 +1116,7 @@ def admin_campaign_set_group(campaign_id):
 @require_admin
 def admin_campaign_download_csv(campaign_id):
     """Download the master CSV directly from the server (alongside Drive)."""
+    from flask import Response
     c = owned_campaign_or_404(campaign_id)
     crit = get_criteria_for(c)
     crit_ids = [cr["id"] for cr in crit]
@@ -1029,55 +1126,6 @@ def admin_campaign_download_csv(campaign_id):
     filename = exporter._safe_filename(c.name) + "_master.csv"
     return Response(
         data, mimetype="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
-
-@admin_campaign_bp.route("/campaign/<campaign_id>/download_qualification")
-@require_admin
-def admin_campaign_download_qualification(campaign_id):
-    c = owned_campaign_or_404(campaign_id)
-    if not c.qualification:
-        flash("No qualification test is configured for this campaign.", "error")
-        return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
-
-    attempts = QualificationAttempt.query.filter_by(test_id=c.qualification.id).order_by(
-        QualificationAttempt.submitted_at.asc()
-    ).all()
-
-    output = StringIO()
-    writer = csv.writer(output)
-    writer.writerow([
-        "attempt_id",
-        "annotator_id",
-        "annotator_email",
-        "version",
-        "submitted_at",
-        "score",
-        "passed",
-        "correct_answers",
-        "total_questions",
-        "time_spent_seconds",
-    ])
-
-    for attempt in attempts:
-        annotator = Annotator.query.get(attempt.annotator_id)
-        writer.writerow([
-            attempt.id,
-            attempt.annotator_id,
-            annotator.email if annotator else "",
-            attempt.version,
-            attempt.submitted_at.isoformat() if attempt.submitted_at else "",
-            attempt.score if attempt.score is not None else "",
-            "yes" if attempt.passed else "no",
-            attempt.correct_answers,
-            attempt.total_questions,
-            attempt.time_spent_seconds,
-        ])
-
-    filename = exporter._safe_filename(c.name) + "_qualification_attempts.csv"
-    return Response(
-        output.getvalue(), mimetype="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
