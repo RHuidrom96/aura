@@ -105,6 +105,10 @@
         action="{{ url_for('annotator_qualification.start_qualification') }}"
         class="qual-cta">
 
+        {% if campaign_id %}
+        <input type="hidden" name="campaign_id" value="{{ campaign_id }}">
+        {% endif %}
+
         <button
             type="submit"
             class="btn btn-primary qual-btn-lg">

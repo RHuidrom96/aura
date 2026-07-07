@@ -205,6 +205,29 @@ label[style-hover]:hover {
   <main style="max-width:1040px; margin:0 auto; padding:34px 48px 80px; display:flex; flex-direction:column; gap:22px;">
     {% include "_campaign_form_fields_new.html" %}
 
+    <section class="card" style="padding:24px 30px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px;">
+        <div>
+          <h2 style="margin:0; font-size:22px;">Qualification test</h2>
+          <p class="hint" style="margin:6px 0 0;">Configure a campaign-specific qualification that annotators must pass before rating.</p>
+        </div>
+      </div>
+      {% set field_prefix = 'qual_' %}
+      {% include "_qualification_form_fields.html" %}
+
+      <div class="field">
+        <label for="qual_segments_file">Segments file <span class="req">*</span></label>
+        <input type="file" id="qual_segments_file" name="qual_segments_file" accept=".json,application/json">
+        <p class="hint">Upload a JSON file containing qualification examples. Or paste the JSON below.</p>
+      </div>
+
+      <div class="field">
+        <label for="qual_segments_paste">Segments JSON</label>
+        <textarea id="qual_segments_paste" name="qual_segments_paste" rows="8"
+                  placeholder='[{"source": "...", "target": "...", "gold": {"scores": {"adequacy": 5}}}, ...]'>{{ form_data.get('qual_segments_paste', '') }}</textarea>
+      </div>
+    </section>
+
     <!-- Footer actions -->
     <div style="display:flex; align-items:center; justify-content:flex-end; gap:14px; padding-top:6px;">
       <a href="{{ url_for('admin_campaign.admin_dashboard') }}" style="text-decoration:none; font-family:'Work Sans',sans-serif; font-weight:600; font-size:13px; letter-spacing:0.3px; padding:13px 22px; border-radius:6px; border:1px solid var(--aura-input-border); background:transparent; color:var(--aura-text-muted); cursor:pointer;" style-hover="background:var(--aura-accent-pill);">Cancel</a>

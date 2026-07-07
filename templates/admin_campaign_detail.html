@@ -507,6 +507,29 @@
 </section>
 
 <section class="card">
+  <div class="card-header-flex">
+    <h3 style="margin:0;">Qualification</h3>
+    {% if campaign.qualification %}
+    <a href="{{ url_for('admin_campaign.admin_campaign_download_qualification', campaign_id=campaign.id) }}" class="btn btn-small">Export attempts</a>
+    {% endif %}
+  </div>
+  {% if campaign.qualification %}
+  <p class="hint" style="margin-top:0;">This campaign uses a campaign-specific qualification test.</p>
+  <table class="annotator-table" style="margin-top:12px;">
+    <tbody>
+      <tr><td class="muted">Test</td><td>{{ campaign.qualification.title }}</td></tr>
+      <tr><td class="muted">Status</td><td>{{ qualification_status or 'Inactive' }}</td></tr>
+      <tr><td class="muted">Attempts</td><td>{{ qualification_attempts }}</td></tr>
+      <tr><td class="muted">Passed</td><td>{{ qualification_passed }}</td></tr>
+      <tr><td class="muted">Failed</td><td>{{ qualification_failed }}</td></tr>
+    </tbody>
+  </table>
+  {% else %}
+  <p class="hint" style="margin-top:0;">No qualification test is currently configured for this campaign.</p>
+  {% endif %}
+</section>
+
+<section class="card">
   <h3>Data export</h3>
   <a href="{{ url_for('admin_campaign.admin_campaign_download_csv', campaign_id=campaign.id) }}" class="btn">
     Download master CSV

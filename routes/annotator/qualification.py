@@ -26,7 +26,7 @@ from services.qualification import (
     finish_attempt,
 )
 
-from models import QualificationSegment
+from models import Campaign, QualificationSegment
 
 
 annotator_qualification_bp = Blueprint(
@@ -35,39 +35,37 @@ annotator_qualification_bp = Blueprint(
 )
 
 
+def _get_request_campaign():
+    campaign_id = request.values.get("campaign_id")
+    if campaign_id:
+        return Campaign.query.get(campaign_id)
+    return None
+
+
 @annotator_qualification_bp.route("/qualification")
 @require_annotator
 def qualification():
 
     annotator = current_annotator()
+    campaign = _get_request_campaign()
 
-    if can_annotate(annotator):
-
+    if can_annotate(annotator, campaign):
         flash(
             "You have already passed the qualification test.",
             "info",
         )
+        if campaign:
+            return redirect(url_for("annotator_rating.rate_view", campaign_id=campaign.id))
+        return redirect(url_for("annotator_dashboard.annotator_dashboard"))
 
-        return redirect(
-            url_for(
-                "annotator_dashboard.annotator_dashboard"
-            )
-        )
-
-    test = get_active_test()
+    test = get_active_test(campaign_id=campaign.id if campaign else None)
 
     if test is None:
-
         flash(
             "No qualification test is currently available.",
             "error",
         )
-
-        return redirect(
-            url_for(
-                "annotator_dashboard.annotator_dashboard"
-            )
-        )
+        return redirect(url_for("annotator_dashboard.annotator_dashboard"))
 
     attempt = get_open_attempt(
         annotator,
@@ -75,7 +73,6 @@ def qualification():
     )
 
     if attempt:
-
         segments = (
             test.segments
             .order_by(
@@ -83,7 +80,6 @@ def qualification():
             )
             .all()
         )
-
         return render_template(
             "qualification/test.html",
             page_role="annotator",
@@ -91,6 +87,7 @@ def qualification():
             test=test,
             attempt=attempt,
             segments=segments,
+            campaign_id=campaign.id if campaign else None,
         )
 
     previous = latest_attempt_for_test(
@@ -101,16 +98,9 @@ def qualification():
     retry = None
 
     if previous:
-
         retry = retry_status(annotator, test)
-
         if not retry["allowed"]:
-
-            return redirect(
-                url_for(
-                    "annotator_qualification.qualification_result"
-                )
-            )
+            return redirect(url_for("annotator_qualification.qualification_result"))
 
     return render_template(
         "qualification/start.html",
@@ -118,6 +108,7 @@ def qualification():
         annotator=annotator,
         test=test,
         retry=retry,
+        campaign_id=campaign.id if campaign else None,
     )
 
 
@@ -129,21 +120,18 @@ def qualification():
 def start_qualification():
 
     annotator = current_annotator()
+    campaign = _get_request_campaign()
 
-    if can_annotate(annotator):
-
+    if can_annotate(annotator, campaign):
         flash(
             "You have already passed the qualification test.",
             "info",
         )
+        if campaign:
+            return redirect(url_for("annotator_rating.rate_view", campaign_id=campaign.id))
+        return redirect(url_for("annotator_dashboard.annotator_dashboard"))
 
-        return redirect(
-            url_for(
-                "annotator_dashboard.annotator_dashboard"
-            )
-        )
-
-    test = get_active_test()
+    test = get_active_test(campaign_id=campaign.id if campaign else None)
 
     if test is None:
 
@@ -164,7 +152,6 @@ def start_qualification():
     )
 
     if previous and get_open_attempt(annotator, test) is None:
-
         retry = retry_status(annotator, test)
 
         if not retry["allowed"]:
@@ -184,7 +171,8 @@ def start_qualification():
 
             return redirect(
                 url_for(
-                    "annotator_qualification.qualification_result"
+                    "annotator_qualification.qualification_result",
+                    campaign_id=campaign.id if campaign else None,
                 )
             )
 
@@ -208,6 +196,7 @@ def start_qualification():
         test=test,
         attempt=attempt,
         segments=segments,
+        campaign_id=campaign.id if campaign else None,
     )
 
 
@@ -219,21 +208,18 @@ def start_qualification():
 def submit_qualification():
 
     annotator = current_annotator()
+    campaign = _get_request_campaign()
 
-    if can_annotate(annotator):
-
+    if can_annotate(annotator, campaign):
         flash(
             "You have already passed the qualification test.",
             "info",
         )
+        if campaign:
+            return redirect(url_for("annotator_rating.rate_view", campaign_id=campaign.id))
+        return redirect(url_for("annotator_dashboard.annotator_dashboard"))
 
-        return redirect(
-            url_for(
-                "annotator_dashboard.annotator_dashboard"
-            )
-        )
-
-    test = get_active_test()
+    test = get_active_test(campaign_id=campaign.id if campaign else None)
 
     if test is None:
 
@@ -361,7 +347,8 @@ def submit_qualification():
 
     return redirect(
         url_for(
-            "annotator_qualification.qualification_result"
+            "annotator_qualification.qualification_result",
+            campaign_id=campaign.id if campaign else None,
         )
     )
 
@@ -371,6 +358,7 @@ def submit_qualification():
 def qualification_result():
 
     annotator = current_annotator()
+    campaign = _get_request_campaign()
 
     attempt = latest_attempt(annotator)
 
@@ -383,7 +371,8 @@ def qualification_result():
 
         return redirect(
             url_for(
-                "annotator_qualification.qualification"
+                "annotator_qualification.qualification",
+                campaign_id=campaign.id if campaign else None,
             )
         )
 
@@ -391,7 +380,7 @@ def qualification_result():
 
     if not attempt.passed:
 
-        active_test = get_active_test()
+        active_test = get_active_test(campaign_id=campaign.id if campaign else None)
 
         if active_test is not None:
             retry = retry_status(annotator, active_test)
@@ -402,4 +391,5 @@ def qualification_result():
         annotator=annotator,
         attempt=attempt,
         retry=retry,
+        campaign_id=campaign.id if campaign else None,
     )

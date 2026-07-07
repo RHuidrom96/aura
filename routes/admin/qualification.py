@@ -142,51 +142,61 @@ def _write_segments(test, segments):
         )
 
 
-def _collect_qualification_form(form, files, *, parse_segments, existing_segments=None):
+def _collect_qualification_form(
+    form,
+    files,
+    *,
+    parse_segments,
+    existing_segments=None,
+    field_prefix="",
+    segments_file_key="segments_file",
+    segments_paste_key="segments_paste",
+):
     """Read + validate all qualification-test fields from a submitted form.
 
     Returns (config_kwargs, segments_or_None, errors, form_view).
     """
     errors = []
+    prefix = field_prefix or ""
 
-    title = (form.get("title") or "").strip()
-    language = (form.get("language") or "").strip()
-    description = (form.get("description") or "").strip()
+    title = (form.get(prefix + "title") or "").strip()
+    language = (form.get(prefix + "language") or "").strip()
+    description = (form.get(prefix + "description") or "").strip()
 
-    eval_mode = (form.get("eval_mode") or "likert").strip()
+    eval_mode = (form.get(prefix + "eval_mode") or "likert").strip()
     if eval_mode not in _EVAL_MODE_IDS:
         errors.append("Invalid evaluation mode.")
         eval_mode = "likert"
 
     try:
-        passing_score = float(form.get("passing_score") or 80)
+        passing_score = float(form.get(prefix + "passing_score") or 80)
     except (TypeError, ValueError):
         passing_score = 80.0
     passing_score = max(0.0, min(100.0, passing_score))
 
     try:
-        time_limit_minutes = int(form.get("time_limit_minutes") or 30)
+        time_limit_minutes = int(form.get(prefix + "time_limit_minutes") or 30)
     except (TypeError, ValueError):
         time_limit_minutes = 30
     time_limit_minutes = max(1, time_limit_minutes)
 
     # Retry policy: blank or zero falls back to the model's defaults.
     try:
-        max_attempts = int(form.get("max_attempts") or 0)
+        max_attempts = int(form.get(prefix + "max_attempts") or 0)
     except (TypeError, ValueError):
         max_attempts = 0
     max_attempts = max_attempts if max_attempts > 0 else QualificationTest.DEFAULT_MAX_ATTEMPTS
 
     try:
-        retry_cooldown_minutes = int(form.get("retry_cooldown_minutes") or 0)
+        retry_cooldown_minutes = int(form.get(prefix + "retry_cooldown_minutes") or 0)
     except (TypeError, ValueError):
         retry_cooldown_minutes = 0
     retry_cooldown_minutes = (retry_cooldown_minutes if retry_cooldown_minutes > 0
                              else QualificationTest.DEFAULT_COOLDOWN_MINUTES)
 
-    is_active = form.get("is_active") == "on"
+    is_active = form.get(prefix + "is_active") == "on"
 
-    criteria, criteria_missing_desc = parse_criteria_from_form(form)
+    criteria, criteria_missing_desc = parse_criteria_from_form(form, field_prefix=prefix)
 
     # ---- validation ----
     if not title:
@@ -208,7 +218,7 @@ def _collect_qualification_form(form, files, *, parse_segments, existing_segment
     segments = None
     if parse_segments:
         segments_raw = ""
-        upload = files.get("segments_file") if files else None
+        upload = files.get(segments_file_key) if files else None
         if upload and upload.filename:
             try:
                 segments_raw = upload.read().decode("utf-8")
@@ -216,7 +226,7 @@ def _collect_qualification_form(form, files, *, parse_segments, existing_segment
                 errors.append("Could not read the uploaded file as UTF-8.")
                 segments_raw = ""
         else:
-            segments_raw = (form.get("segments_paste") or "").strip()
+            segments_raw = (form.get(segments_paste_key) or "").strip()
 
         if not segments_raw:
             errors.append("Please upload or paste the segments JSON file.")
@@ -252,17 +262,17 @@ def _collect_qualification_form(form, files, *, parse_segments, existing_segment
     }
 
     form_view = {
-        "title": title,
-        "language": language,
-        "description": description,
-        "eval_mode": eval_mode,
-        "passing_score": passing_score,
-        "time_limit_minutes": time_limit_minutes,
-        "max_attempts": max_attempts,
-        "retry_cooldown_minutes": retry_cooldown_minutes,
-        "is_active": is_active,
-        "criteria": [{"name": c["name"], "desc": c["guide"]} for c in criteria],
-        "segments_paste": form_segments_paste,
+        prefix + "title": title,
+        prefix + "language": language,
+        prefix + "description": description,
+        prefix + "eval_mode": eval_mode,
+        prefix + "passing_score": passing_score,
+        prefix + "time_limit_minutes": time_limit_minutes,
+        prefix + "max_attempts": max_attempts,
+        prefix + "retry_cooldown_minutes": retry_cooldown_minutes,
+        prefix + "is_active": is_active,
+        prefix + "criteria": [{"name": c["name"], "desc": c["guide"]} for c in criteria],
+        prefix + "segments_paste": form_segments_paste,
     }
 
     return config, segments, errors, form_view
@@ -284,22 +294,21 @@ def _default_qualification_form_view():
     }
 
 
-def _deactivate_other_tests(exclude_id):
-    """Keep only one qualification test active at a time.
+def _deactivate_other_tests(exclude_id, campaign_id=None):
+    """Keep only one active qualification test per campaign scope.
 
-    get_active_test() is always called with no language filter at every
-    current call site, so it just returns whichever active test happens
-    to sort first -- if two tests were both left active, which one gets
-    served would be arbitrary. Enforce single-active here instead.
+    For campaign-specific tests, only other tests for the same campaign are
+    deactivated. Global tests remain independent.
     """
-    (
-        QualificationTest.query
-        .filter(
-            QualificationTest.id != exclude_id,
-            QualificationTest.is_active.is_(True),
-        )
-        .update({"is_active": False}, synchronize_session="fetch")
+    query = QualificationTest.query.filter(
+        QualificationTest.id != exclude_id,
+        QualificationTest.is_active.is_(True),
     )
+    if campaign_id is None:
+        query = query.filter(QualificationTest.campaign_id.is_(None))
+    else:
+        query = query.filter(QualificationTest.campaign_id == campaign_id)
+    query.update({"is_active": False}, synchronize_session="fetch")
 
 
 # ---------------------------------------------------------------------------

@@ -88,6 +88,15 @@
 
             {% if attempt.passed %}
 
+            {% if campaign_id %}
+            <a
+                href="{{ url_for('annotator_rating.rate_view', campaign_id=campaign_id) }}"
+                class="btn btn-primary qual-btn-lg">
+
+                Continue to campaign
+
+            </a>
+            {% else %}
             <a
                 href="{{ url_for('annotator_dashboard.annotator_dashboard') }}"
                 class="btn btn-primary qual-btn-lg">
@@ -95,11 +104,12 @@
                 Go to Dashboard
 
             </a>
+            {% endif %}
 
             {% elif retry and retry.allowed %}
 
             <a
-                href="{{ url_for('annotator_qualification.qualification') }}"
+                href="{{ url_for('annotator_qualification.qualification', campaign_id=campaign_id) }}"
                 class="btn btn-secondary qual-btn-lg">
 
                 Try Again

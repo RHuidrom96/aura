@@ -25,9 +25,9 @@ def rate_view(campaign_id):
         return render_template("campaign_closed.html", campaign=c)
     session["last_campaign_id"] = campaign_id
     ann = current_annotator()
-    if not can_annotate(ann):
+    if not can_annotate(ann, c):
         flash("Please complete the qualification test before joining this campaign.", "info")
-        return redirect(url_for("annotator_qualification.qualification"))
+        return redirect(url_for("annotator_qualification.qualification", campaign_id=c.id))
     criteria = get_criteria_for(c)
     mode = c.mode
     link = CampaignAnnotator.query.filter_by(campaign_id=c.id, annotator_id=ann.id).first()

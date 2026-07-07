@@ -74,13 +74,14 @@ def parse_scale_from_form(form, errors):
         "scale_labels_json": json.dumps(labels, ensure_ascii=False) if labels else "",
     }
 
-def parse_criteria_from_form(form):
+def parse_criteria_from_form(form, field_prefix=""):
     """Parse the parallel crit_name[]/crit_desc[] arrays into a criteria list.
 
     Returns (criteria, criteria_missing_desc).
     """
-    crit_names = form.getlist("crit_name")
-    crit_descs = form.getlist("crit_desc")
+    prefix = field_prefix or ""
+    crit_names = form.getlist(prefix + "crit_name")
+    crit_descs = form.getlist(prefix + "crit_desc")
     criteria = []
     criteria_missing_desc = []
     used_ids = set()

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from extensions import db
 from models import (
     Annotator,
+    CampaignAnnotator,
     QualificationAttempt,
     QualificationResponse,
     QualificationSegment,
@@ -20,19 +21,32 @@ from models import (
 # Test lookup
 # ---------------------------------------------------------------------------
 
-def get_active_test(language=None):
+def get_active_test(language=None, campaign_id=None):
     """
     Return the active qualification test.
 
+    Prefer a campaign-specific test when a campaign_id is supplied.
+    If no campaign-specific test exists, fall back to a global active test.
     If a language is supplied, prefer that language.
     """
-    q = QualificationTest.query.filter_by(is_active=True)
+    if campaign_id:
+        campaign_tests = QualificationTest.query.filter_by(
+            is_active=True,
+            campaign_id=campaign_id,
+        )
+        if language:
+            test = campaign_tests.filter_by(language=language).first()
+            if test:
+                return test
+        test = campaign_tests.first()
+        if test:
+            return test
 
+    q = QualificationTest.query.filter_by(is_active=True, campaign_id=None)
     if language:
         test = q.filter_by(language=language).first()
         if test:
             return test
-
     return q.first()
 
 
@@ -40,11 +54,21 @@ def get_active_test(language=None):
 # Eligibility
 # ---------------------------------------------------------------------------
 
-def can_annotate(annotator):
+def can_annotate(annotator, campaign=None):
     """
-    Whether an annotator may participate in campaigns.
+    Whether an annotator may participate in a campaign.
     """
-    return annotator.qualification_status == "qualified"
+    if campaign is None:
+        return annotator.qualification_status == "qualified"
+
+    if not campaign.qualification:
+        return True
+
+    link = CampaignAnnotator.query.filter_by(
+        campaign_id=campaign.id,
+        annotator_id=annotator.id,
+    ).first()
+    return bool(link and link.qualification_status == "qualified")
 
 
 # ---------------------------------------------------------------------------
@@ -397,16 +421,40 @@ def qualify_annotator(attempt):
     """
 
     annotator = attempt.annotator
+    campaign = attempt.test.campaign
 
     if attempt.passed:
+        if campaign:
+            link = CampaignAnnotator.query.filter_by(
+                campaign_id=campaign.id,
+                annotator_id=annotator.id,
+            ).first()
+            if not link:
+                link = CampaignAnnotator(
+                    campaign_id=campaign.id,
+                    annotator_id=annotator.id,
+                )
+                db.session.add(link)
+            link.qualification_status = "qualified"
+            link.qualified_at = datetime.utcnow()
 
-        annotator.qualification_status = "qualified"
-
-        annotator.qualified_at = datetime.utcnow()
+        if annotator.qualification_status != "qualified":
+            annotator.qualification_status = "qualified"
+            annotator.qualified_at = datetime.utcnow()
 
     else:
-
-        annotator.qualification_status = "failed"
+        if campaign:
+            link = CampaignAnnotator.query.filter_by(
+                campaign_id=campaign.id,
+                annotator_id=annotator.id,
+            ).first()
+            if not link:
+                link = CampaignAnnotator(
+                    campaign_id=campaign.id,
+                    annotator_id=annotator.id,
+                )
+                db.session.add(link)
+            link.qualification_status = "failed"
 
     return annotator
 

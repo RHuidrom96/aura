@@ -1,62 +1,63 @@
-{# Shared qualification-test fields. Expects `form_data`, `eval_modes`, and
-   `mode` ('new' or 'edit') in context. #}
+{# Shared qualification-test fields. Expects `form_data`, `eval_modes`, `mode` ('new' or 'edit'),
+   and an optional `field_prefix` in context. #}
+{% set prefix = field_prefix or "" %}
 
 <div class="field">
-  <label for="title">Test title <span class="req">*</span></label>
-  <input type="text" id="title" name="title" required
-         value="{{ form_data.get('title', '') }}"
+  <label for="{{ prefix }}title">Test title <span class="req">*</span></label>
+  <input type="text" id="{{ prefix }}title" name="{{ prefix }}title" required
+         value="{{ form_data.get(prefix + 'title', '') }}"
          placeholder="e.g. English → Manipuri qualification">
   <p class="hint">Shown to admins only; annotators see "Qualification Test".</p>
 </div>
 
 <div class="form-row">
   <div class="field">
-    <label for="language">Language <span class="req">*</span></label>
-    <input type="text" id="language" name="language" required
-           value="{{ form_data.get('language', '') }}"
+    <label for="{{ prefix }}language">Language <span class="req">*</span></label>
+    <input type="text" id="{{ prefix }}language" name="{{ prefix }}language" required
+           value="{{ form_data.get(prefix + 'language', '') }}"
            placeholder="e.g. Manipuri">
   </div>
   <div class="field">
-    <label for="eval_mode">Evaluation mode <span class="req">*</span></label>
-    <select id="eval_mode" name="eval_mode">
+    <label for="{{ prefix }}eval_mode">Evaluation mode <span class="req">*</span></label>
+    <select id="{{ prefix }}eval_mode" name="{{ prefix }}eval_mode">
       {% for m in eval_modes %}
-      <option value="{{ m.id }}" {{ 'selected' if form_data.get('eval_mode', 'likert') == m.id else '' }}>{{ m.name }}</option>
+      <option value="{{ m.id }}" {{ 'selected' if form_data.get(prefix + 'eval_mode', 'likert') == m.id else '' }}>{{ m.name }}</option>
       {% endfor %}
     </select>
   </div>
 </div>
 
 <div class="field">
-  <label for="description">Description</label>
-  <textarea id="description" name="description" rows="3"
-            placeholder="Shown to annotators on the qualification start page.">{{ form_data.get('description', '') }}</textarea>
+  <label for="{{ prefix }}description">Description</label>
+  <textarea id="{{ prefix }}description" name="{{ prefix }}description" rows="3"
+            placeholder="Shown to annotators on the qualification start page.">{{ form_data.get(prefix + 'description', '') }}</textarea>
 </div>
 
 <div class="form-row">
   <div class="field">
-    <label for="passing_score">Passing score (%) <span class="req">*</span></label>
-    <input type="number" id="passing_score" name="passing_score" min="0" max="100" step="1" required
-           value="{{ form_data.get('passing_score', 80) }}">
+    <label for="{{ prefix }}passing_score">Passing score (%) <span class="req">*</span></label>
+    <input type="number" id="{{ prefix }}passing_score" name="{{ prefix }}passing_score" min="0" max="100" step="1" required
+           value="{{ form_data.get(prefix + 'passing_score', 80) }}">
   </div>
   <div class="field">
-    <label for="time_limit_minutes">Time limit (minutes) <span class="req">*</span></label>
-    <input type="number" id="time_limit_minutes" name="time_limit_minutes" min="1" step="1" required
-           value="{{ form_data.get('time_limit_minutes', 30) }}">
+    <label for="{{ prefix }}time_limit_minutes">Time limit (minutes) <span class="req">*</span></label>
+    <input type="number" id="{{ prefix }}time_limit_minutes" name="{{ prefix }}time_limit_minutes" min="1" step="1" required
+           value="{{ form_data.get(prefix + 'time_limit_minutes', 30) }}">
   </div>
 </div>
 
 <div class="form-row">
   <div class="field">
-    <label for="max_attempts">Max attempts</label>
-    <input type="number" id="max_attempts" name="max_attempts" min="1" step="1"
-           value="{{ form_data.get('max_attempts', 3) }}">
+    <label for="{{ prefix }}max_attempts">Max attempts</label>
+    <input type="number" id="{{ prefix }}max_attempts" name="{{ prefix }}max_attempts" min="1" step="1"
+           value="{{ form_data.get(prefix + 'max_attempts', 3) }}">
     <p class="hint">How many times an annotator may attempt this test in total.
       Leave blank or 0 for the default (3).</p>
   </div>
   <div class="field">
-    <label for="retry_cooldown_minutes">Retry cooldown (minutes)</label>
-    <input type="number" id="retry_cooldown_minutes" name="retry_cooldown_minutes" min="1" step="1"
-           value="{{ form_data.get('retry_cooldown_minutes', 30) }}">
+    <label for="{{ prefix }}retry_cooldown_minutes">Retry cooldown (minutes)</label>
+    <input type="number" id="{{ prefix }}retry_cooldown_minutes" name="{{ prefix }}retry_cooldown_minutes" min="1" step="1"
+           value="{{ form_data.get(prefix + 'retry_cooldown_minutes', 30) }}">
     <p class="hint">How long an annotator must wait after a failed attempt before
       retrying. Leave blank or 0 for the default (24).</p>
   </div>
@@ -64,8 +65,8 @@
 
 <div class="field">
   <label class="checkbox-inline" style="font-weight:500;">
-    <input type="checkbox" name="is_active" value="on"
-      {{ 'checked' if form_data.get('is_active') else '' }}>
+    <input type="checkbox" name="{{ prefix }}is_active" value="on"
+      {{ 'checked' if form_data.get(prefix + 'is_active') else '' }}>
     Active
   </label>
   <p class="hint">Only one qualification test can be active at a time. Making this one active
@@ -80,37 +81,50 @@
   <p class="hint" id="criteria-hint">Define what annotators will rate. Each has a name and a
     definition shown to annotators. Every segment's gold answer must provide a score for
     each criterion defined here.</p>
-  <div id="criteria-rows">
-    {% for c in form_data.get('criteria', []) %}
+  <div id="{{ prefix }}criteria_rows">
+    {% for c in form_data.get(prefix + 'criteria', []) %}
     <div class="criterion-row">
       <div class="criterion-row-fields">
-        <input type="text" name="crit_name" placeholder="Criterion name (e.g. Adequacy)"
+        <input type="text" name="{{ prefix }}crit_name" placeholder="Criterion name (e.g. Adequacy)"
                value="{{ c.get('name', '') }}" class="crit-name-input">
-        <textarea name="crit_desc" rows="2" placeholder="Definition shown to annotators"
+        <textarea name="{{ prefix }}crit_desc" rows="2" placeholder="Definition shown to annotators"
                   class="crit-desc-input">{{ c.get('desc', '') }}</textarea>
       </div>
       <button type="button" class="btn-remove-row" title="Remove" onclick="qualRemoveCriterionRow(this)">×</button>
     </div>
     {% endfor %}
   </div>
-  <button type="button" class="btn btn-ghost btn-small" onclick="qualAddCriterionRow()">+ Add criterion</button>
+  <button type="button" class="btn btn-ghost btn-small" onclick="qualAddCriterionRow('{{ prefix }}')">+ Add criterion</button>
 </div>
 
-<template id="qual-criterion-row-template">
+<template id="{{ prefix }}qual-criterion-row-template">
   <div class="criterion-row">
     <div class="criterion-row-fields">
-      <input type="text" name="crit_name" placeholder="Criterion name (e.g. Adequacy)" class="crit-name-input">
-      <textarea name="crit_desc" rows="2" placeholder="Definition shown to annotators" class="crit-desc-input"></textarea>
+      <input type="text" name="{{ prefix }}crit_name" placeholder="Criterion name (e.g. Adequacy)" class="crit-name-input">
+      <textarea name="{{ prefix }}crit_desc" rows="2" placeholder="Definition shown to annotators" class="crit-desc-input"></textarea>
     </div>
     <button type="button" class="btn-remove-row" title="Remove" onclick="qualRemoveCriterionRow(this)">×</button>
   </div>
 </template>
 
 <script>
-function qualAddCriterionRow() {
-  var tpl = document.getElementById("qual-criterion-row-template");
-  var rows = document.getElementById("criteria-rows");
-  rows.appendChild(tpl.content.cloneNode(true));
+function qualAddCriterionRow(prefix) {
+  prefix = prefix || "";
+  var tpl = document.getElementById(prefix + "qual-criterion-row-template");
+  var rows = document.getElementById(prefix + "criteria_rows");
+  if (!tpl || !rows) {
+    tpl = document.getElementById("qual-criterion-row-template");
+    rows = document.getElementById("criteria-rows");
+  }
+  if (!tpl || !rows) return;
+  var node = tpl.content.cloneNode(true);
+  node.querySelectorAll('input[name="crit_name"]').forEach(function (input) {
+    input.name = prefix + "crit_name";
+  });
+  node.querySelectorAll('textarea[name="crit_desc"]').forEach(function (textarea) {
+    textarea.name = prefix + "crit_desc";
+  });
+  rows.appendChild(node);
 }
 function qualRemoveCriterionRow(btn) {
   var row = btn.closest(".criterion-row");
@@ -118,7 +132,7 @@ function qualRemoveCriterionRow(btn) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-  var evalSelect = document.getElementById("eval_mode");
+  var evalSelect = document.querySelector('[name="{{ prefix }}eval_mode"]');
   if (!evalSelect) { return; }
 
   function applyModeVisibility() {

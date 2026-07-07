@@ -372,6 +372,12 @@ class Campaign(db.Model):
     # the same study) share a group so their results can be viewed and exported together.
     group_id = db.Column(db.String(32), db.ForeignKey("campaign_groups.id"),
                          nullable=True, index=True, default=None)
+    qualification = db.relationship(
+        "QualificationTest",
+        back_populates="campaign",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
     # Writing system(s). `script` is the legacy single field (kept for backward
     # compatibility and as a fallback); source_script / target_script record the script of
     # the input (source) and output (target) language separately, so e.g. a script-
@@ -1136,6 +1142,8 @@ class CampaignAnnotator(db.Model):
     # Admin evaluations
     quality_score = db.Column(db.Float, default=100.0)  # 0 to 100
     has_star = db.Column(db.Boolean, default=False)
+    qualification_status = db.Column(db.String(20), nullable=False, default="pending")
+    qualified_at = db.Column(db.DateTime, default=None)
 
     # Form B details filled by the annotator
     form_submitted = db.Column(db.Boolean, default=False)
@@ -1181,6 +1189,14 @@ class QualificationTest(db.Model):
     __tablename__ = "qualification_tests"
 
     id = db.Column(db.String(32), primary_key=True, default=_uuid)
+
+    campaign_id = db.Column(
+        db.String(32),
+        db.ForeignKey("campaigns.id"),
+        unique=True,
+        nullable=True,
+        index=True,
+    )
 
     title = db.Column(db.String(200), nullable=False)
 
@@ -1233,6 +1249,11 @@ class QualificationTest(db.Model):
 
     DEFAULT_MAX_ATTEMPTS = 3
     DEFAULT_COOLDOWN_MINUTES = 30
+
+    campaign = db.relationship(
+        "Campaign",
+        back_populates="qualification",
+    )
 
     @property
     def mode(self):
