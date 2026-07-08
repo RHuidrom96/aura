@@ -112,6 +112,8 @@
           comments: ex.comments || "",
           preference: ex.preference || null,
           ranking: (ex.ranking && typeof ex.ranking === "object") ? { ...ex.ranking } : {},
+          rankConfirmed: !!(ex.ranking && typeof ex.ranking === "object" &&
+                            Object.keys(ex.ranking).length),
           _candKeys: candKeys,
           reviewed: !!ex.reviewed,
           edited: (ex.edited_text != null ? ex.edited_text : null),
@@ -126,6 +128,7 @@
         comments: "",
         preference: null,
         ranking: {},
+        rankConfirmed: false,
         _candKeys: candKeys,
         reviewed: false,
         edited: null,
@@ -192,7 +195,8 @@
   function isComplete(r) {
     if (EVAL_MODE === "preference_selection") {
       return !!(r._candKeys && r._candKeys.length &&
-                r.ranking && r._candKeys.every(k => Number.isInteger(r.ranking[k])));
+                r.ranking && r._candKeys.every(k => Number.isInteger(r.ranking[k])) &&
+                r.rankConfirmed);
     }
     if (EVAL_MODE === "pairwise") return !!r.preference;
     if (EVAL_MODE === "span_only") return !!r.reviewed;
@@ -477,7 +481,92 @@
     card.classList.toggle("segment-complete", isComplete(r));
   }
 
-  /* ---- preference selection (one source, N ranked candidates) ---- */
+  /* ---- preference selection (one source, N ranked candidates) ----
+     The annotator reorders the candidates (best at the top) using up/down
+     controls; a candidate's rank is derived from its position and shown in a
+     small corner badge. Ranks are always distinct (1..N). System identity
+     (name, and which candidate is system A/B/C…) is never revealed here. */
+
+  // Deterministic per-segment shuffle so the initial presentation order does
+  // not leak each system's fixed position across segments. Stable for a given
+  // seed, so reloads show the same starting order.
+  function seededShuffle(arr, seed) {
+    let h = 2166136261 >>> 0;
+    const s = String(seed);
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    const rand = () => {
+      h += 0x6D2B79F5;
+      let t = h;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const out = arr.slice();
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      const tmp = out[i]; out[i] = out[j]; out[j] = tmp;
+    }
+    return out;
+  }
+
+  // Keys in current rank order (best first). Ranks are normalised to a dense
+  // 1..N permutation, guaranteeing every candidate has a distinct rank.
+  function orderedKeys(r) {
+    return Object.keys(r.ranking)
+      .filter(k => Number.isInteger(r.ranking[k]))
+      .sort((a, b) => r.ranking[a] - r.ranking[b]);
+  }
+
+  function moveCandidate(r, key, dir) {
+    const order = orderedKeys(r);
+    const i = order.indexOf(key);
+    if (i < 0) return;
+    const j = dir === "up" ? i - 1 : i + 1;
+    if (j < 0 || j >= order.length) return;
+    const tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+    order.forEach((k, pos) => { r.ranking[k] = pos + 1; });
+  }
+
+  const ARROW_UP =
+    '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">' +
+    '<path d="M10 5.5 4.5 11h11L10 5.5z" fill="currentColor"/></svg>';
+  const ARROW_DOWN =
+    '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">' +
+    '<path d="M10 14.5 4.5 9h11L10 14.5z" fill="currentColor"/></svg>';
+
+  function renderRankList(listEl, r, byKey) {
+    const order = orderedKeys(r);
+    // Keep the stored ranking a dense 1..N permutation.
+    order.forEach((k, pos) => { r.ranking[k] = pos + 1; });
+    const N = order.length;
+    listEl.innerHTML = order.map((key, pos) => {
+      const rank = pos + 1;
+      const isFirst = pos === 0;
+      const isLast = pos === N - 1;
+      return (
+        '<div class="cand-card ranked" data-key="' + escapeHtml(key) + '">' +
+          '<div class="cand-rank-badge" title="Rank ' + rank + ' of ' + N + '">' + rank + '</div>' +
+          '<div class="cand-head">' +
+            '<div class="rank-move-group" role="group" aria-label="Reorder candidate">' +
+              '<button type="button" class="rank-move" data-dir="up" data-key="' + escapeHtml(key) + '"' +
+                (isFirst ? ' disabled' : '') + ' aria-label="Move up">' + ARROW_UP + '</button>' +
+              '<button type="button" class="rank-move" data-dir="down" data-key="' + escapeHtml(key) + '"' +
+                (isLast ? ' disabled' : '') + ' aria-label="Move down">' + ARROW_DOWN + '</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="cand-text"></div>' +
+        '</div>'
+      );
+    }).join("");
+    listEl.querySelectorAll(".cand-card").forEach(cardEl => {
+      const key = cardEl.dataset.key;
+      cardEl.querySelector(".cand-text").textContent = (byKey[key] && byKey[key].text) || "";
+    });
+  }
+
   function buildSelectionUI(card, idx, seg) {
     const left = card.querySelector(".segment-left");
     if (!left) return;
@@ -487,6 +576,19 @@
     const r = state.ratings[idx];
     if (!r.ranking || typeof r.ranking !== "object") r.ranking = {};
 
+    const byKey = {};
+    cands.forEach(c => { byKey[c.key] = c; });
+    const keys = cands.map(c => c.key);
+
+    // Establish an initial order if the annotator has none yet. We shuffle so
+    // the starting arrangement doesn't reveal each system's fixed slot.
+    const hasFullRanking = keys.length > 0 && keys.every(k => Number.isInteger(r.ranking[k]));
+    if (!hasFullRanking) {
+      r.ranking = {};
+      seededShuffle(keys, String(seg.id != null ? seg.id : idx))
+        .forEach((k, i) => { r.ranking[k] = i + 1; });
+    }
+
     let block = card.querySelector(".ranking-block");
     if (!block) {
       block = document.createElement("div");
@@ -495,55 +597,49 @@
       if (refT) left.insertBefore(block, refT); else left.appendChild(block);
     }
     block.innerHTML =
-      '<div class="ranking-help">Rank the ' + N + ' ' + escapeHtml(outLabel.toLowerCase()) +
-      ' candidates from best (<strong>1</strong>) to worst (<strong>' + N + '</strong>). ' +
-      'Ties are allowed: give equally good candidates the same rank.</div>' +
-      cands.map((c, i) =>
-        '<div class="cand-card" data-key="' + escapeHtml(c.key) + '">' +
-          '<div class="cand-head">' +
-            '<span class="cand-name">' + escapeHtml(outLabel + " " + (i + 1)) +
-              (c.system ? ' <span class="cand-sys">' + escapeHtml(c.system) + '</span>' : '') +
-            '</span>' +
-            '<div class="rank-picker" role="group" aria-label="Rank">' +
-              '<span class="rank-picker-label">Rank</span>' +
-              Array.from({ length: N }, (_, k) =>
-                '<button type="button" class="rank-btn" data-rank="' + (k + 1) + '">' +
-                (k + 1) + '</button>').join("") +
-            '</div>' +
-          '</div>' +
-          '<div class="cand-text"></div>' +
-        '</div>').join("");
-    block.querySelectorAll(".cand-card").forEach((cardEl, i) => {
-      cardEl.querySelector(".cand-text").textContent = (cands[i] && cands[i].text) || "";
-    });
+      '<div class="ranking-help">Put the ' + N + ' ' + escapeHtml(outLabel.toLowerCase()) +
+      ' candidates in order of preference — <strong>best at the top</strong>, worst at the bottom. ' +
+      'Use the arrows to move a candidate up or down; each one\u2019s rank is shown in the corner. ' +
+      'Every candidate gets a distinct rank.</div>' +
+      '<div class="rank-list"></div>' +
+      '<div class="rank-confirm-row">' +
+        '<button type="button" class="rank-confirm-btn">This order looks right</button>' +
+        '<span class="rank-confirm-note" hidden>Order confirmed \u2713</span>' +
+      '</div>';
+
+    const listEl = block.querySelector(".rank-list");
+    renderRankList(listEl, r, byKey);
+
     block.addEventListener("click", (e) => {
-      const btn = e.target.closest(".rank-btn");
-      if (!btn) return;
-      const cc = btn.closest(".cand-card");
-      const key = cc && cc.dataset.key;
-      if (!key) return;
-      const rank = parseInt(btn.dataset.rank, 10);
-      if (r.ranking[key] !== rank) {
-        r.ranking[key] = rank;
+      const moveBtn = e.target.closest(".rank-move");
+      const confirmBtn = e.target.closest(".rank-confirm-btn");
+      if (moveBtn && !moveBtn.disabled) {
+        moveCandidate(r, moveBtn.dataset.key, moveBtn.dataset.dir);
+        r.rankConfirmed = true;
         r.dirty = true;
+        renderRankList(listEl, r, byKey);
+      } else if (confirmBtn) {
+        r.rankConfirmed = true;
+        r.dirty = true;
+      } else {
+        return;
       }
       refreshSelectionUI(card, idx);
       updateGlobalProgress();
       refreshNextEnabled();
       refreshSavedBadge(card, idx);
     });
+
+    refreshSelectionUI(card, idx);
   }
 
   function refreshSelectionUI(card, idx) {
     const r = state.ratings[idx];
-    card.querySelectorAll(".ranking-block .cand-card").forEach(cardEl => {
-      const key = cardEl.dataset.key;
-      const sel = r.ranking ? r.ranking[key] : undefined;
-      cardEl.classList.toggle("ranked", Number.isInteger(sel));
-      cardEl.querySelectorAll(".rank-btn").forEach(btn => {
-        btn.classList.toggle("selected", parseInt(btn.dataset.rank, 10) === sel);
-      });
-    });
+    const done = !!r.rankConfirmed;
+    const note = card.querySelector(".rank-confirm-note");
+    const btn = card.querySelector(".rank-confirm-btn");
+    if (note) note.hidden = !done;
+    if (btn) btn.classList.toggle("confirmed", done);
     card.classList.toggle("segment-complete", isComplete(r));
   }
 
@@ -1104,6 +1200,8 @@
       if (tPanel) tPanel.hidden = true;
       const bPanel = card.querySelector(".text-panel-b");
       if (bPanel) bPanel.hidden = true;
+      // Never reveal system identity (name or which is A/B/C…) to the annotator.
+      if (sysChip) sysChip.style.display = "none";
     } else if (isPairwise) {
       // Two candidate panels: A (reuse .text-target) and B.
       const outLabel = (window.IO_LABELS && window.IO_LABELS.output) || "Translation";
