@@ -372,12 +372,6 @@ class Campaign(db.Model):
     # the same study) share a group so their results can be viewed and exported together.
     group_id = db.Column(db.String(32), db.ForeignKey("campaign_groups.id"),
                          nullable=True, index=True, default=None)
-    qualification = db.relationship(
-        "QualificationTest",
-        back_populates="campaign",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
     # Writing system(s). `script` is the legacy single field (kept for backward
     # compatibility and as a fallback); source_script / target_script record the script of
     # the input (source) and output (target) language separately, so e.g. a script-
@@ -471,6 +465,14 @@ class Campaign(db.Model):
     ratings = db.relationship("Rating", backref="campaign", lazy="dynamic", cascade="all,delete-orphan")
     prefs = db.relationship("AnnotatorCampaignPref", backref="campaign", lazy="dynamic",
                             cascade="all,delete-orphan")
+    # Every campaign has its own qualification test (one-to-one). Candidates must pass a
+    # campaign's qualification separately for each campaign -- passing one campaign's test
+    # never qualifies them for another. Deleting a campaign deletes its qualification test
+    # (and, via QualificationTest's own cascades, its segments/attempts/responses).
+    qualification_test = db.relationship(
+        "QualificationTest", backref="campaign", uselist=False,
+        cascade="all, delete-orphan", single_parent=True,
+    )
 
     @property
     def is_closed(self):
@@ -1142,8 +1144,6 @@ class CampaignAnnotator(db.Model):
     # Admin evaluations
     quality_score = db.Column(db.Float, default=100.0)  # 0 to 100
     has_star = db.Column(db.Boolean, default=False)
-    qualification_status = db.Column(db.String(20), nullable=False, default="pending")
-    qualified_at = db.Column(db.DateTime, default=None)
 
     # Form B details filled by the annotator
     form_submitted = db.Column(db.Boolean, default=False)
@@ -1190,11 +1190,15 @@ class QualificationTest(db.Model):
 
     id = db.Column(db.String(32), primary_key=True, default=_uuid)
 
+    # The campaign this qualification belongs to. One campaign has exactly one
+    # qualification test (enforced by the unique constraint). Nullable only so the
+    # column can exist without a backfill; every qualification created through the
+    # current UI (embedded in campaign creation) always sets this.
     campaign_id = db.Column(
         db.String(32),
         db.ForeignKey("campaigns.id"),
-        unique=True,
         nullable=True,
+        unique=True,
         index=True,
     )
 
@@ -1249,11 +1253,6 @@ class QualificationTest(db.Model):
 
     DEFAULT_MAX_ATTEMPTS = 3
     DEFAULT_COOLDOWN_MINUTES = 30
-
-    campaign = db.relationship(
-        "Campaign",
-        back_populates="qualification",
-    )
 
     @property
     def mode(self):

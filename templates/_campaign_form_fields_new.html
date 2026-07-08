@@ -564,6 +564,48 @@
 </section>
 
 
+<!-- Qualification test (required before the campaign can be created) -->
+<section style="background:var(--aura-surface); border:1px solid var(--aura-border); border-radius:8px; padding:30px;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;"><span style="width:4px; height:22px; background:var(--aura-accent); border-radius:2px;"></span><h2 style="font-family:'Cormorant Garamond', serif; font-weight:600; font-size:24px; margin:0; color:var(--aura-text);">Qualification test <span style="color:#B0654F; font-size:18px;">*</span></h2></div>
+  <p style="font-size:12px; color:var(--aura-text-faint); margin:0 0 20px; line-height:1.5;">
+    Every campaign has its own qualification test. Candidates must pass it before they can
+    annotate this campaign -- passing another campaign's qualification does not count.
+    This campaign can't be created until the qualification below is filled in.
+  </p>
+
+  {% with form_data=qual_form_data, field_prefix='qual_' %}
+  {% include "_qualification_form_fields.html" %}
+  {% endwith %}
+
+  <hr class="form-divider">
+
+  <div class="field">
+    <label for="qual_segments_file">Qualification segments file <span class="req">*</span></label>
+    <input type="file" id="qual_segments_file" name="qual_segments_file" accept=".json,application/json">
+    <p class="hint">
+      A JSON array of objects for the qualification test. Each needs
+      <code class="code-inline">source</code>, <code class="code-inline">target</code> (or
+      <code class="code-inline">target_a</code> / <code class="code-inline">target_b</code>
+      for pairwise), and a <code class="code-inline">gold</code> object with the correct
+      answer: <code class="code-inline">{"scores": {"adequacy": 5, ...}}</code> for Likert,
+      <code class="code-inline">{"preference": "a"}</code> for pairwise,
+      <code class="code-inline">{"edited_text": "..."}</code> for post-edit,
+      <code class="code-inline">{"spans": {"grammar": [[12, 18]]}}</code> for span
+      annotation. This is separate from the campaign's own production segments above.
+      <a href="#" onclick="document.getElementById('qual-paste-toggle-new').open=true; document.getElementById('qual_segments_paste').focus(); return false;">Or paste below.</a>
+    </p>
+  </div>
+
+  <details id="qual-paste-toggle-new">
+    <summary class="link-btn" style="display:inline-block;margin-bottom:6px;">Paste JSON instead</summary>
+    <div class="field">
+      <label for="qual_segments_paste">Qualification segments JSON</label>
+      <textarea id="qual_segments_paste" name="qual_segments_paste" rows="8"
+                placeholder='[{"source": "...", "target": "...", "gold": {"scores": {"adequacy": 5}}}, ...]'>{{ qual_form_data.get('segments_paste', '') }}</textarea>
+    </div>
+  </details>
+</section>
+
 <script>
   window.SCALE_LABELS_PREFILL = {{ form_data.scale.labels | tojson }};
   window.SCALE_DEFAULT_LABELS_BY_POINTS = {{ default_likert_labels | tojson }};

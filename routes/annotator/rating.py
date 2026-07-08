@@ -26,7 +26,7 @@ def rate_view(campaign_id):
     session["last_campaign_id"] = campaign_id
     ann = current_annotator()
     if not can_annotate(ann, c):
-        flash("Please complete the qualification test before joining this campaign.", "info")
+        flash("Please complete this campaign's qualification test before joining it.", "info")
         return redirect(url_for("annotator_qualification.qualification", campaign_id=c.id))
     criteria = get_criteria_for(c)
     mode = c.mode
@@ -180,8 +180,8 @@ def api_submit(campaign_id):
     if c.is_closed:
         return jsonify({"ok": False, "error": "Campaign is closed."}), 403
     ann = current_annotator()
-    if not can_annotate(ann):
-        return jsonify({"ok": False, "error": "You must pass the qualification test before submitting ratings."}), 403
+    if not can_annotate(ann, c):
+        return jsonify({"ok": False, "error": "You must pass this campaign's qualification test before submitting ratings."}), 403
     criteria = get_criteria_for(c)
     data = request.get_json(silent=True) or {}
 

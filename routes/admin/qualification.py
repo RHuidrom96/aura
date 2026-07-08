@@ -1,35 +1,20 @@
 """
-Admin management of qualification tests.
+Helpers for building/validating a campaign's qualification test.
 
-Mirrors the shape of routes/admin/campaigns.py (collect-form helper +
-new/edit views), scaled down to what a qualification test needs:
-metadata, evaluation criteria, passing score, active flag, and segments.
+Qualification is no longer a standalone, globally-managed entity: every
+campaign owns exactly one qualification test, created inline at the bottom of
+the Campaign Creation page and edited from the campaign's own detail page
+(see routes/admin/campaigns.py). This module keeps the form-collection /
+segment-validation logic that used to live behind the standalone
+"Qualification tests" admin pages, so that logic is reused rather than
+duplicated.
 """
 
 import json
-import logging
-
-from flask import (
-    Blueprint,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    flash,
-)
 
 from models import db, QualificationTest, QualificationSegment
 from utils.constants import EVAL_MODES
 from utils.forms import parse_criteria_from_form
-from services.auth_service import require_admin
-
-logger = logging.getLogger(__name__)
-
-admin_qualification_bp = Blueprint(
-    "admin_qualification",
-    __name__,
-    url_prefix="/admin",
-)
 
 _EVAL_MODE_IDS = {m["id"] for m in EVAL_MODES}
 
@@ -142,61 +127,51 @@ def _write_segments(test, segments):
         )
 
 
-def _collect_qualification_form(
-    form,
-    files,
-    *,
-    parse_segments,
-    existing_segments=None,
-    field_prefix="",
-    segments_file_key="segments_file",
-    segments_paste_key="segments_paste",
-):
+def _collect_qualification_form(form, files, *, parse_segments, existing_segments=None):
     """Read + validate all qualification-test fields from a submitted form.
 
     Returns (config_kwargs, segments_or_None, errors, form_view).
     """
     errors = []
-    prefix = field_prefix or ""
 
-    title = (form.get(prefix + "title") or "").strip()
-    language = (form.get(prefix + "language") or "").strip()
-    description = (form.get(prefix + "description") or "").strip()
+    title = (form.get("title") or "").strip()
+    language = (form.get("language") or "").strip()
+    description = (form.get("description") or "").strip()
 
-    eval_mode = (form.get(prefix + "eval_mode") or "likert").strip()
+    eval_mode = (form.get("eval_mode") or "likert").strip()
     if eval_mode not in _EVAL_MODE_IDS:
         errors.append("Invalid evaluation mode.")
         eval_mode = "likert"
 
     try:
-        passing_score = float(form.get(prefix + "passing_score") or 80)
+        passing_score = float(form.get("passing_score") or 80)
     except (TypeError, ValueError):
         passing_score = 80.0
     passing_score = max(0.0, min(100.0, passing_score))
 
     try:
-        time_limit_minutes = int(form.get(prefix + "time_limit_minutes") or 30)
+        time_limit_minutes = int(form.get("time_limit_minutes") or 30)
     except (TypeError, ValueError):
         time_limit_minutes = 30
     time_limit_minutes = max(1, time_limit_minutes)
 
     # Retry policy: blank or zero falls back to the model's defaults.
     try:
-        max_attempts = int(form.get(prefix + "max_attempts") or 0)
+        max_attempts = int(form.get("max_attempts") or 0)
     except (TypeError, ValueError):
         max_attempts = 0
     max_attempts = max_attempts if max_attempts > 0 else QualificationTest.DEFAULT_MAX_ATTEMPTS
 
     try:
-        retry_cooldown_minutes = int(form.get(prefix + "retry_cooldown_minutes") or 0)
+        retry_cooldown_minutes = int(form.get("retry_cooldown_minutes") or 0)
     except (TypeError, ValueError):
         retry_cooldown_minutes = 0
     retry_cooldown_minutes = (retry_cooldown_minutes if retry_cooldown_minutes > 0
                              else QualificationTest.DEFAULT_COOLDOWN_MINUTES)
 
-    is_active = form.get(prefix + "is_active") == "on"
+    is_active = form.get("is_active") == "on"
 
-    criteria, criteria_missing_desc = parse_criteria_from_form(form, field_prefix=prefix)
+    criteria, criteria_missing_desc = parse_criteria_from_form(form)
 
     # ---- validation ----
     if not title:
@@ -218,7 +193,7 @@ def _collect_qualification_form(
     segments = None
     if parse_segments:
         segments_raw = ""
-        upload = files.get(segments_file_key) if files else None
+        upload = files.get("segments_file") if files else None
         if upload and upload.filename:
             try:
                 segments_raw = upload.read().decode("utf-8")
@@ -226,7 +201,7 @@ def _collect_qualification_form(
                 errors.append("Could not read the uploaded file as UTF-8.")
                 segments_raw = ""
         else:
-            segments_raw = (form.get(segments_paste_key) or "").strip()
+            segments_raw = (form.get("segments_paste") or "").strip()
 
         if not segments_raw:
             errors.append("Please upload or paste the segments JSON file.")
@@ -262,17 +237,17 @@ def _collect_qualification_form(
     }
 
     form_view = {
-        prefix + "title": title,
-        prefix + "language": language,
-        prefix + "description": description,
-        prefix + "eval_mode": eval_mode,
-        prefix + "passing_score": passing_score,
-        prefix + "time_limit_minutes": time_limit_minutes,
-        prefix + "max_attempts": max_attempts,
-        prefix + "retry_cooldown_minutes": retry_cooldown_minutes,
-        prefix + "is_active": is_active,
-        prefix + "criteria": [{"name": c["name"], "desc": c["guide"]} for c in criteria],
-        prefix + "segments_paste": form_segments_paste,
+        "title": title,
+        "language": language,
+        "description": description,
+        "eval_mode": eval_mode,
+        "passing_score": passing_score,
+        "time_limit_minutes": time_limit_minutes,
+        "max_attempts": max_attempts,
+        "retry_cooldown_minutes": retry_cooldown_minutes,
+        "is_active": is_active,
+        "criteria": [{"name": c["name"], "desc": c["guide"]} for c in criteria],
+        "segments_paste": form_segments_paste,
     }
 
     return config, segments, errors, form_view
@@ -292,169 +267,3 @@ def _default_qualification_form_view():
         "criteria": [],
         "segments_paste": "",
     }
-
-
-def _deactivate_other_tests(exclude_id, campaign_id=None):
-    """Keep only one active qualification test per campaign scope.
-
-    For campaign-specific tests, only other tests for the same campaign are
-    deactivated. Global tests remain independent.
-    """
-    query = QualificationTest.query.filter(
-        QualificationTest.id != exclude_id,
-        QualificationTest.is_active.is_(True),
-    )
-    if campaign_id is None:
-        query = query.filter(QualificationTest.campaign_id.is_(None))
-    else:
-        query = query.filter(QualificationTest.campaign_id == campaign_id)
-    query.update({"is_active": False}, synchronize_session="fetch")
-
-
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
-
-@admin_qualification_bp.route("/qualification")
-@require_admin
-def admin_qualification_list():
-    tests = (
-        QualificationTest.query
-        .order_by(QualificationTest.created_at.desc())
-        .all()
-    )
-    return render_template(
-        "admin_qualification_list.html",
-        tests=tests,
-    )
-
-
-@admin_qualification_bp.route("/qualification/new", methods=["GET", "POST"])
-@require_admin
-def admin_qualification_new():
-    if request.method == "POST":
-
-        config, segments, errors, form_view = _collect_qualification_form(
-            request.form, request.files, parse_segments=True,
-        )
-
-        if errors:
-            for e in errors:
-                flash(e, "error")
-            return render_template(
-                "admin_qualification_new.html",
-                form_data=form_view,
-                eval_modes=EVAL_MODES,
-            )
-
-        test = QualificationTest(**config)
-        db.session.add(test)
-        db.session.flush()  # assign test.id so segments can reference it
-
-        _write_segments(test, segments)
-
-        if test.is_active:
-            _deactivate_other_tests(test.id)
-
-        db.session.commit()
-
-        flash(f"Qualification test '{test.title}' created.", "success")
-        return redirect(url_for("admin_qualification.admin_qualification_list"))
-
-    return render_template(
-        "admin_qualification_new.html",
-        form_data=_default_qualification_form_view(),
-        eval_modes=EVAL_MODES,
-    )
-
-
-@admin_qualification_bp.route("/qualification/<test_id>/edit", methods=["GET", "POST"])
-@require_admin
-def admin_qualification_edit(test_id):
-    test = QualificationTest.query.get_or_404(test_id)
-
-    if request.method == "POST":
-
-        upload = request.files.get("segments_file")
-        has_upload = bool(upload and upload.filename)
-        has_paste = bool((request.form.get("segments_paste") or "").strip())
-        replacing_segments = has_upload or has_paste
-
-        existing_segments = None if replacing_segments else _segments_as_dicts(test)
-
-        config, segments, errors, form_view = _collect_qualification_form(
-            request.form, request.files,
-            parse_segments=replacing_segments,
-            existing_segments=existing_segments,
-        )
-
-        if errors:
-            for e in errors:
-                flash(e, "error")
-            return render_template(
-                "admin_qualification_edit.html",
-                test=test,
-                form_data=form_view,
-                eval_modes=EVAL_MODES,
-            )
-
-        for key, value in config.items():
-            setattr(test, key, value)
-
-        if segments is not None:
-            _write_segments(test, segments)
-
-        if test.is_active:
-            _deactivate_other_tests(test.id)
-
-        db.session.commit()
-
-        flash(f"Qualification test '{test.title}' updated.", "success")
-        return redirect(url_for("admin_qualification.admin_qualification_list"))
-
-    form_view = {
-        "title": test.title,
-        "language": test.language,
-        "description": test.description or "",
-        "eval_mode": test.eval_mode,
-        "passing_score": test.passing_score,
-        "time_limit_minutes": test.time_limit_minutes,
-        "max_attempts": test.max_attempts or QualificationTest.DEFAULT_MAX_ATTEMPTS,
-        "retry_cooldown_minutes": test.retry_cooldown_minutes or QualificationTest.DEFAULT_COOLDOWN_MINUTES,
-        "is_active": test.is_active,
-        "criteria": [
-            {"name": c.get("name", ""), "desc": c.get("guide", "")}
-            for c in test.criteria
-        ],
-        "segments_paste": "",
-    }
-
-    return render_template(
-        "admin_qualification_edit.html",
-        test=test,
-        form_data=form_view,
-        eval_modes=EVAL_MODES,
-    )
-
-
-@admin_qualification_bp.route("/qualification/<test_id>/toggle", methods=["POST"])
-@require_admin
-def admin_qualification_toggle(test_id):
-    test = QualificationTest.query.get_or_404(test_id)
-
-    test.is_active = not test.is_active
-
-    if test.is_active:
-        _deactivate_other_tests(test.id)
-
-    db.session.commit()
-
-    flash(
-        "Qualification test '{}' is now {}.".format(
-            test.title,
-            "active" if test.is_active else "inactive",
-        ),
-        "success",
-    )
-
-    return redirect(url_for("admin_qualification.admin_qualification_list"))

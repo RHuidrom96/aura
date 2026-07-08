@@ -19,8 +19,8 @@
             <h1>Congratulations!</h1>
 
             <p>
-                You have successfully passed the qualification test.
-                You may now participate in annotation campaigns.
+                You have successfully passed the qualification test for
+                <strong>{{ campaign.name }}</strong>. You may now annotate this campaign.
             </p>
 
         </div>
@@ -88,28 +88,18 @@
 
             {% if attempt.passed %}
 
-            {% if campaign_id %}
             <a
-                href="{{ url_for('annotator_rating.rate_view', campaign_id=campaign_id) }}"
+                href="{{ url_for('annotator_rating.rate_view', campaign_id=campaign.id) }}"
                 class="btn btn-primary qual-btn-lg">
 
-                Continue to campaign
+                Start annotating →
 
             </a>
-            {% else %}
-            <a
-                href="{{ url_for('annotator_dashboard.annotator_dashboard') }}"
-                class="btn btn-primary qual-btn-lg">
-
-                Go to Dashboard
-
-            </a>
-            {% endif %}
 
             {% elif retry and retry.allowed %}
 
             <a
-                href="{{ url_for('annotator_qualification.qualification', campaign_id=campaign_id) }}"
+                href="{{ url_for('annotator_qualification.qualification', campaign_id=campaign.id) }}"
                 class="btn btn-secondary qual-btn-lg">
 
                 Try Again

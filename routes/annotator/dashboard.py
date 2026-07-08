@@ -1,7 +1,6 @@
 from flask import Blueprint, render_template, session
 
 from services.auth_service import require_annotator, current_annotator
-from services.qualification import can_annotate
 from models import Campaign, Rating
 from utils.constants import get_criteria_for
 
@@ -75,5 +74,4 @@ def annotator_dashboard():
         "annotator_dashboard.html",
         annotator=ann,
         rows=rows,
-        qualified=can_annotate(ann),
     )

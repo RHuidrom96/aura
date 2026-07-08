@@ -1,6 +1,8 @@
 import re
 import json
 
+from werkzeug.datastructures import MultiDict
+
 from utils.constants import SCALE_TYPES, CRITERION_COLOR_POOL, _valid_design_for
 
 
@@ -74,14 +76,13 @@ def parse_scale_from_form(form, errors):
         "scale_labels_json": json.dumps(labels, ensure_ascii=False) if labels else "",
     }
 
-def parse_criteria_from_form(form, field_prefix=""):
+def parse_criteria_from_form(form):
     """Parse the parallel crit_name[]/crit_desc[] arrays into a criteria list.
 
     Returns (criteria, criteria_missing_desc).
     """
-    prefix = field_prefix or ""
-    crit_names = form.getlist(prefix + "crit_name")
-    crit_descs = form.getlist(prefix + "crit_desc")
+    crit_names = form.getlist("crit_name")
+    crit_descs = form.getlist("crit_desc")
     criteria = []
     criteria_missing_desc = []
     used_ids = set()
@@ -101,6 +102,33 @@ def parse_criteria_from_form(form, field_prefix=""):
         color = CRITERION_COLOR_POOL[len(criteria) % len(CRITERION_COLOR_POOL)]
         criteria.append({"id": cid, "name": nm, "color": color, "desc": "", "guide": desc})
     return criteria, criteria_missing_desc
+
+def extract_prefixed_subform(form, prefix):
+    """Pull out fields named "{prefix}xxx" from a combined form submission and
+    return them as a plain (unprefixed) MultiDict, e.g. for reading an embedded
+    qualification form's fields out of the bigger Campaign Creation form
+    without colliding with the campaign's own same-named fields (eval_mode,
+    crit_name, crit_desc, segments_file, segments_paste, ...).
+    """
+    out = MultiDict()
+    for key in form.keys():
+        if key.startswith(prefix):
+            for v in form.getlist(key):
+                out.add(key[len(prefix):], v)
+    return out
+
+
+def extract_prefixed_subfiles(files, prefix):
+    """Same idea as extract_prefixed_subform, but for request.files (a single
+    FileStorage per key is all this app ever needs)."""
+    out = {}
+    for key in files.keys():
+        if key.startswith(prefix):
+            f = files.get(key)
+            if f is not None:
+                out[key[len(prefix):]] = f
+    return out
+
 
 def parse_preferences_from_form(form):
     """Parse parallel pref_label[] inputs into an ordered options list [{id,label}]."""
