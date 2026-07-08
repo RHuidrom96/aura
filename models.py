@@ -955,11 +955,19 @@ class Campaign(db.Model):
 
         - likert:    every criterion has a valid in-range score
         - pairwise:  a preference option has been selected
+        - preference_selection: a ranking of the candidates has been recorded
         - span_only: the segment has been explicitly reviewed
         """
         mode = self.mode
         if mode == "pairwise":
             return bool((rating.preference or "").strip())
+        if mode == "preference_selection":
+            # Complete iff a ranking has been recorded. The rating API only
+            # accepts a ranking that covers every candidate with distinct
+            # 1..N ranks, so any stored (non-empty, all-integer) ranking is a
+            # complete one.
+            ranking = rating.ranking_dict()
+            return bool(ranking) and all(isinstance(v, int) for v in ranking.values())
         if mode == "span_only":
             return bool(rating.reviewed)
         if mode == "post_edit":

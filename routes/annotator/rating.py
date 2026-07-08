@@ -233,6 +233,9 @@ def api_submit(campaign_id):
             if not isinstance(v, int) or v < 1 or v > n:
                 return jsonify({"ok": False, "error": "Please rank every candidate (1 = best)."}), 400
             clean_ranking[k] = v
+        # Ranks are position-based, so each candidate must have a distinct rank.
+        if len(set(clean_ranking.values())) != n:
+            return jsonify({"ok": False, "error": "Each candidate must have a distinct rank."}), 400
 
     # Spans apply in likert (if enabled) and span_only modes.
     span_enabled = (c.enable_spans if c.enable_spans is not None else True)
