@@ -349,23 +349,36 @@
   // Allow the live-refresh poller to rebuild charts after swapping in a new results body.
   window.renderResultCharts = build;
 
-  // Download the displayed Chart.js canvas instead of the original PNG
+  // Download the displayed Chart.js canvas, or fall back to the original PNG.
   document.addEventListener("click", function (e) {
     const btn = e.target.closest(".fig-dl");
     if (!btn) return;
-  
-    const figure = btn.closest(".result-figure");
-    const canvas = figure.querySelector("canvas");
-  
-    // No interactive chart? Fall back to the original PNG.
-    if (!canvas) return;
-  
+
+    // Stop the anchor's href="#" from navigating (which would just jump to the
+    // top of the page and skip the download entirely).
     e.preventDefault();
-  
+
+    const figure = btn.closest(".result-figure");
+    const canvas = figure && figure.querySelector("canvas");
+    const img = figure && figure.querySelector("img.result-chart");
+
+    // Prefer the interactive Chart.js canvas; otherwise use the original PNG
+    // (the <img> src is a data:image/png;base64 URI, so it downloads directly).
+    let href;
+    if (canvas) {
+      href = canvas.toDataURL("image/png");
+    } else if (img) {
+      href = img.src;
+    } else {
+      return;
+    }
+
     const link = document.createElement("a");
     link.download = btn.dataset.download;
-    link.href = canvas.toDataURL("image/png");
+    link.href = href;
+    // Firefox needs the anchor in the DOM for a programmatic click to download.
+    document.body.appendChild(link);
     link.click();
+    link.remove();
   });
 })();
-
