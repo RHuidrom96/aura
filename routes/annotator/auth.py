@@ -40,7 +40,7 @@ annotator_auth_bp = Blueprint(
 )
 
 
-@annotator_auth_bp.route("/campaign/<campaign_id>/login", methods=["POST"])
+@annotator_auth_bp.route("/campaign/<campaign_id>/login", methods=["GET", "POST"])
 def annotator_login_post(campaign_id):
     campaign = Campaign.query.get_or_404(campaign_id)
 
@@ -184,7 +184,7 @@ def annotator_register(campaign_id):
 
         return redirect(
             url_for(
-                "annotator_auth.annotator_login",
+                "annotator_auth.annotator_login_post",
                 campaign_id=campaign_id,
             )
         )
@@ -228,7 +228,7 @@ def annotator_register(campaign_id):
 
         return redirect(
             url_for(
-                "annotator_auth.annotator_login",
+                "annotator_auth.annotator_login_post",
                 campaign_id=campaign_id,
             )
         )

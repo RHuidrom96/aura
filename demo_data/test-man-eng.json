@@ -1,0 +1,62 @@
+[
+  {
+    "source": "ঐ নুমিত খর লৈরি।",
+    "target": "I am at home today.",
+    "gold": {
+      "scores": {
+        "adequacy": 5,
+        "fluency": 5,
+        "meaning_preservation": 5,
+        "accuracy": 5
+      }
+    }
+  },
+  {
+    "source": "মহাক চাক চারি।",
+    "target": "He is eating food.",
+    "gold": {
+      "scores": {
+        "adequacy": 5,
+        "fluency": 5,
+        "meaning_preservation": 5,
+        "accuracy": 5
+      }
+    }
+  },
+  {
+    "source": "ঐ ঙসি স্কুলদা চৎকনি।",
+    "target": "I will go to school tomorrow.",
+    "gold": {
+      "scores": {
+        "adequacy": 5,
+        "fluency": 5,
+        "meaning_preservation": 5,
+        "accuracy": 5
+      }
+    }
+  },
+  {
+    "source": "নহাকনা লায়রিক পারে?",
+    "target": "Have you read the book?",
+    "gold": {
+      "scores": {
+        "adequacy": 5,
+        "fluency": 5,
+        "meaning_preservation": 5,
+        "accuracy": 5
+      }
+    }
+  },
+  {
+    "source": "নোংমা অসি অয়াম ফজৈ।",
+    "target": "The weather is very pleasant today.",
+    "gold": {
+      "scores": {
+        "adequacy": 5,
+        "fluency": 5,
+        "meaning_preservation": 5,
+        "accuracy": 5
+      }
+    }
+  }
+]

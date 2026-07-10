@@ -87,3 +87,4 @@ pgdata/
 data/segments/
 wmt/
 samples/
+.aider*
