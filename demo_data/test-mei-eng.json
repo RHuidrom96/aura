@@ -1,0 +1,62 @@
+[
+  {
+    "source": "ꯅꯣꯡ ꯆꯨꯔꯝꯕꯅꯥ ꯃꯔꯝ ꯑꯣꯏꯗꯨꯅ ꯕꯁ ꯑꯗꯨ ꯊꯦꯡꯊꯈꯤ꯫",
+    "target": "The bus was delayed because it was raining.",
+    "gold": {
+      "scores": {
+        "adequacy": 5,
+        "fluency": 5,
+        "meaning_preservation": 5,
+        "accuracy": 5
+      }
+    }
+  },
+  {
+    "source": "ꯃꯍꯥꯛꯅꯥ ꯍꯣꯁꯄꯤꯇꯥꯜꯗꯥ ꯗꯣꯛꯇꯔ ꯑꯣꯏꯅꯥ ꯊꯕꯛ ꯇꯧꯔꯤ꯫",
+    "target": "He is working as a doctor in the hospital.",
+    "gold": {
+      "scores": {
+        "adequacy": 5,
+        "fluency": 5,
+        "meaning_preservation": 5,
+        "accuracy": 5
+      }
+    }
+  },
+  {
+    "source": "ꯑꯩꯍꯥꯛꯅꯥ ꯂꯥꯏꯔꯤꯛ ꯑꯁꯤ ꯄꯥꯕꯥ ꯌꯥꯝꯅꯥ ꯄꯥꯝꯃꯤ꯫",
+    "target": "I really like reading this book.",
+    "gold": {
+      "scores": {
+        "adequacy": 5,
+        "fluency": 5,
+        "meaning_preservation": 5,
+        "accuracy": 5
+      }
+    }
+  },
+  {
+    "source": "ꯅꯉꯅꯥ ꯀꯨꯝꯍꯩ ꯑꯗꯨꯗꯥ ꯀꯅꯥꯒꯥ ꯂꯣꯏꯅꯅꯥ ꯆꯠꯀꯗꯧꯔꯤꯕꯅꯤ?",
+    "target": "Who are you going to the festival with?",
+    "gold": {
+      "scores": {
+        "adequacy": 5,
+        "fluency": 5,
+        "meaning_preservation": 5,
+        "accuracy": 5
+      }
+    }
+  },
+  {
+    "source": "ꯑꯉꯥꯡꯁꯤꯡꯅꯥ ꯀꯥꯗꯥ ꯇꯨꯝꯂꯤ꯫",
+    "target": "The children are sleeping in the room.",
+    "gold": {
+      "scores": {
+        "adequacy": 5,
+        "fluency": 5,
+        "meaning_preservation": 5,
+        "accuracy": 5
+      }
+    }
+  }
+]
