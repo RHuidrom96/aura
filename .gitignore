@@ -88,3 +88,4 @@ data/segments/
 wmt/
 samples/
 .aider*
+aider-env/
