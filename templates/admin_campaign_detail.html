@@ -202,26 +202,21 @@
 
 <div class="metrics-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:20px; margin-bottom:30px; font-family:'Hanken Grotesk', sans-serif;">
   <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
+    <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ campaign.segments | length }}</span>
+    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Segment(s)</span>
+  </div>
+  <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
     <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ rows | length }}</span>
-    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Annotators Enrolled</span>
+    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Annotator(s)</span>
   </div>
   <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
-    {% set ns = namespace(completed_count=0) %}
-    {% for r in rows %}
-      {% if r.done %}
-        {% set ns.completed_count = ns.completed_count + 1 %}
-      {% endif %}
-    {% endfor %}
-    <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ ns.completed_count }}</span>
-    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Completed Ratings</span>
-  </div>
-  <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
-    {% set ns = namespace(total_segments=0) %}
+    {% set ns = namespace(total_segments=0, total_possible=0) %}
     {% for r in rows %}
       {% set ns.total_segments = ns.total_segments + r.completed %}
+      {% set ns.total_possible = ns.total_possible + r.total %}
     {% endfor %}
-    <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ ns.total_segments }}</span>
-    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Total Rated Segments</span>
+    <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ ns.total_segments }}/{{ ns.total_possible }}</span>
+    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Rating(s) Completed</span>
   </div>
 </div>
 

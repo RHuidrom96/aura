@@ -2663,3 +2663,16 @@ table.result-table .num { text-align: right; font-variant-numeric: tabular-nums;
 .confirm-actions [data-default] { font-weight: 600; }
 .confirm-actions [data-default]:focus-visible { outline: 2px solid var(--accent, #34433a);
   outline-offset: 2px; }
+
+/* Styles for per-page segments select to prevent white on white text in dark mode */
+#per-page-select {
+  border: 1px solid var(--aura-input-border, #d8d2c2);
+  border-radius: 6px;
+  background: var(--aura-surface, #fff);
+  color: var(--aura-text, #2A2A24);
+  font-family: inherit;
+}
+#per-page-select option {
+  background: var(--aura-surface, #fff);
+  color: var(--aura-text, #2A2A24);
+}
