@@ -25,7 +25,7 @@
   {# Brand link: matches the page you're on, not just which sessions exist #}
   {% if page_role == 'admin' and session.get('is_admin') %}
 
-    <a href="{{ url_for('admin_campaign.admin_dashboard') }}" class="brand">
+    <a href="{{ url_for('public.landing') }}" class="brand">
         <span class="brand-word">Aura</span> 💫
     </a>
 
@@ -40,14 +40,11 @@
             <span class="brand-word">Aura</span> 💫
         </a>
     {% endif %}
-
-{% else %}
-
-    <a href="{{ url_for('public.landing') }}" class="brand">
-        <span class="brand-word">Aura</span> 💫
-    </a>
-
-{% endif %}
+    {% else %}
+      <a href="{{ url_for('public.landing') }}" class="brand">
+          <span class="brand-word">Aura</span> 💫
+      </a> 
+    {% endif %}
 
   <div class="site-nav">
     <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle light/dark">
