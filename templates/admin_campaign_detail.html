@@ -203,11 +203,11 @@
 <div class="metrics-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:20px; margin-bottom:30px; font-family:'Hanken Grotesk', sans-serif;">
   <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
     <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ campaign.segments | length }}</span>
-    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Segments</span>
+    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Segment(s)</span>
   </div>
   <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
     <span class="metric-val" style="font-size:32px; font-weight:700; font-family:'Libre Caslon Text', serif; color:var(--text);">{{ rows | length }}</span>
-    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Annotators Enrolled</span>
+    <span class="metric-lbl" style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); font-weight:700;">Annotator(s)</span>
   </div>
   <div class="metric-card" style="background:var(--surface); border: 1px solid var(--border); border-radius:var(--radius-lg); padding:22px 26px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:6px;">
     {% set ns = namespace(total_segments=0, total_possible=0) %}
