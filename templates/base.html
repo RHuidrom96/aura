@@ -31,7 +31,11 @@
 
 {% elif page_role == 'annotator' %}
 
-    {% if campaign is defined %}
+    {% if session.get('annotator_id') %}
+        <a href="{{ url_for('annotator_dashboard.annotator_dashboard') }}" class="brand">
+            <span class="brand-word">Aura</span> 💫
+        </a>
+    {% elif campaign is defined %}
         <a href="{{ url_for('annotator_campaign.annotator_login_view', campaign_id=campaign.id) }}" class="brand">
             <span class="brand-word">Aura</span> 💫
         </a>
