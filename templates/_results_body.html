@@ -278,7 +278,7 @@
 {% set P = results.pairwise %}
 <h3 class="result-h3">Preferences &amp; agreement</h3>
 <div class="result-summary-row">
-  <div class="result-stat"><span class="result-stat-num">{{ P.n_judgements }}</span><span class="result-stat-label">Rating(s) Completed</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ P.n_judgements }}</span><span class="result-stat-label">Judgements</span></div>
   <div class="result-stat"><span class="result-stat-num">{{ num(P.percent_agreement) }}%</span><span class="result-stat-label">Pairwise agreement</span></div>
   <div class="result-stat"><span class="result-stat-num">{{ num(P.fleiss_kappa) }}</span><span class="result-stat-label">Fleiss' κ</span></div>
   <div class="result-stat"><span class="result-stat-num">{{ num(P.mean_cohen_kappa) }}</span><span class="result-stat-label">Mean Cohen's κ</span></div>
