@@ -553,9 +553,10 @@
 {% set total_segments = campaigns|sum(attribute='num_segments') %}
 {% set total_campaigns = campaigns|length %}
 {% set target_languages = campaigns|map(attribute='target_language')|unique|list|length %}
-{% set totals = namespace(ratings=0) %}
+{% set totals = namespace(ratings=0, possible=0) %}
 {% for c in campaigns %}
   {% set totals.ratings = totals.ratings + stats[c.id].total_ratings %}
+  {% set totals.possible = totals.possible + stats[c.id].max_possible %}
 {% endfor %}
 
 <div class="aura-dashboard">
@@ -610,7 +611,7 @@
           <div class="aura-metric-label">Total Segment(s)</div>
         </div>
         <div class="aura-metric">
-          <div class="aura-metric-number aura-serif">{{ totals.ratings }}</div>
+          <div class="aura-metric-number aura-serif">{{ totals.ratings }}/{{ totals.possible }}</div>
           <div class="aura-metric-label">Rating(s) Completed</div>
         </div>
       </div>
