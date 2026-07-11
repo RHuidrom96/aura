@@ -319,66 +319,6 @@
 
 
 <section class="card">
-  <div class="card-header-flex">
-    <h3 style="margin:0;">Qualification</h3>
-    {% if qualification_test %}
-    <a href="{{ url_for('admin_campaign.admin_campaign_qualification_results_csv', campaign_id=campaign.id) }}" class="btn btn-small">Download results</a>
-    {% endif %}
-  </div>
-
-  {% if qualification_test %}
-    <p class="hint">
-      Candidates must pass this test before they can annotate this campaign. Passing
-      another campaign's qualification does not count here.
-      {{ qual_attempt_count }} submitted attempt{{ '' if qual_attempt_count == 1 else 's' }} so far.
-    </p>
-
-    {% if not campaign.is_closed %}
-    <form method="post"
-          action="{{ url_for('admin_campaign.admin_campaign_qualification_edit', campaign_id=campaign.id) }}"
-          enctype="multipart/form-data"
-          class="register-form">
-
-      {% with form_data=qual_form_data %}
-      {% include "_qualification_form_fields.html" %}
-      {% endwith %}
-
-      <hr class="form-divider">
-
-      <div class="field">
-        <label for="segments_file">Replace qualification segments (optional)</label>
-        <input type="file" id="segments_file" name="segments_file" accept=".json,application/json">
-        <p class="hint">
-          Leave this and the paste box below empty to keep the current
-          {{ qualification_test.num_segments }} segment{{ '' if qualification_test.num_segments == 1 else 's' }} unchanged.
-          Uploading or pasting a new JSON array replaces all of them.
-          <a href="#" onclick="document.getElementById('qual-paste-toggle-detail').open=true; document.getElementById('segments_paste').focus(); return false;">Paste instead.</a>
-        </p>
-      </div>
-
-      <details id="qual-paste-toggle-detail">
-        <summary class="link-btn" style="display:inline-block;margin-bottom:6px;">Paste JSON instead</summary>
-        <div class="field">
-          <label for="segments_paste">Segments JSON</label>
-          <textarea id="segments_paste" name="segments_paste" rows="8"
-                    placeholder='[{"source": "...", "target": "...", "gold": {"scores": {"adequacy": 5}}}, ...]'>{{ qual_form_data.get('segments_paste', '') }}</textarea>
-        </div>
-      </details>
-
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Save qualification changes</button>
-      </div>
-    </form>
-    {% else %}
-    <p class="hint">This campaign is closed, so its qualification can no longer be edited.</p>
-    {% endif %}
-  {% else %}
-    <p class="hint">This campaign has no qualification test configured.</p>
-  {% endif %}
-</section>
-
-
-<section class="card">
   <h3>Share link</h3>
   <p class="hint">Send this URL to your annotators. They'll register or sign in to begin.</p>
   <div class="copy-row">

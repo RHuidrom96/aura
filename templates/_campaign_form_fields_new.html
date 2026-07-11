@@ -395,7 +395,23 @@
     <span id="file-selected-name" style="font-size:13px; color:var(--aura-text-faint);">
       No file selected.
     </span>
+    <button
+      type="button"
+      id="view-file-btn"
+      style="display:none;">
+    View
+  </button>
   </div>
+  <pre id="file-preview"
+     style="display:none;
+            margin-top:16px;
+            max-height:400px;
+            overflow:auto;
+            padding:12px;
+            border:1px solid var(--aura-border);
+            border-radius:6px;
+            background:var(--aura-bg-secondary);
+            white-space:pre-wrap;"></pre>
 
   <div style="font-size:12px; color:var(--aura-text-faint); margin-top:14px; line-height:1.6;">
     <strong>Supported formats:</strong> JSON, JSONL, CSV, or TSV.<br>
