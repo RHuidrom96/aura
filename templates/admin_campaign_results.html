@@ -443,7 +443,22 @@ a.btn-aura-primary:hover {
     {% endfor %}
   </div>
   <div style="position:relative; max-width:1240px; margin:0 auto; padding:38px 48px 36px;">
-    <a href="{{ url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id) }}" style="display:inline-flex; align-items:center; gap:7px; font-size:12px; letter-spacing:0.4px; color:var(--aura-text-muted); text-decoration:none; margin-bottom:20px;" style-hover="color:var(--aura-text);">← Back to campaign</a>
+    <!-- <a href="{{ url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id) }}" style="display:inline-flex; align-items:center; gap:7px; font-size:12px; letter-spacing:0.4px; color:var(--aura-text-muted); text-decoration:none; margin-bottom:20px;" style-hover="color:var(--aura-text);">← Back to campaign</a> -->
+    <a class="link-btn" href="{{ url_for('admin_campaign.admin_campaign_detail', campaign_id=campaign.id) }}" style="
+    position:absolute;
+    top:38px;
+    right:48px;
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    font-size:12px;
+    letter-spacing:0.4px;
+    color:var(--aura-text-muted);
+    text-decoration:none;
+    z-index:10;
+    ">
+      ← Back to campaign
+    </a>
     <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:28px; flex-wrap:wrap;">
       <div>
         <div style="font-size:11px; letter-spacing:2.5px; text-transform:uppercase; color:var(--aura-text-faint); margin-bottom:10px;">Results &amp; statistics</div>

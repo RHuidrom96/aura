@@ -235,7 +235,12 @@
     // Keep the button clickable so we can guide the annotator
     btn.disabled = false;
   
-    btn.title = `Complete Segment ${missing + 1} first.`;
+    if (!complete) {
+      const missing = firstIncompleteOnCurrentPage();
+      btn.title = `Complete Segment ${missing + 1} first.`;
+    } else {
+      btn.title = "";
+    }
   }
 
   /* ===================== per-card builders ===================== */
