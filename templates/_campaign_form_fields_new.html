@@ -506,7 +506,7 @@
       </div>
       <div>
         <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">Model</label>
-        <input type="text" id="ai_model" name="ai_model" class="ff-in" value="{{ form_data.get('ai_model', '') }}" placeholder="model name">
+        <input type="text" id="ai_model" name="ai_model" autocomplete="new-password" class="ff-in" value="{{ form_data.get('ai_model', '') }}" placeholder="model name">
         <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">Optional. Leave blank to use the provider's default.</div>
       </div>
     </div>
@@ -517,7 +517,7 @@
     </div>
     <div id="ai-key-field" style="margin-top:20px;">
       <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">API key</label>
-      <input type="password" id="ai_api_key" name="ai_api_key" autocomplete="off" class="ff-in" placeholder="{% if form_data.get('ai_has_key') %}•••••••• (saved, leave blank to keep){% else %}paste your key{% endif %}">
+      <input type="password" id="ai_api_key" name="ai_api_key" autocomplete="new-password" class="ff-in" placeholder="{% if form_data.get('ai_has_key') %}•••••••• (saved, leave blank to keep){% else %}paste your key{% endif %}">
       <div style="font-size:12px; color:var(--aura-text-faint); margin-top:7px;">Stored encrypted; only the admin sets it. Annotators never see or send it.</div>
     </div>
     <div class="ai-test-row" style="margin-top:16px; display:flex; align-items:center; gap:16px;">

@@ -461,7 +461,7 @@
       </div>
       <div class="field">
         <label for="ai_model">Model</label>
-        <input type="text" id="ai_model" name="ai_model" value="{{ form_data.get('ai_model', '') }}"
+        <input type="text" id="ai_model" name="ai_model" autocomplete="new-password" value="{{ form_data.get('ai_model', '') }}"
                placeholder="model name">
         <p class="hint">Editable. Leave blank to use the provider's default.</p>
       </div>
@@ -476,7 +476,7 @@
 
     <div class="field" id="ai-key-field">
       <label for="ai_api_key">API key</label>
-      <input type="password" id="ai_api_key" name="ai_api_key" autocomplete="off"
+      <input type="password" id="ai_api_key" name="ai_api_key" autocomplete="new-password"
              placeholder="{% if form_data.get('ai_has_key') %}•••••••• (saved, leave blank to keep){% else %}paste your key{% endif %}">
       <p class="hint">Stored encrypted; only the admin sets it. Annotators never see or send it.</p>
     </div>
