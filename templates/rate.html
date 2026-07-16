@@ -87,6 +87,8 @@
   flex-shrink: 0 !important;
   position: sticky !important;
   top: 92px !important;
+  max-height: calc(100vh - 92px - 28px) !important;
+  overflow-y: auto !important;
   display: flex !important;
   flex-direction: column !important;
   gap: 16px !important;
@@ -1081,7 +1083,7 @@
         {% if _hi > _lo %}
         <div style="margin-top:14px;">
           <label for="per-page-select" style="display:block; font-size:11px; color:var(--aura-text-muted); margin-bottom:5px;">Segments per page</label>
-          <select id="per-page-select" style="width:100%; padding:7px 10px; border:1px solid #d8d2c2; border-radius:6px; background:#fff; color:var(--aura-text); font-size:13px;">
+          <select id="per-page-select" style="width:100%; padding:7px 10px; font-size:13px;">
             {% for n in range(_lo, _hi + 1) %}
             <option value="{{ n }}">{{ n }}{% if n == _def %} (default){% endif %}</option>
             {% endfor %}

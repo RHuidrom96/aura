@@ -11,10 +11,10 @@
 {% endmacro %}
 
 <div class="result-summary-row">
-  <div class="result-stat"><span class="result-stat-num">{{ s.n_annotators }}</span><span class="result-stat-label">Annotators</span></div>
-  <div class="result-stat"><span class="result-stat-num">{{ s.n_segments }}</span><span class="result-stat-label">Segments</span></div>
-  <div class="result-stat"><span class="result-stat-num">{{ s.n_complete_ratings }}</span><span class="result-stat-label">Complete ratings</span></div>
-  <div class="result-stat"><span class="result-stat-num">{{ s.n_overlap_segments }}</span><span class="result-stat-label">Overlapping segments</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ s.n_segments }}</span><span class="result-stat-label">Segment(s)</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ s.n_annotators }}</span><span class="result-stat-label">Annotator(s)</span></div>
+  <div class="result-stat"><span class="result-stat-num">{{ s.n_complete_ratings }}/{{ s.n_segments * s.n_annotators }}</span><span class="result-stat-label">Rating(s) Completed</span></div>
+  <!-- <div class="result-stat"><span class="result-stat-num">{{ s.n_overlap_segments }}</span><span class="result-stat-label">Overlapping segments</span></div> -->
 </div>
 
 {% if s.warnings %}

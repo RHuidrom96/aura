@@ -298,7 +298,7 @@ def grade_attempt(attempt):
 
     Implemented for all four evaluation modes:
 
-        • Likert     — exact match of the scores dict
+        • Likert     — similarity score based on criterion ratings
         • Pairwise   — exact match of the chosen preference
         • Span-only  — exact match of the spans dict
                         (no client UI collects spans yet; see test.html)
@@ -307,7 +307,8 @@ def grade_attempt(attempt):
 
     test = attempt.test
 
-    correct = 0
+    correct_answers = 0
+    total_score = 0.0
     total = 0
 
     responses = {
@@ -320,6 +321,10 @@ def grade_attempt(attempt):
         .order_by(QualificationSegment.position)
         .all()
     )
+
+    MIN_LIKERT_SCORE = 1
+    MAX_LIKERT_SCORE = 5
+    MAX_DIFFERENCE = MAX_LIKERT_SCORE - MIN_LIKERT_SCORE
 
     for segment in segments:
 
@@ -335,11 +340,11 @@ def grade_attempt(attempt):
 
         ok = False
 
+        mode = test.eval_mode or "likert"
+
         # -------------------------------------------------------
         # Pairwise
         # -------------------------------------------------------
-
-        mode = test.eval_mode or "likert"
 
         if mode == "pairwise":
 
@@ -348,12 +353,53 @@ def grade_attempt(attempt):
                 == gold.get("preference")
             )
 
+            response.score = 100.0 if ok else 0.0
+            response.is_correct = ok
+
+        # -------------------------------------------------------
+        # Likert
+        # -------------------------------------------------------
+
         elif mode == "likert":
 
-            ok = (
-                pred.get("scores")
-                == gold.get("scores")
+            gold_scores = gold.get("scores") or {}
+            pred_scores = pred.get("scores") or {}
+
+            criterion_scores = []
+
+            for criterion, gold_value in gold_scores.items():
+
+                pred_value = pred_scores.get(criterion)
+
+                if pred_value is None:
+                    criterion_scores.append(0.0)
+                    continue
+
+                difference = abs(pred_value - gold_value)
+
+                score = (
+                    1 - (difference / MAX_DIFFERENCE)
+                ) * 100.0
+
+                criterion_scores.append(score)
+
+            if criterion_scores:
+                response.score = (
+                    sum(criterion_scores)
+                    / len(criterion_scores)
+                )
+            else:
+                response.score = 0.0
+
+            # A response is considered fully correct only if every
+            # criterion exactly matches the gold annotation.
+            response.is_correct = (
+                response.score == 100.0
             )
+
+        # -------------------------------------------------------
+        # Span-only
+        # -------------------------------------------------------
 
         elif mode == "span_only":
 
@@ -362,6 +408,13 @@ def grade_attempt(attempt):
                 == (gold.get("spans") or {})
             )
 
+            response.score = 100.0 if ok else 0.0
+            response.is_correct = ok
+
+        # -------------------------------------------------------
+        # Post-edit
+        # -------------------------------------------------------
+
         elif mode == "post_edit":
 
             ok = (
@@ -369,27 +422,25 @@ def grade_attempt(attempt):
                 == (gold.get("edited_text") or "").strip()
             )
 
+            response.score = 100.0 if ok else 0.0
+            response.is_correct = ok
+
         else:
 
-            ok = False
+            response.score = 0.0
+            response.is_correct = False
 
-        response.is_correct = ok
-        response.score = 1.0 if ok else 0.0
+        total_score += response.score
 
-        if ok:
-            correct += 1
+        if response.is_correct:
+            correct_answers += 1
 
-    attempt.correct_answers = correct
+    attempt.correct_answers = correct_answers
     attempt.total_questions = total
 
     if total:
-
-        attempt.score = (
-            correct / total
-        ) * 100.0
-
+        attempt.score = total_score / total
     else:
-
         attempt.score = 0.0
 
     attempt.passed = (
@@ -397,6 +448,7 @@ def grade_attempt(attempt):
     )
 
     return attempt.score
+
 
 
 # ---------------------------------------------------------------------------

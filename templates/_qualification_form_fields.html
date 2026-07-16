@@ -82,24 +82,60 @@
 
 {# ----------------------- Criteria (likert + span_only) ----------------------- #}
 <div class="field" data-qual-mode-block="likert span_only">
-  <label id="{{ field_prefix }}criteria-label">Evaluation criteria <span class="req">*</span></label>
-  <p class="hint" id="{{ field_prefix }}criteria-hint">Define what candidates will rate. Each has a name and a
-    definition shown to candidates. Every segment's gold answer must provide a score for
-    each criterion defined here.</p>
+  <label id="{{ field_prefix }}criteria-label">
+    Evaluation Criteria <span class="req">*</span>
+  </label>
+
+  <div style="margin: 0.75rem 0;">
+    <label for="{{ field_prefix }}criteria_template">Preset</label>
+    <select id="{{ field_prefix }}criteria_template">
+      <option value="custom" selected>Custom</option>
+      <option value="standard">Standard</option>
+    </select>
+  </div>
+
+  <p class="hint" id="{{ field_prefix }}criteria-hint">
+    Define what candidates will rate. Each criterion has a name and a
+    definition shown to candidates. Selecting <strong>Standard</strong>
+    automatically populates the recommended criteria, which remain fully
+    editable before saving.
+  </p>
+
   <div id="{{ field_prefix }}criteria-rows">
     {% for c in form_data.get('criteria', []) %}
     <div class="criterion-row">
       <div class="criterion-row-fields">
-        <input type="text" name="{{ field_prefix }}crit_name" placeholder="Criterion name (e.g. Adequacy)"
-               value="{{ c.get('name', '') }}" class="crit-name-input">
-        <textarea name="{{ field_prefix }}crit_desc" rows="2" placeholder="Definition shown to candidates"
-                  class="crit-desc-input">{{ c.get('desc', '') }}</textarea>
+        <input
+          type="text"
+          name="{{ field_prefix }}crit_name"
+          placeholder="Criterion name (e.g. Adequacy)"
+          value="{{ c.get('name', '') }}"
+          class="crit-name-input">
+
+        <textarea
+          name="{{ field_prefix }}crit_desc"
+          rows="2"
+          placeholder="Definition shown to candidates"
+          class="crit-desc-input">{{ c.get('desc', '') }}</textarea>
       </div>
-      <button type="button" class="btn-remove-row" title="Remove" onclick="qualRemoveCriterionRow(this)">×</button>
+
+      <button
+        type="button"
+        class="btn-remove-row"
+        title="Remove"
+        onclick="qualRemoveCriterionRow(this)">
+        ×
+      </button>
     </div>
     {% endfor %}
   </div>
-  <button type="button" class="btn btn-ghost btn-small" onclick="qualAddCriterionRow('{{ field_prefix }}')">+ Add criterion</button>
+
+  <button
+    type="button"
+    class="btn btn-ghost btn-small"
+    onclick="qualAddCriterionRow('{{ field_prefix }}')">
+    + Add criterion
+  </button>
 </div>
 
 <template id="{{ field_prefix }}qual-criterion-row-template">
@@ -124,9 +160,60 @@ function qualRemoveCriterionRow(btn) {
   if (row) { row.remove(); }
 }
 
+let applyingStandardTemplate = false;
+const STANDARD_CRITERIA = [
+    {
+        name: "Adequacy",
+        desc: "How well the translation conveys the meaning of the source text. 5 = All meaning is preserved, 1 = Most meaning is missing or incorrect"
+    },
+    {
+        name: "Fluency",
+        desc: "How natural and grammatically correct the translation is. 5= Completely natural and grammatical, 1 = Very awkward or ungrammatical"
+    },
+    {
+        name: "Meaning Preservation",
+        desc: "Whether the meaning of the source text is preserved. 5= Meaning is identical, 1 = Meaning is significantly altered"
+    },
+    {
+        name: "Accuracy",
+        desc: "Whether the translation contains factual or semantic errors. 5 = No translation errors, 1 = Many incorrect words or mistranslations"
+    }
+];
+
+function applyStandardTemplate(prefix) {
+  prefix = prefix || "";
+
+  var rows = document.getElementById(prefix + "criteria-rows");
+  if (!rows) {
+      return;
+  }
+
+  if (rows.children.length > 0) {
+      if (!confirm("Replace the current criteria with the Standard preset?")) {
+          return;
+      }
+  }
+  
+  applyingStandardTemplate = true;
+
+  rows.innerHTML = "";
+
+  STANDARD_CRITERIA.forEach(function (criterion) {
+      qualAddCriterionRow(prefix);
+
+      var row = rows.lastElementChild;
+
+      row.querySelector(".crit-name-input").value = criterion.name;
+      row.querySelector(".crit-desc-input").value = criterion.desc;
+  });
+  
+}
+
 (function () {
   var evalSelect = document.getElementById("{{ field_prefix }}eval_mode");
   if (!evalSelect) { return; }
+
+  var presetSelect = document.getElementById("{{ field_prefix }}criteria_template");
 
   function applyModeVisibility() {
     var mode = evalSelect.value;
@@ -140,5 +227,33 @@ function qualRemoveCriterionRow(btn) {
   document.addEventListener("DOMContentLoaded", applyModeVisibility);
   // In case this partial is injected after DOMContentLoaded already fired.
   if (document.readyState !== "loading") { applyModeVisibility(); }
+
+    if (presetSelect) {
+
+        presetSelect.addEventListener("change", function () {
+
+            if (this.value === "standard") {
+                applyStandardTemplate("{{ field_prefix }}");
+            }
+
+        });
+
+        var rows = document.getElementById("{{ field_prefix }}criteria-rows");
+
+        if (rows) {
+            rows.addEventListener("input", function () {
+
+            if (applyingStandardTemplate) {
+                return;
+            }
+
+            if (presetSelect.value === "standard") {
+                presetSelect.value = "custom";
+            }
+
+          });
+        }
+    }
+
 })();
 </script>

@@ -555,6 +555,25 @@ def _default_scale_view():
             "min": 0, "max": 100, "labels": {}}
 
 
+def _qualification_template_context(campaign, qual_form_data=None):
+    test = campaign.qualification_test
+
+    qual_attempt_count = 0
+    if test is not None:
+        qual_attempt_count = (
+            QualificationAttempt.query
+            .filter_by(test_id=test.id)
+            .filter(QualificationAttempt.submitted_at.isnot(None))
+            .count()
+        )
+
+    return {
+        "qualification_test": test,
+        "qual_attempt_count": qual_attempt_count,
+        "qual_form_data": qual_form_data or _qualification_form_view_for(test),
+    }
+
+
 def _render_new_campaign_form(form_data=None, qual_form_data=None):
     fd = form_data or {}
     # Provide default criteria for a fresh form
@@ -682,6 +701,7 @@ def admin_campaign_edit(campaign_id):
 
 
 def _render_edit_campaign_form(campaign, form_data):
+    qual_context = _qualification_template_context(campaign)
     return render_template("admin_campaign_edit.html",
                         campaign=campaign,
                         scripts=SCRIPT_OPTIONS,
@@ -693,7 +713,8 @@ def _render_edit_campaign_form(campaign, form_data):
                         criterion_guides=models.CRITERION_GUIDES,
                         ai_providers=llm.PROVIDERS,
                         default_likert_labels=Campaign.DEFAULT_LIKERT_LABELS_BY_POINTS,
-                        form_data=form_data)
+                        form_data=form_data,
+                        **qual_context, )
 
 
 @admin_campaign_bp.route("/campaign/<campaign_id>")
@@ -760,13 +781,8 @@ def _render_campaign_detail(c, qual_form_data=None):
                 "manual": "Manual labels only", "none": "None"}.get(
                     c.difficulty_method or "auto", "Automatic")
     groups = [g for g in CampaignGroup.query.order_by(CampaignGroup.name.asc()).all() if admin_owns(g)]
-    test = c.qualification_test
-    qual_attempt_count = 0
-    if test is not None:
-        qual_attempt_count = (QualificationAttempt.query
-                               .filter_by(test_id=test.id)
-                               .filter(QualificationAttempt.submitted_at.isnot(None))
-                               .count())
+
+    qual_context = _qualification_template_context(c, qual_form_data)
     return render_template("admin_campaign_detail.html",
                         campaign=c, rows=rows, share_url=share_url,
                         criteria=get_criteria_for(c),
@@ -774,10 +790,8 @@ def _render_campaign_detail(c, qual_form_data=None):
                         input_label=in_label, output_label=out_label,
                         difficulty_label=diff_label,
                         groups=groups,
-                        qualification_test=test,
-                        qual_attempt_count=qual_attempt_count,
                         eval_modes=EVAL_MODES,
-                        qual_form_data=qual_form_data or _qualification_form_view_for(test))
+                        **qual_context, )
 
 
 @admin_campaign_bp.route("/campaign/<campaign_id>/qualification/edit", methods=["POST"])

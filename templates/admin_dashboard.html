@@ -553,9 +553,10 @@
 {% set total_segments = campaigns|sum(attribute='num_segments') %}
 {% set total_campaigns = campaigns|length %}
 {% set target_languages = campaigns|map(attribute='target_language')|unique|list|length %}
-{% set totals = namespace(ratings=0) %}
+{% set totals = namespace(ratings=0, possible=0) %}
 {% for c in campaigns %}
   {% set totals.ratings = totals.ratings + stats[c.id].total_ratings %}
+  {% set totals.possible = totals.possible + stats[c.id].max_possible %}
 {% endfor %}
 
 <div class="aura-dashboard">
@@ -599,19 +600,19 @@
       <div class="aura-overview" aria-label="Campaign overview">
         <div class="aura-metric">
           <div class="aura-metric-number aura-serif">{{ total_campaigns }}</div>
-          <div class="aura-metric-label">Campaigns</div>
+          <div class="aura-metric-label">Campaign(s)</div>
         </div>
         <div class="aura-metric">
           <div class="aura-metric-number aura-serif">{{ target_languages }}</div>
-          <div class="aura-metric-label">Target languages</div>
+          <div class="aura-metric-label">Target language(s)</div>
         </div>
         <div class="aura-metric">
           <div class="aura-metric-number aura-serif">{{ total_segments }}</div>
-          <div class="aura-metric-label">Segments</div>
+          <div class="aura-metric-label">Total Segment(s)</div>
         </div>
         <div class="aura-metric">
-          <div class="aura-metric-number aura-serif">{{ totals.ratings }}</div>
-          <div class="aura-metric-label">Ratings collected</div>
+          <div class="aura-metric-number aura-serif">{{ totals.ratings }}/{{ totals.possible }}</div>
+          <div class="aura-metric-label">Rating(s) Completed</div>
         </div>
       </div>
     </div>
@@ -690,7 +691,7 @@
             </div>
             <div>
               <div class="aura-card-stat-number aura-serif" data-stat="ratings">{{ s.total_ratings }}</div>
-              <div class="aura-card-stat-label">Ratings</div>
+              <div class="aura-card-stat-label">✓ Ratings</div>
             </div>
           </div>
 

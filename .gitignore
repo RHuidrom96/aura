@@ -89,3 +89,5 @@ wmt/
 samples/
 .aider*
 aider-env/
+.DS_Store
+data/secret_key

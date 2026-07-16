@@ -175,6 +175,56 @@
     }
   };
 
+// View Segment Uploaded
+window.viewSegmentsFile = function () {
+  const preview = document.getElementById("file-preview");
+  const btn = document.getElementById("view-file-btn");
+
+  // Hide if already open
+  if (preview.style.display !== "none") {
+    preview.style.display = "none";
+    btn.textContent = "View";
+    return;
+  }
+
+  const input = document.getElementById("segments_file");
+  if (!input || !input.files.length) return;
+
+  const file = input.files[0];
+  const reader = new FileReader();
+
+  reader.onload = function (e) {
+    const text = e.target.result;
+    const MAX = 10000;
+
+    preview.textContent =
+      text.length > MAX
+        ? text.slice(0, MAX) + "\n\n... (preview truncated)"
+        : text;
+
+    preview.style.display = "";
+    btn.textContent = "Hide";
+  };
+
+  reader.readAsText(file);
+};
+
+window.onSegmentsFileChange = function () {
+  const input = document.getElementById("segments_file");
+  const file = input && input.files.length ? input.files[0] : null;
+
+  document.getElementById("file-selected-name").textContent =
+    file ? file.name : "No file selected.";
+
+  const btn = document.getElementById("view-file-btn");
+  btn.style.display = file ? "" : "none";
+  btn.textContent = "View";
+
+  const preview = document.getElementById("file-preview");
+  preview.style.display = "none";
+  preview.textContent = "";
+};
+
   // --- AI assistant config --------------------------------------------------
   window.onAiToggle = function () {
     const on = document.getElementById('ai_enabled').checked;
@@ -440,5 +490,17 @@
         }
       });
     }
+    
+    const fileInput = document.getElementById("segments_file");
+    if (fileInput) {
+      fileInput.addEventListener("change", window.onSegmentsFileChange);
+    }
+
+    const viewBtn = document.getElementById("view-file-btn");
+    if (viewBtn) {
+      viewBtn.addEventListener("click", window.viewSegmentsFile);
+    }
+
+
   });
 })();

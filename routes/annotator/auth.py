@@ -50,50 +50,58 @@ def annotator_login_post(campaign_id):
             campaign=campaign,
         )
 
-    email = request.form.get("email", "").strip().lower()
-    password = request.form.get("password", "")
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
 
-    if not email or not password:
-        flash("Email and password are required.", "error")
+        if not email or not password:
+            flash("Email and password are required.", "error")
+
+            return redirect(
+                url_for(
+                    "annotator_campaign.annotator_login_view",
+                    campaign_id=campaign_id,
+                )
+            )
+
+        annotator = Annotator.query.filter_by(email=email).first()
+
+        if not annotator or not annotator.check_password(password):
+            flash("Incorrect email or password.", "error")
+
+            return redirect(
+                url_for(
+                    "annotator_campaign.annotator_login_view",
+                    campaign_id=campaign_id,
+                )
+            )
+
+        if not annotator.email_verified:
+            flash(
+                "Please verify your email before signing in.",
+                "error",
+            )
+
+            return redirect(
+                url_for(
+                    "annotator_campaign.annotator_login_view",
+                    campaign_id=campaign_id,
+                )
+            )
+
+        login_annotator(annotator, campaign_id)
+        session.permanent = True
 
         return redirect(
             url_for(
-                "annotator_campaign.annotator_login_view",
+                "annotator_rating.rate_view",
                 campaign_id=campaign_id,
             )
         )
-
-    annotator = Annotator.query.filter_by(email=email).first()
-
-    if not annotator or not annotator.check_password(password):
-        flash("Incorrect email or password.", "error")
-
-        return redirect(
-            url_for(
-                "annotator_campaign.annotator_login_view",
-                campaign_id=campaign_id,
-            )
-        )
-
-    if not annotator.email_verified:
-        flash(
-            "Please verify your email before signing in.",
-            "error",
-        )
-
-        return redirect(
-            url_for(
-                "annotator_campaign.annotator_login_view",
-                campaign_id=campaign_id,
-            )
-        )
-
-    login_annotator(annotator, campaign_id)
-    session.permanent = True
 
     return redirect(
         url_for(
-            "annotator_rating.rate_view",
+            "annotator_campaign.annotator_login_view",
             campaign_id=campaign_id,
         )
     )
@@ -184,7 +192,7 @@ def annotator_register(campaign_id):
 
         return redirect(
             url_for(
-                "annotator_auth.annotator_login_post",
+                "annotator_campaign.annotator_signup_view",
                 campaign_id=campaign_id,
             )
         )
@@ -228,7 +236,7 @@ def annotator_register(campaign_id):
 
         return redirect(
             url_for(
-                "annotator_auth.annotator_login_post",
+                "annotator_campaign.annotator_login_view",
                 campaign_id=campaign_id,
             )
         )
