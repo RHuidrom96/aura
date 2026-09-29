@@ -75,7 +75,7 @@ Follow the **steps** given below
 6. Export api key for admin authentication using mail (required for sending otp)
 
    ```sh
-   export RESEND_API_KEY="re_JzsPfnHg_FemG4UCEqeCVMyE5DwZWPwgu"
+   export RESEND_API_KEY="ADD-YOUR-API-KEY"
    export MT_EVAL_EMAIL_FROM="Aura <noreply@aura-a.site>"
    ```
 
@@ -238,7 +238,9 @@ The exact columns depend on the evaluation mode (an `eval_mode` column is always
 
 - **Likert**: as above - one score column per criterion id, plus one `<criterion_id>_spans` column each (when spans are enabled).
 - **Pairwise**: instead of `target`, the row carries `candidate_a`, `candidate_b`, `system_a`, `system_b`, `reference`, and the chosen `preference_id` / `preference_label`.
+- **Preference Selection**: instead of `target`, the row carries `reference`, then `cand<i>_system`, `cand<i>_text`, and `cand<i>_rank` for each candidate, plus the full ranking as `ranking_json`.
 - **Span-only**: one `<criterion_id>_spans` column per error-type category (no score columns), plus a `reviewed` flag.
+- **Post-editing**: `target`, `reference`, and the annotator's corrected output in `edited_text`.
 
 The weighted score is no longer displayed in the UI but you can compute it from
 the three Likert columns after the fact:
@@ -284,7 +286,9 @@ When creating **or editing** a campaign, the admin first picks an **evaluation m
 
 1. **Likert scale rating** - annotators score each criterion on a scale. This is the original flow and keeps all the scale options below. Span annotation is _optional_ here and, when enabled, can be marked in the **target only** or in **both source and target**.
 2. **Pairwise preference** - each segment shows **two candidate translations** (A and B); annotators choose which is better from a set of **preference options you define**. No scoring or spans.
-3. **Span annotation only** - annotators only mark error spans (no scoring). Your criteria become the **error-type categories**. A segment is complete once the annotator ticks "reviewed" (which also allows zero-error segments to be completed).
+3. **Preference Selection (ranking)** - each segment shows one source with **N candidate outputs**; annotators rank the candidates from best to worst (ties allowed). Results report per-system win rate, mean rank, top-1 rate, and an Elo ranking.
+4. **Span annotation only** - annotators only mark error spans (no scoring). Your criteria become the **error-type categories**. A segment is complete once the annotator ticks "reviewed" (which also allows zero-error segments to be completed).
+5. **Post-editing** - annotators correct the output by editing it directly. Results report how much editing each system needed (share of outputs changed, mean normalised edit distance), a lighter-is-better quality signal.
 
 ### Shared options (all modes)
 
@@ -330,7 +334,27 @@ or a `candidates` array of two (strings, or `{"target": "...", "system": "..."}`
 }
 ```
 
-`system_a`/`system_b` (or the candidates' `system` fields) are optional and flow through to the CSV. For Likert and Span-only modes, the usual `id` / `source` / `target` format applies.
+`system_a`/`system_b` (or the candidates' `system` fields) are optional and flow through to the CSV.
+
+### Preference Selection segment format
+
+Each segment must provide at least two candidates, as a `candidates` array of strings or of `{"target": "...", "system": "..."}` objects (`"text"` is accepted in place of `"target"`):
+
+```json
+{
+  "id": "seg_001",
+  "source": "...",
+  "candidates": [
+    {"target": "translation 1", "system": "SystemA"},
+    {"target": "translation 2", "system": "SystemB"},
+    {"target": "translation 3", "system": "SystemC"}
+  ]
+}
+```
+
+The two-candidate `target_a` / `target_b` (+ `system_a` / `system_b`) format is also accepted.
+
+For Likert, Span-only, and Post-editing modes, the usual `id` / `source` / `target` format applies.
 
 ### Editing a campaign
 
@@ -442,10 +466,11 @@ Span agreement is reported as character-level F1 and token-level (whole-word) F1
 
 ## Evaluation modes supported
 
-Aura supports four annotation modes, all of which work across every task type:
+Aura supports five annotation modes, all of which work across every task type:
 
 - **Likert scale rating** - score each criterion on a scale (optionally also mark error spans).
 - **Pairwise preference** - compare two candidate outputs (A vs B) with preference options you define.
+- **Preference Selection (ranking)** - rank N candidate outputs for the same source from best to worst (ties allowed). Results report per-system win rate, mean rank, top-1 rate, and an Elo ranking.
 - **Span annotation (MQM)** - mark error spans and assign error types (your criteria become the categories); reports character- and token-level inter-annotator F1.
 - **Post-editing** - annotators correct the output by editing it directly. Results report how much editing each system needed (share of outputs changed, mean normalised edit distance 0–1, per system), plus agreement on whether a segment needed editing. Less editing = better output.
 
@@ -458,7 +483,7 @@ used both to pre-fill the campaign form and as the AI assistant's fallback guida
 
 ## Beyond machine translation (task types)
 
-The three evaluation modes (Likert scoring, pairwise preference, span/error annotation) are not
+The five evaluation modes (Likert scoring, pairwise preference, preference selection, span/error annotation, post-editing) are not
 specific to translation. Each campaign has a **Task type** that relabels the interface and
 suggests criteria, so the same machinery serves other text-evaluation tasks:
 
