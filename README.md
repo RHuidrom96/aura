@@ -1,22 +1,33 @@
 # Aura 💫
 
-A multi-campaign platform for human evaluation of machine translation. An admin
-creates campaigns, uploads segment files, and shares per-campaign links.
-Annotators register a global account once and can join any campaign. Each
-annotation can be edited until the admin closes the campaign.
+A self-hostable platform for human evaluation of natural language generation (NLG),
+designed first for under-resourced and indigenous languages. One segment schema and one
+result model cover five evaluation protocols (Likert/DA, pairwise preference, preference
+selection/ranking, error-span annotation, post-editing) across eight task types (machine
+translation, summarisation, simplification, dialogue, QA, factuality, general LLM output,
+and custom).
+
+An admin creates campaigns, uploads segment files, and shares per-campaign links.
+Annotators register a portable account once and can join any campaign. Each annotation can
+be edited until the admin closes the campaign, at which point Aura builds a reproducible
+results pack.
 
 ---
 
 ## Features
 
-- **Admin role** (single account, configured via env vars) with a dashboard, campaign creation form, per-campaign progress view, master CSV download, and campaign close action.
-- **Annotator role** with global account (one email + password works across all campaigns).
-- **Three Likert criteria**: adequacy, fluency, meaning preservation.
-- **Error-span marking** on the translation text - three overlapping error types, colored highlights, free-form cursor selection.
-- **Persistent on-screen instructions** plus per-criterion guidance.
-- **Optional reference translation** behind a disclosure.
-- **Resumable** - annotators can come back, jump to any segment, and edit until the campaign is closed.
-- **Storage**: SQLite locally (`data/app.db`). When a campaign is closed, a full results pack (CSV, summary, charts, JSON, HTML report) is emailed to the campaign owner as a ZIP.
+- **Admin role**: a built-in admin configured via env vars, plus optional self-registered admins (email OTP verification, restrictable by invite code or email domain). Dashboard, campaign creation and editing, live progress and analytics, master CSV download, and campaign close.
+- **Annotator role** with a portable account (one email + password works across all campaigns); a stable account UUID links an annotator's work across campaigns.
+- **Five evaluation modes**: Likert scale rating (discrete 2–11 points or a continuous 0–100 DA slider), pairwise preference, preference selection (ranking N candidates), span-only error annotation (MQM-style), and post-editing. See [Evaluation modes supported](#evaluation-modes-supported).
+- **Eight task types** that relabel the interface and suggest criteria; criteria are fully configurable per campaign. See [Beyond machine translation](#beyond-machine-translation-task-types).
+- **Writing systems and speaker provenance as first-class fields**: per-campaign source/target scripts, and optional annotator background variables (native language, self-rated fluency, dialect, location, age range) exported with every rating.
+- **Qualification tests**: per-campaign gold-segment tests with a pass threshold, attempt limits, and a retry cooldown.
+- **Grounded AI guideline assistant** (optional, advisory-only, fully logged) with a built-in **randomised experiment** to estimate its effect on agreement and time-on-task. See [AI guideline assistant](#ai-guideline-assistant-optional).
+- **Agreement and diagnostics**: Krippendorff's α, Cohen's and Fleiss' κ, percent agreement, win rates, Elo, character- and token-level span F1 with span density, DA correlations, post-edit rates, and a linguistic diagnosis of the most-contested segments.
+- **Campaign groups** that pool compatible campaigns (e.g. one per difficulty level or system) into a single view and export.
+- **Resumable** - annotators can come back, jump to any segment, and edit until the campaign is closed. Optional deterministic per-annotator segment shuffle, with the presentation order recorded.
+- **Storage**: PostgreSQL. When a campaign is closed, a full results pack (CSV, summary, charts, JSON, HTML report) is built and, if an email transport is configured, emailed to the campaign owner as a ZIP; otherwise it stays downloadable from the results page.
+- **Self-hostable and offline-capable**: everything except the optional hosted LLM provider and email transport runs on a single machine.
 
 ---
 
@@ -75,7 +86,7 @@ Follow the **steps** given below
 6. Export api key for admin authentication using mail (required for sending otp)
 
    ```sh
-   export RESEND_API_KEY="ADD-YOUR-API-KEY"
+   export RESEND_API_KEY="YOUR-API-KEY"
    export MT_EVAL_EMAIL_FROM="Aura <noreply@aura-a.site>"
    ```
 
@@ -110,8 +121,12 @@ pip install gunicorn
 gunicorn -w 4 -b 0.0.0.0:8000 app:app
 ```
 
-Make sure `data/` is on persistent storage so SQLite, segment files, and the
-service-account JSON survive restarts.
+Point the app at a persistent PostgreSQL database (`DATABASE_URL`, or the `POSTGRES_*`
+variables; see `POSTGRES_SETUP.md`), and set a stable `MT_EVAL_SECRET_KEY` - it also derives
+the key that encrypts stored LLM API keys, so changing it makes existing keys unreadable.
+With Postgres you can raise the gunicorn worker count. Deploying from an older SQLite-based
+install? `scripts/migrate.py` copies an existing `data/app.db` into Postgres (it supports a
+dry run). See `DEPLOY.md` for hosting notes.
 
 ---
 
@@ -158,24 +173,24 @@ closes and everything remains downloadable from the results page.
 
 ## Admin workflow
 
-1. **Sign in** at `/admin/login` with the credentials in your env vars.
-2. **New campaign**: set name, source/target languages, optional script (Bengali / Meitei Mayek for Manipuri), and upload segments JSON.
+1. **Sign in** at `/admin/login` (the env-var admin, or a registered admin account).
+2. **New campaign**: choose a task type and evaluation mode, set source/target languages and scripts, criteria, scale, instructions, and optional settings (segment shuffle, qualification test, AI assistant and its randomised experiment, difficulty levels), then upload a segment file (JSON, JSONL, CSV, or TSV).
 3. **Copy the share link** from the campaign detail page and send it to your annotators (e.g. by email).
-4. **Monitor progress**: the detail page shows each annotator with their completion percentage.
+4. **Monitor progress**: the detail page shows each annotator's completion, and the results dashboard shows live agreement and quality metrics.
 5. **Download CSV** at any time - completed ratings only.
-6. **Close campaign** when done - irreversible. After this, annotators can't edit.
+6. **Close campaign** when done - irreversible. After this, annotators can't edit, and Aura builds the results pack.
 
 ---
 
 ## Annotator workflow
 
 1. Click the share link from the admin.
-2. **Create account** (name, email, password, optional native language) - or sign in if they've worked on another campaign before.
-3. Rate each segment on three criteria using a 1–5 scale.
-4. Mark error spans in the translation by selecting words with the cursor.
-5. Click **Save & next** to advance. Ratings save to the server.
+2. **Create account** (name, email, password) - or sign in if they've worked on another campaign before - and complete the language profile (native language, fluency, and optional dialect, location, and age range).
+3. Pass the campaign's **qualification test**, if one is configured.
+4. Read the instructions, then annotate each segment according to the campaign's mode: score criteria, choose a preference, rank candidates, mark error spans, or post-edit the output.
+5. Click **Save & next page** to advance. Ratings save to the server.
 6. The "Jump to…" button opens a modal with all segments and their status, for review and editing.
-7. Once finished, the thank-you screen offers a "Review my ratings" button - they can come back to this URL any time until the admin closes the campaign.
+7. Once finished, the thank-you screen offers a "Review my ratings" button - they can come back any time until the admin closes the campaign. The annotator dashboard (`/annotator/dashboard`) lists all their campaigns.
 
 ---
 
@@ -242,8 +257,8 @@ The exact columns depend on the evaluation mode (an `eval_mode` column is always
 - **Span-only**: one `<criterion_id>_spans` column per error-type category (no score columns), plus a `reviewed` flag.
 - **Post-editing**: `target`, `reference`, and the annotator's corrected output in `edited_text`.
 
-The weighted score is no longer displayed in the UI but you can compute it from
-the three Likert columns after the fact:
+For a Likert campaign using the default MT criteria, a weighted score is not displayed in
+the UI but you can compute it after the fact:
 `0.35*adequacy + 0.30*fluency + 0.35*meaning_preservation` (adjust weights as desired).
 
 ---
@@ -251,34 +266,39 @@ the three Likert columns after the fact:
 ## Directory structure
 
 ```sh
-mt_eval_v2/
-├── app.py              Flask app + routes
-├── auth.py             Session helpers, admin/annotator decorators
-├── models.py           SQLAlchemy: Annotator, Campaign, Rating
-├── exporter.py         Results CSV + ZIP builder (emailed on close)
-├── mailer.py           Email transports (Resend / SendGrid / SMTP)
-├── requirements.txt
-├── README.md
-├── templates/
-│   ├── base.html
-│   ├── landing.html
-│   ├── admin_login.html
-│   ├── admin_dashboard.html
-│   ├── admin_campaign_new.html
-│   ├── admin_campaign_detail.html
-│   ├── annotator_login.html
-│   ├── campaign_closed.html
-│   └── rate.html
-├── static/
-│   ├── style.css
-│   └── rate.js
-└── data/
-    └── app.db              (auto-created)
+aura/
+├── app.py                Entry point (gunicorn app:app)
+├── create_app.py         Flask application factory
+├── app_setup.py          App initialisation helpers
+├── config.py             Configuration (PostgreSQL, secrets, sessions)
+├── extensions.py         Flask extensions (SQLAlchemy, etc.)
+├── models.py             SQLAlchemy models: Annotator, Campaign, Rating, qualification tests, ...
+├── results.py            Protocol-aware analysis: agreement, win rates, Elo, span F1, diagnostics
+├── exporter.py           Results CSV + ZIP builder
+├── llm.py                Provider-agnostic LLM gateway for the assistant
+├── mailer.py             Email transports (Resend / SendGrid / SMTP)
+├── seed_data.py          Demo data seeding
+├── routes/
+│   ├── public.py
+│   ├── admin/            auth, campaigns, qualification, results
+│   └── annotator/        auth, campaign, dashboard, qualification, rating
+├── services/             ai_assistant, auth_service, qualification
+├── utils/                constants (modes, scales, scripts), forms, ingest, security
+├── commands/cli.py       flask seed-demo / unload-demo
+├── scripts/migrate.py    SQLite → PostgreSQL migration
+├── migrations/           Alembic migrations
+├── templates/            Jinja templates (admin, annotator, qualification, results report)
+├── static/               CSS and JS (rate.js, ...)
+├── demo_data/            Seeded demo campaigns (Northeast India languages)
+├── off_the_shelf_translations/   Scripts and outputs for the LLM translation study
+├── Dockerfile
+├── DEPLOY.md
+└── POSTGRES_SETUP.md
 ```
 
 ---
 
-## What the admin configures per campaign (v3)
+## What the admin configures per campaign
 
 When creating **or editing** a campaign, the admin first picks an **evaluation mode**, then configures the options for that mode.
 
@@ -382,6 +402,16 @@ coordinate within your team or with annotators.
 
 ---
 
+## Qualification tests
+
+A campaign can require annotators to pass a qualification test before rating. Tests are
+created from the admin's qualification pages and use gold segments in the same evaluation
+mode as the campaign. Each test has a **passing score** (default 80%), an optional **time
+limit**, a **maximum number of attempts** (default 3), and a **retry cooldown** (default 30
+minutes).
+
+---
+
 ## Annotator background variables
 
 Alongside native language, expertise and fluency, annotators can optionally provide
@@ -444,6 +474,7 @@ Each campaign can enable an **AI guideline assistant** that helps annotators und
 - **Floating & always available**: on the rating screen the assistant is a floating launcher (bottom-right) that opens a chat-style panel. It helps with **understanding the instructions, the criteria and their definitions, how the rating interface works, and the segment currently in view** - not just spans.
 - **Grounded & advisory**: answers are grounded in the campaign's own instructions, criteria, span guidance, an auto-generated description of the interface, and (optionally) the current segment. It is instructed to cite the relevant criterion/instruction or say it can't find guidance - never to state a score/label or call a translation correct/incorrect.
 - **Logged**: every interaction (provider, model, question, answer) and the annotator's feedback (helpful / made me reconsider / no) is stored in `assistant_logs` for provenance and for measuring AI influence on annotation.
+- **Randomised experiment (optional)**: when enabled, the assistant is available on a set percentage of (annotator, segment) pairs (default 50%), assigned by a deterministic hash so it is stable across reloads. Results report an intent-to-treat comparison of the AI-available and AI-unavailable arms: time-on-task for every mode, and deviation from consensus for Likert campaigns. Separately, an observational comparison of segments where the assistant was or wasn't consulted is reported as associational only.
 
 Local Ollama needs a running server (default endpoint `http://localhost:11434/v1`); no key required. Hosted providers require the relevant Python access only through outbound HTTPS - no extra SDKs are bundled (calls are plain REST).
 
