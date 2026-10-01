@@ -63,6 +63,99 @@ def spearman(a, b):
     return pearson(_rankdata(a), _rankdata(b))
 
 
+def _normal_p_value(z):
+    """Two-tailed p-value from standard normal z-score."""
+    if z is None or math.isnan(z):
+        return None
+    phi = 0.5 * (1.0 + math.erf(abs(z) / math.sqrt(2.0)))
+    return max(0.0, min(1.0, 2.0 * (1.0 - phi)))
+
+
+def _cluster_robust_diff(y_vals, is_treated, ann_ids, seg_ids):
+    """Estimate the difference in means (treated - control) with two-way cluster-robust SE.
+
+    Accounts for repeated observations clustered within annotators and segments
+    using the Cameron-Gelbach-Miller (2011) multi-way clustering estimator.
+
+    Returns dict with:
+      mean_treated, mean_control, diff, se, ci_lower, ci_upper, p_value,
+      n_obs, n_treated, n_control, n_ann, n_seg
+    or None if insufficient observations.
+    """
+    if not y_vals or len(y_vals) < 4:
+        return None
+
+    y = np.asarray(y_vals, dtype=float)
+    t = np.asarray([1.0 if x else 0.0 for x in is_treated], dtype=float)
+    n = len(y)
+    n1 = int(np.sum(t))
+    n0 = n - n1
+    if n1 < 2 or n0 < 2:
+        return None
+
+    mean_treated = float(np.mean(y[t == 1.0]))
+    mean_control = float(np.mean(y[t == 0.0]))
+    diff = mean_treated - mean_control
+
+    # Residuals under OLS (y_i = beta0 + beta1 * t_i + e_i)
+    e = np.where(t == 1.0, y - mean_treated, y - mean_control)
+
+    # Influence weights on beta1: w_i = 1/n1 if treated, -1/n0 if control
+    w = np.where(t == 1.0, 1.0 / n1, -1.0 / n0)
+    we = w * e
+
+    unique_anns = list(set(ann_ids))
+    unique_segs = list(set(seg_ids))
+    g_ann = len(unique_anns)
+    g_seg = len(unique_segs)
+
+    # 1) Cluster variance by annotator
+    from collections import defaultdict
+    s_ann = defaultdict(float)
+    for aid, val in zip(ann_ids, we):
+        s_ann[aid] += val
+    adj_ann = (g_ann / (g_ann - 1)) if g_ann > 1 else 1.0
+    v_ann = adj_ann * sum(v ** 2 for v in s_ann.values())
+
+    # 2) Cluster variance by segment
+    s_seg = defaultdict(float)
+    for sid, val in zip(seg_ids, we):
+        s_seg[sid] += val
+    adj_seg = (g_seg / (g_seg - 1)) if g_seg > 1 else 1.0
+    v_seg = adj_seg * sum(v ** 2 for v in s_seg.values())
+
+    # 3) Individual variance (intersection of ann and seg)
+    v_ind = float(np.sum(we ** 2))
+
+    # Two-way cluster-robust variance: V = V_ann + V_seg - V_ind
+    v_twoway = v_ann + v_seg - v_ind
+    if v_twoway <= 0.0:
+        v_robust = max(v_ann, v_seg, 1e-12)
+    else:
+        v_robust = v_twoway
+
+    se = math.sqrt(v_robust)
+    ci_low = diff - 1.96 * se
+    ci_high = diff + 1.96 * se
+    z_stat = (diff / se) if se > 0 else 0.0
+    p_val = _normal_p_value(z_stat)
+
+    return {
+        "mean_treated": mean_treated,
+        "mean_control": mean_control,
+        "diff": diff,
+        "se": se,
+        "ci_lower": ci_low,
+        "ci_upper": ci_high,
+        "p_value": p_val,
+        "n_obs": n,
+        "n_treated": n1,
+        "n_control": n0,
+        "n_ann": g_ann,
+        "n_seg": g_seg,
+    }
+
+
 def krippendorff_alpha_interval(matrix):
     """Krippendorff's alpha (interval metric).
 
@@ -781,42 +874,120 @@ def _performance(campaign, complete, criteria, mode):
         ai["verdict"] = ("Not enough overlapping data yet to compare assisted vs un-assisted "
                          "agreement; check back as more ratings arrive.")
 
-    # Randomised experiment (A/B): compare AI-eligible vs not-eligible segments. Because
-    # eligibility is randomised, this is a causal (intent-to-treat) estimate, not a correlation.
-    # Uses every complete rating, whether or not the assistant was actually opened.
+    # Randomised experiment (A/B): compare AI-eligible vs not-eligible segments.
+    # Evaluates the difference between AI-available and control arms using
+    # two-way cluster-robust inference (clustering within annotators and segments).
     ai["ab_enabled"] = bool(getattr(campaign, "ai_ab_enabled", False))
     if ai["ab_enabled"]:
-        et, ut, ed, ud = [], [], [], []
+        time_y, time_t, time_ann, time_seg = [], [], [], []
+        dev_y, dev_t, dev_ann, dev_seg = [], [], [], []
         n_elig = 0
+
         for r in complete:
-            elig = campaign.ai_ab_eligible(r.annotator_id, r.segment_id)
+            # Check persisted arm assignment first; fallback to hash if unpersisted
+            if getattr(r, "ai_eligible", None) is not None:
+                elig = bool(r.ai_eligible)
+            else:
+                elig = campaign.ai_ab_eligible(r.annotator_id, r.segment_id)
+
             n_elig += 1 if elig else 0
-            if (r.time_spent_seconds or 0) > 0:
-                (et if elig else ut).append(r.time_spent_seconds)
+            t_sec = r.time_spent_seconds
+            if t_sec is not None and t_sec > 0:
+                time_y.append(float(t_sec))
+                time_t.append(elig)
+                time_ann.append(r.annotator_id)
+                time_seg.append(r.segment_id)
+
             if mode == "likert":
                 dv = pair_dev.get((r.annotator_id, r.segment_id))
                 if dv:
-                    (ed if elig else ud).extend(dv)
+                    for d_val in dv:
+                        dev_y.append(float(d_val))
+                        dev_t.append(elig)
+                        dev_ann.append(r.annotator_id)
+                        dev_seg.append(r.segment_id)
+
         ai["ab_fraction"] = getattr(campaign, "ai_ab_fraction", 50)
         ai["ab_eligible_ratings"] = n_elig
         ai["ab_ineligible_ratings"] = len(complete) - n_elig
-        ai["ab_mean_time_eligible"] = round(sum(et) / len(et), 1) if et else None
-        ai["ab_mean_time_ineligible"] = round(sum(ut) / len(ut), 1) if ut else None
-        ai["ab_mean_dev_eligible"] = round(sum(ed) / len(ed), 3) if ed else None
-        ai["ab_mean_dev_ineligible"] = round(sum(ud) / len(ud), 3) if ud else None
-        if ai["ab_mean_dev_eligible"] is not None and ai["ab_mean_dev_ineligible"] is not None:
-            delta = ai["ab_mean_dev_ineligible"] - ai["ab_mean_dev_eligible"]
-            if delta > 0.001:
-                ai["ab_verdict"] = ("Randomised result: segments where AI was available showed lower "
-                                    "deviation from consensus, evidence that AI access improved agreement.")
-            elif delta < -0.001:
-                ai["ab_verdict"] = ("Randomised result: AI-available segments showed higher deviation from "
-                                    "consensus; no agreement benefit, possibly a drawback.")
-            else:
-                ai["ab_verdict"] = "Randomised result: AI access made no measurable difference to agreement."
+
+        # 1) Time spent analysis with cluster-robust SE
+        time_stats = _cluster_robust_diff(time_y, time_t, time_ann, time_seg)
+        if time_stats:
+            ai["ab_mean_time_eligible"] = round(time_stats["mean_treated"], 1)
+            ai["ab_mean_time_ineligible"] = round(time_stats["mean_control"], 1)
+            ai["ab_diff_time"] = round(time_stats["diff"], 1)
+            ai["ab_se_time"] = round(time_stats["se"], 2)
+            ai["ab_ci_time_low"] = round(time_stats["ci_lower"], 1)
+            ai["ab_ci_time_high"] = round(time_stats["ci_upper"], 1)
+            ai["ab_p_value_time"] = round(time_stats["p_value"], 4)
         else:
-            ai["ab_verdict"] = ("Randomised experiment is on, but there isn't enough overlapping data yet "
-                                "to estimate the effect; check back as ratings accumulate.")
+            et = [y for y, t in zip(time_y, time_t) if t]
+            ut = [y for y, t in zip(time_y, time_t) if not t]
+            ai["ab_mean_time_eligible"] = round(sum(et) / len(et), 1) if et else None
+            ai["ab_mean_time_ineligible"] = round(sum(ut) / len(ut), 1) if ut else None
+            ai["ab_diff_time"] = None
+            ai["ab_se_time"] = None
+            ai["ab_ci_time_low"] = None
+            ai["ab_ci_time_high"] = None
+            ai["ab_p_value_time"] = None
+
+        # 2) Consensus deviation analysis with cluster-robust SE
+        dev_stats = _cluster_robust_diff(dev_y, dev_t, dev_ann, dev_seg)
+        if dev_stats:
+            ai["ab_mean_dev_eligible"] = round(dev_stats["mean_treated"], 3)
+            ai["ab_mean_dev_ineligible"] = round(dev_stats["mean_control"], 3)
+            # Difference: positive indicates AI reduced consensus deviation (improved consensus)
+            ai["ab_diff_dev"] = round(dev_stats["mean_control"] - dev_stats["mean_treated"], 3)
+            ai["ab_se_dev"] = round(dev_stats["se"], 3)
+            ai["ab_ci_dev_low"] = round(-(dev_stats["ci_upper"]), 3)
+            ai["ab_ci_dev_high"] = round(-(dev_stats["ci_lower"]), 3)
+            ai["ab_p_value_dev"] = round(dev_stats["p_value"], 4)
+        else:
+            ed = [y for y, t in zip(dev_y, dev_t) if t]
+            ud = [y for y, t in zip(dev_y, dev_t) if not t]
+            ai["ab_mean_dev_eligible"] = round(sum(ed) / len(ed), 3) if ed else None
+            ai["ab_mean_dev_ineligible"] = round(sum(ud) / len(ud), 3) if ud else None
+            ai["ab_diff_dev"] = None
+            ai["ab_se_dev"] = None
+            ai["ab_ci_dev_low"] = None
+            ai["ab_ci_dev_high"] = None
+            ai["ab_p_value_dev"] = None
+
+        # 3) Statistically sound verdict
+        if dev_stats and dev_stats["n_ann"] >= 2 and dev_stats["p_value"] is not None:
+            p_val = dev_stats["p_value"]
+            diff_dev = ai["ab_diff_dev"]
+            ci_str = f"[{ai['ab_ci_dev_low']}, {ai['ab_ci_dev_high']}]"
+            if p_val < 0.05:
+                if diff_dev > 0:
+                    ai["ab_verdict"] = (
+                        f"Randomised A/B comparison: AI-available arm showed a statistically significant "
+                        f"reduction in consensus deviation (Δ = {diff_dev:+.3f}, 95% CI {ci_str}, p = {p_val:.3f}, "
+                        f"two-way clustered standard errors over {dev_stats['n_ann']} raters and {dev_stats['n_seg']} segments)."
+                    )
+                else:
+                    ai["ab_verdict"] = (
+                        f"Randomised A/B comparison: AI-available arm showed a statistically significant "
+                        f"increase in consensus deviation (Δ = {diff_dev:+.3f}, 95% CI {ci_str}, p = {p_val:.3f}, "
+                        f"two-way clustered standard errors over {dev_stats['n_ann']} raters and {dev_stats['n_seg']} segments)."
+                    )
+            else:
+                ai["ab_verdict"] = (
+                    f"Randomised A/B comparison: No statistically significant difference in consensus deviation "
+                    f"detected between arms (Δ = {diff_dev:+.3f}, 95% CI {ci_str}, p = {p_val:.3f}, "
+                    f"two-way clustered standard errors over {dev_stats['n_ann']} raters and {dev_stats['n_seg']} segments)."
+                )
+        elif ai["ab_mean_dev_eligible"] is not None and ai["ab_mean_dev_ineligible"] is not None:
+            ai["ab_verdict"] = (
+                "A/B comparison active: preliminary difference recorded, but there are too few raters/clusters "
+                "to calculate reliable cluster-robust standard errors yet; check back as more annotators submit ratings."
+            )
+        else:
+            ai["ab_verdict"] = (
+                "Randomised experiment is active, but there is not yet enough data across both arms "
+                "to estimate differences; check back as ratings accumulate."
+            )
 
     return {"annotators": rows, "ai": ai}
 

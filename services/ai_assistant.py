@@ -26,6 +26,7 @@ def _assist_system_prompt():
         "Boundaries: never tell the annotator which score, rating, preference, or span to choose, "
         "and never declare the output definitively correct or incorrect or whether it contains "
         "an error; explaining what the text means is fine, but the quality judgment is the human's. "
+        "Human reference translations are strictly hidden to preserve evaluation integrity. "
         "Be concise and clear."
     )
 
@@ -111,8 +112,6 @@ def _assist_user_prompt(campaign, segctx, criteria, question):
                 L.append(f"{out_label} B: " + (b or ""))
             else:
                 L.append(f"{out_label}: " + (seg.get("target") or ""))
-            if seg.get("reference"):
-                L.append("Reference: " + seg.get("reference"))
             if item.get("judgment"):
                 L.append("Annotator's current judgment (their own, do not override): " + item["judgment"])
         L.append("")

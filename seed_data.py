@@ -225,6 +225,9 @@ def synthesize_ratings(db, Campaign, Annotator, Rating):
                 r.reviewed = reviewed
                 if edited is not None:
                     r.edited_text = edited
+                is_elig = c.ai_ab_eligible(ann.id, sid) if c.ai_ab_enabled else bool(c.ai_enabled)
+                r.ai_eligible = is_elig
+                r.ai_arm = ("ai_available" if is_elig else "control") if c.ai_ab_enabled else ("ai_available" if c.ai_enabled else "no_ai")
                 db.session.add(r)
                 created += 1
     if created:

@@ -120,21 +120,54 @@
 </table>
 <p class="result-note">{{ AI.verdict }}</p>
 {% if AI.ab_enabled %}
-<h4 class="result-h4">Randomised AI experiment (causal)</h4>
+<h4 class="result-h4">Randomised AI experiment (A/B comparison)</h4>
 <p class="result-note">
-  The assistant was made available on a random {{ AI.ab_fraction }}% of (annotator, segment) pairs.
-  Comparing the two arms estimates the <em>causal</em> effect of AI access (intent-to-treat), not just
-  a correlation.
+  The assistant was made available on a randomised {{ AI.ab_fraction }}% of (annotator, segment) pairs.
+  Comparing the arms estimates the difference between AI-available and control conditions, with two-way cluster-robust standard errors accounting for repeated ratings within annotators and segments.
 </p>
 <table class="result-table" data-table-name="ai_ab_experiment">
-  <thead><tr><th>Metric</th><th class="num">AI available</th><th class="num">Not available</th></tr></thead>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th class="num">AI available</th>
+      <th class="num">Not available</th>
+      <th class="num">Difference (95% CI)</th>
+      <th class="num">p-value</th>
+    </tr>
+  </thead>
   <tbody>
-    <tr><td>Ratings</td><td class="num">{{ AI.ab_eligible_ratings }}</td><td class="num">{{ AI.ab_ineligible_ratings }}</td></tr>
+    <tr>
+      <td>Ratings</td>
+      <td class="num">{{ AI.ab_eligible_ratings }}</td>
+      <td class="num">{{ AI.ab_ineligible_ratings }}</td>
+      <td class="num">—</td>
+      <td class="num">—</td>
+    </tr>
     {% if AI.ab_mean_time_eligible is not none and AI.ab_mean_time_ineligible is not none %}
-    <tr><td>Mean time (s)</td><td class="num">{{ AI.ab_mean_time_eligible }}</td><td class="num">{{ AI.ab_mean_time_ineligible }}</td></tr>
+    <tr>
+      <td>Mean time (s)</td>
+      <td class="num">{{ AI.ab_mean_time_eligible }}</td>
+      <td class="num">{{ AI.ab_mean_time_ineligible }}</td>
+      <td class="num">
+        {% if AI.ab_diff_time is not none %}
+          {{ AI.ab_diff_time }} {% if AI.ab_ci_time_low is not none %}<span class="dim">[{{ AI.ab_ci_time_low }}, {{ AI.ab_ci_time_high }}]</span>{% endif %}
+        {% else %}—{% endif %}
+      </td>
+      <td class="num">{% if AI.ab_p_value_time is not none %}{{ AI.ab_p_value_time }}{% else %}—{% endif %}</td>
+    </tr>
     {% endif %}
     {% if AI.ab_mean_dev_eligible is not none and AI.ab_mean_dev_ineligible is not none %}
-    <tr><td>Mean deviation from consensus</td><td class="num">{{ AI.ab_mean_dev_eligible }}</td><td class="num">{{ AI.ab_mean_dev_ineligible }}</td></tr>
+    <tr>
+      <td>Mean consensus deviation</td>
+      <td class="num">{{ AI.ab_mean_dev_eligible }}</td>
+      <td class="num">{{ AI.ab_mean_dev_ineligible }}</td>
+      <td class="num">
+        {% if AI.ab_diff_dev is not none %}
+          {{ AI.ab_diff_dev }} {% if AI.ab_ci_dev_low is not none %}<span class="dim">[{{ AI.ab_ci_dev_low }}, {{ AI.ab_ci_dev_high }}]</span>{% endif %}
+        {% else %}—{% endif %}
+      </td>
+      <td class="num">{% if AI.ab_p_value_dev is not none %}{{ AI.ab_p_value_dev }}{% else %}—{% endif %}</td>
+    </tr>
     {% endif %}
   </tbody>
 </table>

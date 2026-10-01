@@ -526,12 +526,25 @@
     </div>
     <hr style="border:none; border-bottom:1px solid var(--aura-border-light); margin:20px 0;">
     <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
-      <input type="checkbox" id="ai_ab_enabled" name="ai_ab_enabled" value="1" {% if form_data.get('ai_ab_enabled') %}checked{% endif %} onchange="document.getElementById('ai-ab-frac').style.display=this.checked?'':'none'" style="accent-color:var(--aura-accent); width:16px; height:16px; margin-top:1px; cursor:pointer;">
-      <span><span style="font-size:13px; font-weight:600; color:var(--aura-text);">Run a randomised AI experiment (A/B)</span><br><span style="font-size:12px; color:var(--aura-text-faint); line-height:1.5;">Makes the assistant available on a random share of (annotator, segment) pairs instead of all of them. Use to estimate the causal effect of AI help on speed and agreement, not just a correlation.</span></span>
+      <input type="checkbox" id="ai_ab_enabled" name="ai_ab_enabled" value="1" {% if form_data.get('ai_ab_enabled') %}checked{% endif %} {% if has_ratings %}disabled{% endif %} onchange="document.getElementById('ai-ab-frac').style.display=this.checked?'':'none'" style="accent-color:var(--aura-accent); width:16px; height:16px; margin-top:1px; cursor:pointer;">
+      <span>
+        <span style="font-size:13px; font-weight:600; color:var(--aura-text);">Run a randomised AI experiment (A/B)</span><br>
+        {% if has_ratings %}
+        <span style="font-size:12px; color:var(--aura-accent, #2b5c4b); font-weight:500; line-height:1.5;">🔒 Locked: A/B experiment settings and arm allocation fraction cannot be modified once ratings have begun.</span>
+        {% else %}
+        <span style="font-size:12px; color:var(--aura-text-faint); line-height:1.5;">Makes the assistant available on a randomised fraction of (annotator, segment) pairs instead of all of them to compare speed and agreement across arms with cluster-robust uncertainty estimates.</span>
+        {% endif %}
+      </span>
     </label>
+    {% if has_ratings %}
+    <input type="hidden" name="ai_ab_enabled" value="{{ '1' if form_data.get('ai_ab_enabled') else '' }}">
+    {% endif %}
     <div id="ai-ab-frac" style="{% if not form_data.get('ai_ab_enabled') %}display:none;{% endif %} max-width:260px; margin-top:14px;">
       <label style="display:block; font-size:13px; font-weight:600; color:var(--aura-text); margin-bottom:7px;">% of pairs with AI available</label>
-      <input type="number" id="ai_ab_fraction" name="ai_ab_fraction" min="0" max="100" step="5" class="ff-in" value="{{ form_data.get('ai_ab_fraction', 50) }}">
+      <input type="number" id="ai_ab_fraction" name="ai_ab_fraction" min="0" max="100" step="5" class="ff-in" value="{{ form_data.get('ai_ab_fraction', 50) }}" {% if has_ratings %}disabled{% endif %}>
+      {% if has_ratings %}
+      <input type="hidden" name="ai_ab_fraction" value="{{ form_data.get('ai_ab_fraction', 50) }}">
+      {% endif %}
     </div>
   </div>
 </section>

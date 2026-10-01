@@ -629,6 +629,8 @@ def admin_campaign_edit(campaign_id):
         flash("This campaign is closed and can no longer be edited.", "error")
         return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
 
+    has_ratings = (Rating.query.filter_by(campaign_id=c.id).first() is not None)
+
     if request.method == "POST":
         config, _segments, errors, form_view = _collect_campaign_form(
             request.form, request.files, parse_segments=False,
@@ -636,13 +638,21 @@ def admin_campaign_edit(campaign_id):
         if errors:
             for e in errors:
                 flash(e, "error")
-            return _render_edit_campaign_form(c, form_data=form_view)
+            return _render_edit_campaign_form(c, form_data=form_view, has_ratings=has_ratings)
+
+        if has_ratings:
+            if (config.get("ai_ab_fraction") != c.ai_ab_fraction or
+                config.get("ai_ab_enabled") != c.ai_ab_enabled):
+                config["ai_ab_fraction"] = c.ai_ab_fraction
+                config["ai_ab_enabled"] = c.ai_ab_enabled
+                flash("The A/B experiment arm fraction is locked because ratings have already been recorded for this campaign.", "warning")
+
         # Apply every config field except segments (segments are fixed after creation).
         for k, v in config.items():
             setattr(c, k, v)
         db.session.commit()
         flash("Campaign configuration updated.", "success")
-        return redirect(url_for("admin_campaign.admin_campaign_detail", campaign_id=c.id))
+        return redirect(url_for("admin_campaign.admin_campaign_edit", campaign_id=c.id))
 
     # GET -- prefill from the campaign
     crit = get_criteria_for(c)
@@ -697,10 +707,10 @@ def admin_campaign_edit(campaign_id):
             "labels": c.scale_labels,
         },
     }
-    return _render_edit_campaign_form(c, form_data=view)
+    return _render_edit_campaign_form(c, form_data=view, has_ratings=has_ratings)
 
 
-def _render_edit_campaign_form(campaign, form_data):
+def _render_edit_campaign_form(campaign, form_data, has_ratings=False):
     qual_context = _qualification_template_context(campaign)
     return render_template("admin_campaign_edit.html",
                         campaign=campaign,
@@ -714,6 +724,7 @@ def _render_edit_campaign_form(campaign, form_data):
                         ai_providers=llm.PROVIDERS,
                         default_likert_labels=Campaign.DEFAULT_LIKERT_LABELS_BY_POINTS,
                         form_data=form_data,
+                        has_ratings=has_ratings,
                         **qual_context, )
 
 

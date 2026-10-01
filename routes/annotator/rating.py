@@ -278,6 +278,17 @@ def api_submit(campaign_id):
     if not rating:
         rating = Rating(campaign_id=c.id, annotator_id=ann.id, segment_id=segment_id)
         db.session.add(rating)
+
+    # Persist arm assignment on creation (or if previously unassigned)
+    if rating.ai_eligible is None:
+        if c.ai_ab_enabled:
+            is_elig = c.ai_ab_eligible(ann.id, segment_id)
+            rating.ai_eligible = is_elig
+            rating.ai_arm = "ai_available" if is_elig else "control"
+        else:
+            rating.ai_eligible = bool(c.ai_enabled)
+            rating.ai_arm = "ai_available" if c.ai_enabled else "no_ai"
+
     rating.scores_json = json.dumps(clean_scores)
     rating.spans_json = json.dumps(clean_spans, ensure_ascii=False)
     rating.comments = comments

@@ -1090,6 +1090,11 @@ class Rating(db.Model):
     # Post-editing mode: the annotator's corrected version of the output.
     edited_text = db.Column(db.Text, default="")
     time_spent_seconds = db.Column(db.Integer, default=0)
+
+    # Randomised AI experiment arm assignment (persisted at evaluation time)
+    ai_arm = db.Column(db.String(32), nullable=True, default=None)  # "ai_available" | "control" | "no_ai"
+    ai_eligible = db.Column(db.Boolean, nullable=True, default=None)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -51,7 +51,7 @@ def _csv_header(campaign, criteria):
             header.append("reviewed")
         if mode == "post_edit":
             header.append("edited_text")
-    header += ["comments", "time_spent_seconds", "updated_at_utc"]
+    header += ["comments", "time_spent_seconds", "ai_eligible", "ai_arm", "updated_at_utc"]
     return header
 
 
@@ -123,7 +123,9 @@ def master_rows(campaign, ratings, criteria):
                 row.append(1 if r.reviewed else 0)
             if mode == "post_edit":
                 row.append(r.edited_text or "")
-        row += [r.comments or "", r.time_spent_seconds or 0, ts]
+        ai_elig = r.ai_eligible if getattr(r, "ai_eligible", None) is not None else campaign.ai_ab_eligible(r.annotator_id, r.segment_id)
+        ai_arm = r.ai_arm or ("ai_available" if ai_elig else "control")
+        row += [r.comments or "", r.time_spent_seconds or 0, 1 if ai_elig else 0, ai_arm, ts]
         yield row
 
 
